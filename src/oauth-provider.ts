@@ -364,8 +364,8 @@ function authorizeHtml(params: {
   error?: string;
 }): string {
   const clientName = params.client.client_name ?? params.client.client_id;
-  const scopes = params.params.scopes?.join(" ") || "workspace-linker";
-  const resource = params.params.resource?.href ?? "Workspace Linker MCP endpoint";
+  const scopes = params.params.scopes?.join(" ") || "computer-linker";
+  const resource = params.params.resource?.href ?? "Computer Linker MCP endpoint";
   const error = params.error ? `<p class="error">${htmlEscape(params.error)}</p>` : "";
   const fields = authorizationFormFields(params.client, params.params);
   const hiddenFields = Object.entries(fields)
@@ -378,7 +378,7 @@ function authorizeHtml(params: {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Connect Workspace Linker</title>
+    <title>Connect Computer Linker</title>
     <style>
       body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #111827; color: #f9fafb; }
       main { max-width: 440px; margin: 12vh auto; padding: 28px; background: #020617; border: 1px solid #334155; border-radius: 12px; }
@@ -396,7 +396,7 @@ function authorizeHtml(params: {
   </head>
   <body>
     <main>
-      <h1>Connect Workspace Linker</h1>
+      <h1>Connect Computer Linker</h1>
       <p class="warning">Only approve this if you intentionally want this MCP client to control the configured workspaces on this computer.</p>
       ${error}
       <dl>
@@ -408,7 +408,7 @@ function authorizeHtml(params: {
         ${hiddenFields}
         <label for="owner_token">Owner token</label>
         <input id="owner_token" name="owner_token" type="password" autocomplete="current-password" required autofocus />
-        <button type="submit">Authorize Workspace Linker</button>
+        <button type="submit">Authorize Computer Linker</button>
       </form>
     </main>
   </body>

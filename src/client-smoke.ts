@@ -46,7 +46,7 @@ export interface WorkspaceLinkerSdkClientSmokeOptions extends WorkspaceLinkerCli
 }
 
 export interface WorkspaceLinkerClientSmokeReport {
-  kind: "workspace-linker-client-smoke";
+  kind: "computer-linker-client-smoke";
   schemaVersion: 1;
   ready: boolean;
   baseUrl: string | null;
@@ -130,7 +130,7 @@ export async function runWorkspaceLinkerMcpClientSmoke(
       checks.push(computerInfo.check);
       checks.push(await smokeReadOnlyOperation(fetchImpl, apiBaseUrl, token, computerInfo.data, timeoutMs));
     }
-    checks.push(...await smokeMcpToolFlow(fetchImpl, new URL("mcp", baseUrl), token, timeoutMs, options.clientName ?? "workspace-linker-client-smoke"));
+    checks.push(...await smokeMcpToolFlow(fetchImpl, new URL("mcp", baseUrl), token, timeoutMs, options.clientName ?? "computer-linker-client-smoke"));
   }
 
   return finalizeSmokeReport({
@@ -156,7 +156,7 @@ export async function runWorkspaceLinkerSdkClientSmoke(
   const computerInfo = await smokeComputerInfo(options.fetchImpl, options.apiBaseUrl, options.ownerToken, timeoutMs);
   checks.push(computerInfo.check);
   checks.push(await smokeReadOnlyOperation(options.fetchImpl, options.apiBaseUrl, options.ownerToken, computerInfo.data, timeoutMs));
-  checks.push(...await smokeMcpToolFlow(options.fetchImpl, mcpServerUrl, options.ownerToken, timeoutMs, "workspace-linker-sdk-smoke"));
+  checks.push(...await smokeMcpToolFlow(options.fetchImpl, mcpServerUrl, options.ownerToken, timeoutMs, "computer-linker-sdk-smoke"));
 
   return finalizeSmokeReport({
     baseUrl: serviceRoot.href,
@@ -172,7 +172,7 @@ export async function runWorkspaceLinkerSdkClientSmoke(
 
 export function formatWorkspaceLinkerClientSmoke(report: WorkspaceLinkerClientSmokeReport): string {
   return [
-    "Workspace Linker MCP client smoke",
+    "Computer Linker MCP client smoke",
     `ready: ${report.ready ? "yes" : "no"}`,
     `baseUrl: ${report.baseUrl ?? "not configured"}`,
     `mcpServerUrl: ${report.mcpServerUrl ?? "not configured"}`,
@@ -200,7 +200,7 @@ function finalizeSmokeReport(input: {
     .map((check) => `${check.id}: ${check.message}`);
 
   return {
-    kind: "workspace-linker-client-smoke",
+    kind: "computer-linker-client-smoke",
     schemaVersion: 1,
     ready: blockingReasons.length === 0,
     baseUrl: input.baseUrl,
@@ -256,7 +256,7 @@ async function smokeGet(
         id,
         status: "fail",
         message: apiPayloadInvalid
-          ? `${url.pathname} did not return a valid Workspace Linker JSON API response.`
+          ? `${url.pathname} did not return a valid Computer Linker JSON API response.`
           : `${url.pathname} returned HTTP ${response.status}.`,
         url: url.href,
         statusCode: response.status,
@@ -313,7 +313,7 @@ async function smokeComputerInfo(
     const text = await response.text();
     const payload = parseJsonApiData(text);
     const data = payload.data as SmokeComputerInfo | undefined;
-    if (!response.ok || !payload.ok || data?.kind !== "workspace-linker-computer-info") {
+    if (!response.ok || !payload.ok || data?.kind !== "computer-linker-computer-info") {
       return {
         check: {
           id: "api-computer-info",
@@ -488,7 +488,7 @@ async function smokeMcpToolFlow(
       checks.push({
         id: "mcp-list-tools",
         status: "pass",
-        message: "MCP tools/list returned the generic Workspace Linker tool surface.",
+        message: "MCP tools/list returned the generic Computer Linker tool surface.",
         url: url.href,
       });
     }
@@ -508,7 +508,7 @@ async function smokeMcpToolFlow(
   try {
     const result = await withSmokeTimeout(client.callTool({ name: "get_computer_info", arguments: {} }), timeoutMs, "MCP get_computer_info timed out.");
     const data = mcpToolData(result) as SmokeComputerInfo | undefined;
-    if (data?.kind !== "workspace-linker-computer-info") {
+    if (data?.kind !== "computer-linker-computer-info") {
       checks.push({
         id: "mcp-get-computer-info",
         status: "fail",
@@ -705,7 +705,7 @@ function smokeNextActions(blockingReasons: string[], warnings: string[], publicM
     actions.add("Set publicBaseUrl or rerun with `--url https://...`; use `--allow-http` only for local testing.");
   }
   if (blockingReasons.some((reason) => reason.includes("auth"))) {
-    actions.add("Run `workspace-linker init` or pass `--token <ownerToken>` for the smoke test.");
+    actions.add("Run `computer-linker init` or pass `--token <ownerToken>` for the smoke test.");
   }
   if (blockingReasons.some((reason) => reason.includes("api-capabilities"))) {
     actions.add(publicMode
@@ -723,7 +723,7 @@ function smokeNextActions(blockingReasons: string[], warnings: string[], publicM
   if (blockingReasons.some((reason) => reason.includes("healthz") || reason.includes("mcp-initialize"))) {
     actions.add(publicMode
       ? "Confirm the HTTP server is running and the tunnel routes to this machine."
-      : "Confirm the Workspace Linker HTTP server is running and reachable at the same service origin.");
+      : "Confirm the Computer Linker HTTP server is running and reachable at the same service origin.");
   }
   if (blockingReasons.some((reason) => reason.includes("mcp-list-tools") || reason.includes("mcp-get-computer-info") || reason.includes("mcp-read-only-operation") || reason.includes("mcp-operation-history"))) {
     actions.add("Confirm the MCP server exposes the generic tool surface and that at least one readable workspace scope is configured.");

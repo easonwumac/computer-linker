@@ -7,15 +7,15 @@ import { chatGptSmoke } from "./chatgpt.js";
 import { writeConfig } from "./config.js";
 import { serveHttp } from "./server.js";
 
-const originalConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
+const originalConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalLocalPortConfigDir = process.env.LOCALPORT_CONFIG_DIR;
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-smoke-test-"));
+const root = await mkdtemp(join(tmpdir(), "computer-linker-smoke-test-"));
 const workspaceRoot = join(root, "workspace");
 const configRoot = join(root, "config");
 const port = await getAvailablePort();
 
 try {
-  process.env.WORKSPACE_LINKER_CONFIG_DIR = configRoot;
+  process.env.COMPUTER_LINKER_CONFIG_DIR = configRoot;
   delete process.env.LOCALPORT_CONFIG_DIR;
   await mkdir(workspaceRoot, { recursive: true });
   writeConfig({
@@ -23,7 +23,7 @@ try {
     host: "127.0.0.1",
     port,
     ownerToken: "smoke-token",
-    publicBaseUrl: "https://workspace-linker.example.com",
+    publicBaseUrl: "https://computer-linker.example.com",
     workspaces: [
       {
         id: "app",
@@ -108,7 +108,7 @@ try {
             : {};
           const structuredContent = params.name === "get_computer_info"
             ? {
-                kind: "workspace-linker-computer-info",
+                kind: "computer-linker-computer-info",
                 machineName: "smoke-test",
                 scopes: [
                   {
@@ -155,7 +155,7 @@ try {
           result: {
             protocolVersion: "2025-06-18",
             capabilities: { tools: {} },
-            serverInfo: { name: "workspace-linker", version: "0.1.0" },
+            serverInfo: { name: "computer-linker", version: "0.1.0" },
           },
         }), {
           status: 200,
@@ -201,8 +201,8 @@ try {
     server.close();
   }
 } finally {
-  if (originalConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-  else process.env.WORKSPACE_LINKER_CONFIG_DIR = originalConfigDir;
+  if (originalConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+  else process.env.COMPUTER_LINKER_CONFIG_DIR = originalConfigDir;
 
   if (originalLocalPortConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalLocalPortConfigDir;

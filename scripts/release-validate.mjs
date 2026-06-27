@@ -59,7 +59,7 @@ const packageJson = readJson("package.json");
 const lockJson = readJson("package-lock.json");
 const schemaJson = readJson("docs/computer-operation-v1.schema.json");
 
-assert(packageJson.name === "workspace-linker", "package name must be workspace-linker");
+assert(packageJson.name === "@easonwumac/computer-linker", "package name must be @easonwumac/computer-linker");
 assert(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(packageJson.version), `package version is not semver-like: ${packageJson.version}`);
 const packageKeywords = new Set(packageJson.keywords ?? []);
 for (const keyword of ["mcp", "mcp-server", "workspace", "codex", "local-first", "automation"]) {
@@ -132,7 +132,7 @@ assert(testRunnerScript.includes("src/screenshot.test.ts"), "npm test must inclu
 assert(testRunnerScript.includes("scripts/alpha-evidence.test.mjs"), "npm test must include alpha evidence tooling coverage");
 assert(testRunnerScript.includes("scripts/alpha-readiness-report.test.mjs"), "npm test must include alpha readiness report guidance coverage");
 assert(testRunnerScript.includes("test suite:"), "npm test must print progress for long Windows test runs");
-assert(packageJson.bin?.["workspace-linker"] === "dist/cli.js", "package must publish the workspace-linker CLI");
+assert(packageJson.bin?.["computer-linker"] === "dist/cli.js", "package must publish the computer-linker CLI");
 assert(!Object.hasOwn(packageJson.bin ?? {}, "localport"), "package must not publish the legacy localport CLI alias");
 
 const changelog = readText("CHANGELOG.md");
@@ -148,13 +148,13 @@ assert(changelog.includes("OpenAI Secure MCP Tunnel support now treats tunnel-id
 assert(changelog.includes("OpenAI tunnel quickstart, start help, and missing-key errors now surface"), "CHANGELOG must mention OpenAI tunnel API key prerequisite guidance");
 assert(changelog.includes("Quickstart text and JSON now explain that `start` stays running"), "CHANGELOG must mention quickstart terminal handoff guidance");
 assert(changelog.includes("Product spec guidance for the CLI management surface now matches"), "CHANGELOG must mention product spec first-run help alignment");
-assert(changelog.includes("Package metadata now positions Workspace Linker as a generic MCP/local\n  automation package"), "CHANGELOG must mention generic package metadata positioning");
-assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.workspace-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
+assert(changelog.includes("Package metadata now positions Computer Linker as a generic MCP/local\n  automation package"), "CHANGELOG must mention generic package metadata positioning");
+assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.computer-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
 assert(changelog.includes("npm run public:release-ready"), "CHANGELOG must mention the final public release readiness command");
 const readme = readText("README.md");
 assert(readme.includes("Leave that terminal running. In another terminal"), "README Quick Start must explain that start keeps running and follow-up commands use another terminal");
 assert(readme.includes("Call computer_operation with dotted ops from computerOperationRegistry"), "README agent instructions must direct agents to the generic computer_operation registry");
-assert(readme.includes("workspace-linker diagnose client"), "README must document the client diagnosis command");
+assert(readme.includes("computer-linker diagnose client"), "README must document the client diagnosis command");
 assert(readme.includes("node examples/minimal-mcp-client.mjs"), "README must document the minimal MCP client example");
 assert(readme.includes("docs/api-compatibility.md"), "README must link the API compatibility policy");
 assert(readme.includes("docs/agent-instructions.md"), "README must link reusable agent instructions");
@@ -166,7 +166,7 @@ assert(readme.includes("Do not call workspace_operation, read, ls, grep, glob, o
 assert(readme.includes("public:mirror -- --remote <github-owner>/<public-repo>"), "README public mirror guidance must use the one-command --remote path");
 assert(readme.includes("npm run public:release-ready"), "README must document the final public release readiness command");
 assert(readme.includes("push -u origin main --follow-tags"), "README public mirror push command must include the release tag");
-assert(!readme.includes("public:snapshot -- --output ../workspace-linker-public --remote <github-owner>/<public-repo>"), "README public snapshot quick path must rely on the default output directory");
+assert(!readme.includes("public:snapshot -- --output ../computer-linker-public --remote <github-owner>/<public-repo>"), "README public snapshot quick path must rely on the default output directory");
 
 const productSpec = readText("docs/product-spec.md");
 assert(productSpec.includes("focused on first-run start, tunnel\nselection, client setup, status, and quickstart preview"), "product spec must match the concise default help contract");
@@ -177,13 +177,13 @@ const releaseChecklist = readText("docs/release-checklist.md");
 assert(releaseChecklist.includes("public:mirror -- --remote <github-owner>/<public-repo>"), "release checklist public mirror command must use the one-command --remote path");
 assert(releaseChecklist.includes("npm run public:release-ready"), "release checklist must document the final public release readiness command");
 assert(releaseChecklist.includes("push -u origin main --follow-tags"), "release checklist public mirror push command must include the release tag");
-assert(releaseChecklist.includes("The default output directory is `../workspace-linker-public`; pass"), "release checklist must document --output as an advanced override");
+assert(releaseChecklist.includes("The default output directory is `../computer-linker-public`; pass"), "release checklist must document --output as an advanced override");
 assert(releaseChecklist.includes("public:snapshot` replaces it automatically"), "release checklist must document automatic replacement of clean generated default snapshots");
 assert(releaseChecklist.includes("a `v<package.version>` tag pointing at that commit"), "release checklist must document public mirror release tag creation");
 assert(releaseChecklist.includes("matching changelog heading to"), "release checklist must document publishable mirror changelog dating");
 assert(!releaseChecklist.includes("git remote add origin <public-repo-url>"), "release checklist must not recommend adding the public snapshot remote after metadata rewriting has already been skipped");
 
-assert(schemaJson.title === "Workspace Linker computer_operation v1", "computer_operation schema title changed unexpectedly");
+assert(schemaJson.title === "Computer Linker computer_operation v1", "computer_operation schema title changed unexpectedly");
 assert(schemaJson.$defs?.ComputerOperationRequest, "computer_operation schema must define ComputerOperationRequest");
 assert(schemaJson.$defs?.ComputerOperationSuccess, "computer_operation schema must define ComputerOperationSuccess");
 assert(schemaJson.$defs?.ComputerOperationFailure, "computer_operation schema must define ComputerOperationFailure");
@@ -265,7 +265,7 @@ assert(alphaReadinessTestScript.includes("create a detached public mirror with `
 assert(alphaReadinessTestScript.includes("--skip-gates"), "alpha readiness tests must avoid running the expensive product gate");
 
 const alphaEvidenceScript = readText("scripts/alpha-evidence.mjs");
-assert(alphaEvidenceScript.includes("workspace-linker-alpha-evidence"), "alpha evidence script must validate the evidence kind");
+assert(alphaEvidenceScript.includes("computer-linker-alpha-evidence"), "alpha evidence script must validate the evidence kind");
 assert(alphaEvidenceScript.includes("external-mcp-tool-flow"), "alpha evidence must require external MCP tool flow proof");
 assert(alphaEvidenceScript.includes("tunnel-transport"), "alpha evidence must require tunnel transport proof");
 assert(alphaEvidenceScript.includes("mcp-only-public-surface"), "alpha evidence must require MCP-only public surface proof");
@@ -293,8 +293,8 @@ assert(alphaEvidenceScript.includes("init target details contain common secret-s
 assert(alphaEvidenceScript.includes('validateRecordNote(options.note, "record evidence note")'), "alpha evidence record must validate notes before writing evidence");
 assert(alphaEvidenceScript.includes('validateRecordNote(options.note, "record-smoke evidence note")'), "alpha evidence record-smoke must validate notes before writing evidence");
 assert(alphaEvidenceScript.includes("contains common secret-shaped values"), "alpha evidence note validation must reject secret-shaped notes before writing evidence");
-assert(alphaEvidenceScript.includes("refreshExistingEvidence"), "alpha evidence smoke must support refreshing existing Workspace Linker alpha evidence");
-assert(alphaEvidenceScript.includes("isAlphaEvidenceFile"), "alpha evidence smoke refresh must verify the existing file is Workspace Linker alpha evidence");
+assert(alphaEvidenceScript.includes("refreshExistingEvidence"), "alpha evidence smoke must support refreshing existing Computer Linker alpha evidence");
+assert(alphaEvidenceScript.includes("isAlphaEvidenceFile"), "alpha evidence smoke refresh must verify the existing file is Computer Linker alpha evidence");
 const alphaEvidenceTestScript = readText("scripts/alpha-evidence.test.mjs");
 assert(alphaEvidenceTestScript.includes("tunnel_testalpha123"), "alpha evidence tests must cover a concrete OpenAI tunnel id");
 assert(alphaEvidenceTestScript.includes("https://mcp.example.test"), "alpha evidence tests must cover a public HTTPS origin");
@@ -315,7 +315,7 @@ assert(alphaEvidenceTestScript.includes("Authorization: Bearer abcdefghijklmnop"
 const packageSmokeScript = readText("scripts/package-smoke.mjs");
 assert(!packageSmokeScript.includes('shell: process.platform === "win32"'), "package smoke must avoid shell: true when invoking npm on Windows");
 assert(packageSmokeScript.includes('"install", "--ignore-scripts", "--no-audit", "--no-fund"'), "package smoke must install the packed archive into a temporary consumer project");
-assert(packageSmokeScript.includes('"exec", "--", binName'), "package smoke must execute the installed workspace-linker bin");
+assert(packageSmokeScript.includes('"exec", "--", binName'), "package smoke must execute the installed computer-linker bin");
 assert(packageSmokeScript.includes("CLI --version must match package.json"), "package smoke must verify CLI --version");
 assert(packageSmokeScript.includes("bare CLI invocation must print help"), "package smoke must verify bare CLI invocation prints help");
 assert(packageSmokeScript.includes('"source quickstart"'), "package smoke must verify source checkout quickstart");
@@ -374,14 +374,14 @@ const cliSource = readText("src/cli.ts");
 assert(cliSource.includes("agent instructions:"), "client setup text output must print copy-pasteable agent instructions");
 assert(!cliSource.includes('case "connect-profile"'), "CLI must not keep connect-profile as a top-level ChatGPT shortcut");
 assert(!cliSource.includes('case "chatgpt"'), "CLI must not keep chatgpt as a top-level command");
-assert(!cliSource.includes("workspace-linker profile --chatgpt ["), "profile help must not advertise ChatGPT-specific shortcuts");
+assert(!cliSource.includes("computer-linker profile --chatgpt ["), "profile help must not advertise ChatGPT-specific shortcuts");
 
 const mcpSurfaceSource = readText("src/mcp-surface.ts");
 assert(mcpSurfaceSource.includes('export type McpToolSurface = "generic" | "compatibility"'), "MCP tool surface must keep explicit generic/compatibility modes");
 assert(mcpSurfaceSource.includes('"get_computer_info"'), "generic MCP surface must expose get_computer_info");
 assert(mcpSurfaceSource.includes('"computer_operation"'), "generic MCP surface must expose computer_operation");
 assert(mcpSurfaceSource.includes('"get_operation_history"'), "generic MCP surface must expose get_operation_history");
-assert(mcpSurfaceSource.includes("WORKSPACE_LINKER_MCP_TOOL_SURFACE"), "MCP compatibility surface must stay opt-in through WORKSPACE_LINKER_MCP_TOOL_SURFACE");
+assert(mcpSurfaceSource.includes("COMPUTER_LINKER_MCP_TOOL_SURFACE"), "MCP compatibility surface must stay opt-in through COMPUTER_LINKER_MCP_TOOL_SURFACE");
 const serverSource = readText("src/server.ts");
 assert(serverSource.includes('if (surface === "compatibility")'), "compatibility MCP tools must be hidden behind the compatibility surface");
 assert(serverSource.includes("Compatibility workspace tools are hidden by default"), "MCP server instructions must explain that compatibility tools are hidden by default");

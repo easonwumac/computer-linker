@@ -37,7 +37,7 @@ export interface ChatGptWorkflowRecipe {
 }
 
 export interface ConnectionProfile {
-  name: "workspace-linker";
+  name: "computer-linker";
   machineId?: string;
   machineName: string;
   configPath: string;
@@ -173,12 +173,12 @@ export function connectionProfile(config: LocalPortConfig, includeSecrets = fals
   const localApiUrl = `http://${host}:${port}/api/v1`;
 
   return {
-    name: "workspace-linker",
+    name: "computer-linker",
     machineId: config.machineId,
     machineName: config.machineName,
     configPath: configPath(),
     stdio: {
-      command: "workspace-linker",
+      command: "computer-linker",
       args: ["serve"],
     },
     http: {
@@ -222,7 +222,7 @@ export function chatGptConnectProfile(config: LocalPortConfig, includeSecrets = 
     kind: "chatgpt-mcp-app",
     schemaVersion: 1,
     mode,
-    name: `Workspace Linker (${config.machineName})`,
+    name: `Computer Linker (${config.machineName})`,
     description: "Permissioned MCP access to predefined local coding workspaces on this computer.",
     machineId: config.machineId,
     machineName: config.machineName,
@@ -235,15 +235,15 @@ export function chatGptConnectProfile(config: LocalPortConfig, includeSecrets = 
       fallback: "bearer",
       oauth: {
         discovery: "Use MCP OAuth discovery from the MCP server URL when the client supports it.",
-        scopes: ["workspace-linker"],
+        scopes: ["computer-linker"],
       },
       bearer: {
         header: bearerHeader,
         token: includeSecrets ? config.ownerToken : undefined,
         alternateHeader: config.ownerToken
           ? includeSecrets
-            ? `x-workspace-linker-token: ${config.ownerToken}`
-            : "x-workspace-linker-token: <ownerToken>"
+            ? `x-computer-linker-token: ${config.ownerToken}`
+            : "x-computer-linker-token: <ownerToken>"
           : null,
       },
       notes: [
@@ -253,7 +253,7 @@ export function chatGptConnectProfile(config: LocalPortConfig, includeSecrets = 
       ],
     },
     appManifest: {
-      appName: `Workspace Linker (${config.machineName})`,
+      appName: `Computer Linker (${config.machineName})`,
       appType: "remote-mcp",
       serverUrl: profile.http.publicMcpUrl,
       authType: "oauth-or-bearer",
@@ -371,7 +371,7 @@ function chatGptWarnings(config: LocalPortConfig, mcpServerUrl: string, mode: Ch
     warnings.push("publicBaseUrl is not configured; ChatGPT cloud clients cannot reach the local fallback URL.");
   }
   if (options.publicBaseUrl && options.publicBaseUrl !== config.publicBaseUrl) {
-    warnings.push("publicBaseUrl is overridden for this profile only; save it with `workspace-linker config set-public-url` before relying on OAuth discovery.");
+    warnings.push("publicBaseUrl is overridden for this profile only; save it with `computer-linker config set-public-url` before relying on OAuth discovery.");
   }
 
   let parsed: URL | undefined;
@@ -445,7 +445,7 @@ function chatGptModelGuide(mode: ChatGptProfileMode): ChatGptModelGuide {
   }
 
   return {
-    summary: "Workspace Linker exposes predefined scopes. Use computer_operation for file, search, git, shell, Codex, screen, and history work through the stable envelope: scope, op, target, input, options.",
+    summary: "Computer Linker exposes predefined scopes. Use computer_operation for file, search, git, shell, Codex, screen, and history work through the stable envelope: scope, op, target, input, options.",
     mcpEntrypoint: "computer_operation",
     jsonApiEntrypoint: {
       endpoint: "POST /api/v1/control",

@@ -1,14 +1,14 @@
-# Workspace Linker Product Spec
+# Computer Linker Product Spec
 
 ## Status
 
-This is the product boundary for Workspace Linker.
+This is the product boundary for Computer Linker.
 When implementation details conflict with this document, the product should be
 changed back toward this spec instead of expanding around accidental features.
 
 ## Product Goal
 
-Workspace Linker is a local MCP service installed on a user's computer.
+Computer Linker is a local MCP service installed on a user's computer.
 It gives an AI client a controlled way to inspect and operate that computer.
 
 The core product is not a ChatGPT dashboard, a web app, a tunnel manager, or a
@@ -18,13 +18,13 @@ and the JSON API are client protocol surfaces. The primary runtime is:
 ```text
 AI client
   -> MCP
-     -> Workspace Linker running on this computer
+     -> Computer Linker running on this computer
         -> files, commands, Codex, screenshots, computer facts
 ```
 
 ## Core Jobs
 
-Workspace Linker must make these jobs reliable and easy:
+Computer Linker must make these jobs reliable and easy:
 
 1. Let a client ask what this computer can do.
 2. Let a client read, write, list, and search files within configured bounds.
@@ -41,7 +41,7 @@ These are not the core product:
 - A dashboard or browser-first management app.
 - A ChatGPT-specific product with many special endpoints.
 - A general remote desktop replacement.
-- A full OS sandbox. Workspace Linker enforces its own policy, but shell,
+- A full OS sandbox. Computer Linker enforces its own policy, but shell,
   Codex, and screenshot operations still rely on local OS behavior.
 - A cloud service. The service runs on the user's computer; tunnels only expose
   it when the user chooses to.
@@ -50,7 +50,7 @@ These are not the core product:
 
 ChatGPT is a client, not the product axis.
 
-Workspace Linker should expose a generic MCP contract that works for ChatGPT,
+Computer Linker should expose a generic MCP contract that works for ChatGPT,
 Claude, Codex, a custom web UI, or any other MCP-capable client. ChatGPT setup
 documentation may exist, but it must not drive the core architecture.
 
@@ -64,7 +64,7 @@ Correct framing:
 
 ## Product Model
 
-One computer runs one Workspace Linker service.
+One computer runs one Computer Linker service.
 Each computer has:
 
 - `machineId`: stable identifier.
@@ -79,15 +79,15 @@ reported through capabilities instead of hidden behind failed calls.
 
 ## Terminology
 
-- **Computer**: the physical or virtual machine running Workspace Linker.
-- **Client**: any MCP host or automation tool connected to Workspace Linker.
+- **Computer**: the physical or virtual machine running Computer Linker.
+- **Client**: any MCP host or automation tool connected to Computer Linker.
 - **Scope**: a named permission boundary. A scope can point at a folder, a
   project, a command policy, screenshot permission, or a broader computer
   profile. Existing `workspace` language maps to a folder-backed scope.
 - **Operation**: one requested action inside a scope.
 - **Provider**: platform-specific implementation for files, commands, Codex,
   screenshots, process lookup, or system facts.
-- **Managed process**: a command or Codex session started by Workspace Linker
+- **Managed process**: a command or Codex session started by Computer Linker
   and tracked for later read/stop/list operations.
 
 Use `scope` in the product contract. Keep `workspace` only as a compatibility
@@ -95,7 +95,7 @@ term for existing folder-backed integrations.
 
 ## System Architecture
 
-Workspace Linker has these runtime components:
+Computer Linker has these runtime components:
 
 1. **Transport adapters**
    - stdio MCP server.
@@ -439,7 +439,7 @@ Representative result shapes:
 
 ### Coding And Repository Operations
 
-Workspace Linker also exposes coding-oriented dotted ops over the same stable
+Computer Linker also exposes coding-oriented dotted ops over the same stable
 `computer_operation` envelope:
 
 - `code.context`: bounded project orientation for coding tasks.

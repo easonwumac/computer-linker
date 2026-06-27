@@ -129,7 +129,7 @@ export interface HistoryInsight {
   connections?: HistoryConnectionSummary[];
   failedReplay?: FailedReplayItem[];
   debugBundle?: {
-    format: "workspace-linker-debug-bundle-v1";
+    format: "computer-linker-debug-bundle-v1";
     auditLogPath: string;
     redactions: string[];
     events: CompactAuditEvent[];
@@ -205,7 +205,7 @@ export function historyInsightFromEvents(events: AuditEvent[], options: HistoryI
   }
   if (view === "debug_bundle") {
     insight.debugBundle = {
-      format: "workspace-linker-debug-bundle-v1",
+      format: "computer-linker-debug-bundle-v1",
       auditLogPath: auditLogPath(),
       redactions: [
         "Owner tokens and OAuth tokens are not written to the audit log.",

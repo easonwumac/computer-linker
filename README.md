@@ -1,6 +1,6 @@
-# Workspace Linker
+# Computer Linker
 
-Workspace Linker is a small local MCP server for controlling a computer through
+Computer Linker is a small local MCP server for controlling a computer through
 an AI client.
 
 It does two things:
@@ -17,16 +17,16 @@ computer; Cloudflare, Tailscale, or OpenAI tunnel exposure is optional.
 Install the CLI, expose one folder, and keep the server running:
 
 ```powershell
-npm install -g workspace-linker
-workspace-linker start C:\Projects\my-app --coding
+npm install -g @easonwumac/computer-linker
+computer-linker start C:\Projects\my-app --coding
 ```
 
 Leave that terminal running. In another terminal, copy the MCP client settings
 and verify the connection:
 
 ```powershell
-workspace-linker client setup
-workspace-linker diagnose client
+computer-linker client setup
+computer-linker diagnose client
 ```
 
 `start <folder>` creates config, owner token, and a workspace entry when
@@ -58,7 +58,7 @@ Workspaces are read-only by default. Use one of three presets for normal setup:
 `--read-only`, `--coding`, or `--full-trust`. Existing `--dev` remains an alias
 for coding mode; it enables file edits and approved project commands. Add
 `--codex` or `--screen` only for folders where those abilities are intended.
-When shell or Codex access is enabled, Workspace Linker also creates a default
+When shell or Codex access is enabled, Computer Linker also creates a default
 execution policy with command allowlists and runtime/output limits.
 File content reads and text searches block common sensitive files by default,
 including `.env*`, private keys, credential JSON files, and cloud CLI credential
@@ -72,9 +72,9 @@ read-only `computer_operation`, then removes the temporary files.
 There is no web dashboard in the product path. Human setup and management are
 CLI-first; MCP and the JSON API are only protocol surfaces for clients,
 automation, and smoke checks. The default help output is intentionally short;
-use `workspace-linker help advanced` for service, config, API, and compatibility
+use `computer-linker help advanced` for service, config, API, and compatibility
 commands. ChatGPT-specific setup exports are compatibility helpers under
-`workspace-linker help chatgpt`; prefer the generic MCP client commands first.
+`computer-linker help chatgpt`; prefer the generic MCP client commands first.
 
 `start` is local-only unless you pass `--tunnel cloudflare`, `--tunnel
 tailscale`, or `--tunnel openai`.
@@ -90,33 +90,33 @@ permission, then run:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
-workspace-linker start C:\Projects\my-app --coding --tunnel openai --tunnel-id tunnel_...
+computer-linker start C:\Projects\my-app --coding --tunnel openai --tunnel-id tunnel_...
 ```
 
 In ChatGPT connector settings, choose the tunnel option and select or paste the
 `tunnel_...` id. The target MCP path remains the local server path `/mcp`.
-Do not paste the Workspace Linker bearer token into ChatGPT Tunnel mode; the
+Do not paste the Computer Linker bearer token into ChatGPT Tunnel mode; the
 local `tunnel-client` forwards the owner token to the private local MCP server.
 `status` reports this as an active OpenAI Secure MCP Tunnel with no public URL;
 `publicBaseUrl` is not required for this tunnel mode.
 If the tunnel reports an active organization context 401, verify the API key's
 Platform organization, Tunnels Read + Use permission, and ChatGPT workspace
-association before changing Workspace Linker config.
+association before changing Computer Linker config.
 
-On first use, Workspace Linker downloads the official OpenAI `tunnel-client`
+On first use, Computer Linker downloads the official OpenAI `tunnel-client`
 release from `openai/tunnel-client`, verifies it against `SHA256SUMS.txt`, and
-stores it under `~/.workspace-linker/tools/openai-tunnel-client/`. It never scans
+stores it under `~/.computer-linker/tools/openai-tunnel-client/`. It never scans
 your Desktop for executables. To use a pinned binary instead, set
-`WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT` or pass `--tunnel-client`.
+`COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT` or pass `--tunnel-client`.
 
 Tailscale Funnel:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --coding --tunnel tailscale
+computer-linker start C:\Projects\my-app --coding --tunnel tailscale
 ```
 
 You do not need to type `https://<machine>.<tailnet>.ts.net` up front.
-Workspace Linker detects the Funnel URL from `tailscale funnel` output or
+Computer Linker detects the Funnel URL from `tailscale funnel` output or
 Tailscale status, prints the MCP URL, and saves the detected origin as
 `publicBaseUrl`. The `*.ts.net` hostname is public only when Tailscale reports
 Funnel as enabled; plain Tailscale DNS or Serve remains tailnet-only.
@@ -124,17 +124,17 @@ Funnel as enabled; plain Tailscale DNS or Serve remains tailnet-only.
 Cloudflare quick tunnel:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --coding --tunnel cloudflare
+computer-linker start C:\Projects\my-app --coding --tunnel cloudflare
 ```
 
 Cloudflare hostname you already own:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --coding --url https://mcp.your-domain.com --tunnel cloudflare
+computer-linker start C:\Projects\my-app --coding --url https://mcp.your-domain.com --tunnel cloudflare
 ```
 
 Tunnel commands enable `publicMcpOnly` automatically. Public-host requests to
-`/api` and `/healthz` return 404 from Workspace Linker, leaving `/mcp` as the
+`/api` and `/healthz` return 404 from Computer Linker, leaving `/mcp` as the
 exposed product surface. If a Cloudflare hostname is configured, `setup` keeps
 the terminal summary short; optional WAF details are available in
 `setup --json`.
@@ -142,8 +142,8 @@ the terminal summary short; optional WAF details are available in
 After exposure, get the current tunnel state:
 
 ```powershell
-workspace-linker tunnel status
-workspace-linker history --view connections
+computer-linker tunnel status
+computer-linker history --view connections
 ```
 
 For public URL based tunnels, the MCP URL is the public HTTPS URL plus `/mcp`,
@@ -177,16 +177,16 @@ For any MCP client, configure:
   tunnel URL plus `/mcp` for cloud clients.
 - Auth: bearer token for public URL tunnels. OpenAI Secure MCP Tunnel is the
   exception: choose Tunnel mode and the `tunnel_...` id; do not paste the
-  Workspace Linker bearer token into ChatGPT Tunnel mode.
+  Computer Linker bearer token into ChatGPT Tunnel mode.
 
 Use the generic CLI setup summary when configuring a client:
 
 ```powershell
-workspace-linker client setup
-workspace-linker client setup --details
-workspace-linker client setup --show-token
-workspace-linker diagnose client
-workspace-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp
+computer-linker client setup
+computer-linker client setup --details
+computer-linker client setup --show-token
+computer-linker diagnose client
+computer-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp
 ```
 
 `client setup` prints the short connection summary. Use `--details` for the
@@ -199,8 +199,8 @@ and recent connection history into one troubleshooting summary.
 The repository also includes a minimal MCP client example:
 
 ```powershell
-$env:WORKSPACE_LINKER_MCP_URL = "http://127.0.0.1:3939/mcp"
-$env:WORKSPACE_LINKER_TOKEN = "<ownerToken>"
+$env:COMPUTER_LINKER_MCP_URL = "http://127.0.0.1:3939/mcp"
+$env:COMPUTER_LINKER_TOKEN = "<ownerToken>"
 node examples/minimal-mcp-client.mjs
 ```
 
@@ -209,10 +209,10 @@ More client-specific recipes are in [docs/client-recipes.md](docs/client-recipes
 ### Agent Instructions
 
 Paste this into the connected agent when you want it to operate through
-Workspace Linker:
+Computer Linker:
 
 ```text
-You are connected to Workspace Linker, a local MCP server for this computer.
+You are connected to Computer Linker, a local MCP server for this computer.
 First call get_computer_info to inspect available scopes, permissions, and safety boundaries.
 Call computer_operation with dotted ops from computerOperationRegistry and the stable envelope {scope, op, target, input, options}.
 Stay inside configured scopes. Prefer code.context, file.search, file.read, git.diff, and get_operation_history before write.
@@ -279,7 +279,7 @@ setup guidance is in [docs/agent-instructions.md](docs/agent-instructions.md).
 Compatibility tools such as `get_capabilities`, `list_workspaces`,
 `open_workspace`, `workspace_operation`, `read`, `ls`, `grep`, `glob`, and
 `create_file` are hidden from the default MCP surface. Set
-`WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility` only for older clients that
+`COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility` only for older clients that
 still need those tool names.
 
 File operations are scoped to configured folders. Command and Codex operations
@@ -294,14 +294,14 @@ shape without receiving secret values.
 Scopes define what the MCP client can touch.
 
 ```bash
-workspace-linker workspace list
-workspace-linker workspace add ~/work/app --coding --codex --screen
-workspace-linker workspace add ~/work/app --id app --name "Main app"
-workspace-linker workspace update app --no-shell --no-screen
-workspace-linker workspace remove app
+computer-linker workspace list
+computer-linker workspace add ~/work/app --coding --codex --screen
+computer-linker workspace add ~/work/app --id app --name "Main app"
+computer-linker workspace update app --no-shell --no-screen
+computer-linker workspace remove app
 ```
 
-When `--id` or `--name` is omitted, Workspace Linker derives it from the folder
+When `--id` or `--name` is omitted, Computer Linker derives it from the folder
 name. New scopes default to read-only with screen capture disabled. Use
 `--read-only`, `--coding`, or `--full-trust` for the common product modes.
 `--dev` remains the old spelling for coding mode. Add `--write`, `--shell`,
@@ -313,7 +313,7 @@ commands add a default execution policy for shell/Codex scopes. Advanced
 The config lives at:
 
 ```text
-~/.workspace-linker/config.json
+~/.computer-linker/config.json
 ```
 
 `config show` redacts the owner token by default; use `--show-token` only on a
@@ -337,8 +337,8 @@ policy:
 The same policy can be maintained without editing JSON by hand:
 
 ```bash
-workspace-linker config policy app --allow "npm *" --allow "git *" --deny "rm -rf *" --max-runtime-seconds 600 --max-output-bytes 200000
-workspace-linker config policy app --json
+computer-linker config policy app --allow "npm *" --allow "git *" --deny "rm -rf *" --max-runtime-seconds 600 --max-output-bytes 200000
+computer-linker config policy app --json
 ```
 
 Owner-token maintenance is also CLI-managed. Status output redacts the token;
@@ -346,12 +346,12 @@ use `--show-token` only on a trusted local setup screen when updating an MCP
 client:
 
 ```bash
-workspace-linker init
-workspace-linker config token
-workspace-linker client setup --show-token
-workspace-linker profile --show-token
-workspace-linker config token rotate --show-token
-workspace-linker config token rotate --json
+computer-linker init
+computer-linker config token
+computer-linker client setup --show-token
+computer-linker profile --show-token
+computer-linker config token rotate --show-token
+computer-linker config token rotate --json
 ```
 
 ## Run As A Service
@@ -360,18 +360,18 @@ For daily use on Windows, macOS, or Linux, install the background service after
 your config works in the foreground:
 
 ```bash
-workspace-linker service install --dry-run
-workspace-linker service install --yes
-workspace-linker service start
-workspace-linker service status
-workspace-linker service logs
+computer-linker service install --dry-run
+computer-linker service install --yes
+computer-linker service start
+computer-linker service status
+computer-linker service logs
 ```
 
 Remove it later with:
 
 ```bash
-workspace-linker service stop
-workspace-linker service uninstall --yes
+computer-linker service stop
+computer-linker service uninstall --yes
 ```
 
 Windows install/uninstall must run from an elevated PowerShell prompt. See
@@ -381,21 +381,21 @@ notes.
 ## Check Readiness
 
 ```bash
-workspace-linker status
-workspace-linker status --details
-workspace-linker doctor
-workspace-linker doctor --json
-workspace-linker doctor --fix --dry-run
-workspace-linker doctor --fix
-workspace-linker config validate
-workspace-linker config validate --json
-workspace-linker diagnose client
-workspace-linker process list <workspace-id>
-workspace-linker process read <workspace-id> proc_...
-workspace-linker process stop <workspace-id> proc_...
-workspace-linker screen status
-workspace-linker screen status --json
-workspace-linker client chatgpt smoke --url http://127.0.0.1:3939/mcp --allow-http
+computer-linker status
+computer-linker status --details
+computer-linker doctor
+computer-linker doctor --json
+computer-linker doctor --fix --dry-run
+computer-linker doctor --fix
+computer-linker config validate
+computer-linker config validate --json
+computer-linker diagnose client
+computer-linker process list <workspace-id>
+computer-linker process read <workspace-id> proc_...
+computer-linker process stop <workspace-id> proc_...
+computer-linker screen status
+computer-linker screen status --json
+computer-linker client chatgpt smoke --url http://127.0.0.1:3939/mcp --allow-http
 ```
 
 `status` is the short daily check: readiness, connection mode, local MCP URL,
@@ -420,7 +420,7 @@ active background command and Codex processes that were started through MCP.
 The release readiness block is intended for productization gates:
 
 ```bash
-workspace-linker doctor --json
+computer-linker doctor --json
 ```
 
 Look for:
@@ -473,7 +473,7 @@ snapshot path:
 ```bash
 npm run public:release-ready
 npm run public:mirror -- --remote <github-owner>/<public-repo>
-git -C ../workspace-linker-public push -u origin main --follow-tags
+git -C ../computer-linker-public push -u origin main --follow-tags
 ```
 
 `public:release-ready` is the final local preflight before publishing the public
@@ -503,14 +503,14 @@ npm run alpha:check -- --require-evidence --accept-public-snapshot
 ```
 
 Paste the preflight prompt into the external MCP client first. The generated
-`.workspace-linker-alpha-evidence.json` file is gitignored and must not contain
+`.computer-linker-alpha-evidence.json` file is gitignored and must not contain
 owner tokens, API keys, bearer headers, screenshots, or private file contents.
 The stricter release and publish rules live in
 [docs/release-checklist.md](docs/release-checklist.md).
 
 ## Product Boundary
 
-Workspace Linker is not a remote desktop, a cloud service, or a ChatGPT-specific
+Computer Linker is not a remote desktop, a cloud service, or a ChatGPT-specific
 app. It is a local MCP program that exposes approved computer abilities.
 
 See [docs/product-spec.md](docs/product-spec.md) for the product spec and

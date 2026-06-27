@@ -115,7 +115,7 @@ export type WorkspaceLinkerOperationRegistry =
   | WorkspaceLinkerWorkspaceOperationRegistry;
 
 export interface WorkspaceLinkerMcpClientSetup {
-  kind: "workspace-linker-mcp-client-setup";
+  kind: "computer-linker-mcp-client-setup";
   schemaVersion: 1;
   machineId?: string;
   machineName: string;
@@ -141,7 +141,7 @@ export interface WorkspaceLinkerConnectReadinessOptions {
 }
 
 export interface WorkspaceLinkerConnectReadiness {
-  kind: "workspace-linker-connect-readiness";
+  kind: "computer-linker-connect-readiness";
   schemaVersion: 1;
   ready: boolean;
   status: "ready" | "needs_action" | "blocked";
@@ -293,7 +293,7 @@ export class WorkspaceLinkerClient {
     ]);
 
     return {
-      kind: "workspace-linker-connect-readiness",
+      kind: "computer-linker-connect-readiness",
       schemaVersion: 1,
       ready: blockingReasons.length === 0 && clientSetup.ready,
       status: connectReadinessStatus(blockingReasons, clientSetup.ready),
@@ -699,7 +699,7 @@ export class WorkspaceLinkerClient {
     if (!response.ok) {
       const error = payload && typeof payload === "object" && "error" in payload
         ? String((payload as { error?: unknown }).error)
-        : `Workspace Linker request failed with HTTP ${response.status}`;
+        : `Computer Linker request failed with HTTP ${response.status}`;
       throw new Error(error);
     }
     return payload;
@@ -715,7 +715,7 @@ export class WorkspaceLinkerClient {
     });
     const payload = await response.json() as { ok?: boolean; data?: unknown; error?: string };
     if (!response.ok || payload.ok === false) {
-      throw new Error(payload.error ?? `Workspace Linker request failed with HTTP ${response.status}`);
+      throw new Error(payload.error ?? `Computer Linker request failed with HTTP ${response.status}`);
     }
     return payload.data;
   }
@@ -724,6 +724,8 @@ export class WorkspaceLinkerClient {
     return this.ownerToken ? { authorization: `Bearer ${this.ownerToken}` } : {};
   }
 }
+
+export { WorkspaceLinkerClient as ComputerLinkerClient };
 
 function connectReadinessStatus(
   blockingReasons: string[],

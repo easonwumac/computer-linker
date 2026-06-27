@@ -88,7 +88,7 @@ const workspaceOutputSchema = z.object({
 }).passthrough();
 
 const computerInfoOutputSchema = z.object({
-  kind: z.literal("workspace-linker-computer-info"),
+  kind: z.literal("computer-linker-computer-info"),
   schemaVersion: z.number(),
   machineId: z.string(),
   machineName: z.string(),
@@ -185,19 +185,19 @@ export function createLocalPortMcpServer(): McpServer {
   const surface = mcpToolSurface();
   const server = new McpServer(
     {
-      name: "workspace-linker",
-      title: `Workspace Linker (${config.machineName})`,
+      name: "computer-linker",
+      title: `Computer Linker (${config.machineName})`,
       version: workspaceLinkerVersion(),
       description: "Permissioned local workspace MCP server for reading, editing, searching, running commands, and delegating Codex inside explicitly exposed folders.",
     },
     {
       instructions:
-        `You are connected to Workspace Linker on ${config.machineName}. ` +
+        `You are connected to Computer Linker on ${config.machineName}. ` +
         "Use the three-tool flow: start with get_computer_info, call computer_operation, then call get_operation_history when auditing. " +
         "computer_operation always uses the stable envelope: scope, op, target, input, options. " +
         (surface === "compatibility"
           ? "Compatibility clients may still use legacy workspace tools, but new clients should prefer computer_operation. "
-          : "Compatibility workspace tools are hidden by default; set WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility only for legacy clients. ") +
+          : "Compatibility workspace tools are hidden by default; set COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility only for legacy clients. ") +
         "Start coding tasks with op=code.context. Use file.search, file.read, git.diff, and package.run as needed. " +
         "Only use write, command, process, codex, or screen operations when the selected scope explicitly allows them.",
     },
@@ -591,7 +591,7 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
     ? new LocalPortOAuthProvider(
         {
           ownerToken: config.ownerToken,
-          scopes: ["workspace-linker"],
+          scopes: ["computer-linker"],
           accessTokenTtlSeconds: 60 * 60,
           refreshTokenTtlSeconds: 30 * 24 * 60 * 60,
         },
@@ -602,7 +602,7 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
   const bearerAuth = oauthProvider
     ? requireBearerAuth({
         verifier: oauthProvider,
-        requiredScopes: ["workspace-linker"],
+        requiredScopes: ["computer-linker"],
         resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceServerUrl),
       })
     : undefined;
@@ -614,14 +614,14 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
         issuerUrl: new URL(publicBaseUrl),
         baseUrl: new URL(publicBaseUrl),
         resourceServerUrl,
-        scopesSupported: ["workspace-linker"],
-        resourceName: "Workspace Linker",
+        scopesSupported: ["computer-linker"],
+        resourceName: "Computer Linker",
       }),
     );
   }
 
   app.get("/healthz", (_req, res) => {
-    res.json({ ok: true, name: "workspace-linker", machineId: config.machineId, machineName: config.machineName });
+    res.json({ ok: true, name: "computer-linker", machineId: config.machineId, machineName: config.machineName });
   });
 
   registerApiRoutes(app);

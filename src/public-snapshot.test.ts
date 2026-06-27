@@ -6,19 +6,19 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-public-snapshot-test-"));
+const root = await mkdtemp(join(tmpdir(), "computer-linker-public-snapshot-test-"));
 const sourceRoot = join(root, "source");
 const outputRoot = join(root, "snapshot");
 const outputRootWithSourceRef = join(root, "snapshot-source-ref");
 const outputRootWithRemoteShorthand = join(root, "snapshot-remote-shorthand");
-const defaultOutputRoot = join(root, "workspace-linker-public");
+const defaultOutputRoot = join(root, "computer-linker-public");
 const snapshotScript = join(process.cwd(), "scripts", "create-public-snapshot.mjs");
 
 try {
   await mkdir(sourceRoot, { recursive: true });
   await git(["init"]);
-  await git(["config", "user.name", "Workspace Linker Test"]);
-  await git(["config", "user.email", "workspace-linker-test@example.com"]);
+  await git(["config", "user.name", "Computer Linker Test"]);
+  await git(["config", "user.email", "computer-linker-test@example.com"]);
   await writeFile(join(sourceRoot, "README.md"), "clean\n", "utf8");
   await writeFile(join(sourceRoot, "CHANGELOG.md"), "# Changelog\n\n## 0.1.0 - 2026-06-24\n", "utf8");
   await mkdir(join(sourceRoot, "scripts"), { recursive: true });
@@ -35,25 +35,25 @@ try {
     "utf8",
   );
   await writeFile(join(sourceRoot, "package.json"), JSON.stringify({
-    name: "workspace-linker",
+    name: "@easonwumac/computer-linker",
     version: "0.1.0",
     repository: {
       type: "git",
-      url: "git+https://github.com/easonwumac/workspace-linker.git",
+      url: "git+https://github.com/easonwumac/computer-linker.git",
     },
     bugs: {
-      url: "https://github.com/easonwumac/workspace-linker/issues",
+      url: "https://github.com/easonwumac/computer-linker/issues",
     },
-    homepage: "https://github.com/easonwumac/workspace-linker#readme",
+    homepage: "https://github.com/easonwumac/computer-linker#readme",
   }, null, 2), "utf8");
   await writeFile(
     join(sourceRoot, ".github", "ISSUE_TEMPLATE", "config.yml"),
     [
       "contact_links:",
       "  - name: Security policy",
-      "    url: https://github.com/easonwumac/workspace-linker/security/policy",
+      "    url: https://github.com/easonwumac/computer-linker/security/policy",
       "  - name: README",
-      "    url: https://github.com/easonwumac/workspace-linker#readme",
+      "    url: https://github.com/easonwumac/computer-linker#readme",
       "",
     ].join("\n"),
     "utf8",
@@ -61,7 +61,7 @@ try {
   await writeFile(
     join(sourceRoot, "docs", "computer-operation-v1.schema.json"),
     JSON.stringify({
-      $id: "https://github.com/easonwumac/workspace-linker/schemas/computer-operation-v1.schema.json",
+      $id: "https://github.com/easonwumac/computer-linker/schemas/computer-operation-v1.schema.json",
     }, null, 2),
     "utf8",
   );
@@ -88,14 +88,14 @@ try {
     "--output",
     outputRoot,
     "--remote",
-    "https://github.com/example/workspace-linker-public.git",
+    "https://github.com/example/computer-linker-public.git",
   ]);
   assert.equal(createCleanSnapshot.code, 0, createCleanSnapshot.stderr);
   assert.match(createCleanSnapshot.stdout, /verification: one clean commit, strict history fingerprints clean/);
   assert.match(createCleanSnapshot.stdout, /release tag: v0\.1\.0/);
   assert.match(createCleanSnapshot.stdout, /release tag check: dated changelog/);
   assert.match(createCleanSnapshot.stdout, /snapshot mode: publishable/);
-  assert.match(createCleanSnapshot.stdout, /package links: rewritten for https:\/\/github\.com\/example\/workspace-linker-public/);
+  assert.match(createCleanSnapshot.stdout, /package links: rewritten for https:\/\/github\.com\/example\/computer-linker-public/);
   assert.match(createCleanSnapshot.stdout, /push with: git -C ".+" push -u origin main --follow-tags/);
   assert.doesNotMatch(createCleanSnapshot.stdout, new RegExp(sourceHead));
   assert.doesNotMatch(createCleanSnapshot.stdout, /source HEAD:/);
@@ -106,14 +106,14 @@ try {
     (await gitOutput(outputRoot, ["rev-parse", "HEAD"])).trim(),
   );
   const packageJson = JSON.parse(await readFile(join(outputRoot, "package.json"), "utf8"));
-  assert.equal(packageJson.repository.url, "git+https://github.com/example/workspace-linker-public.git");
-  assert.equal(packageJson.bugs.url, "https://github.com/example/workspace-linker-public/issues");
-  assert.equal(packageJson.homepage, "https://github.com/example/workspace-linker-public#readme");
+  assert.equal(packageJson.repository.url, "git+https://github.com/example/computer-linker-public.git");
+  assert.equal(packageJson.bugs.url, "https://github.com/example/computer-linker-public/issues");
+  assert.equal(packageJson.homepage, "https://github.com/example/computer-linker-public#readme");
   const issueConfig = await readFile(join(outputRoot, ".github", "ISSUE_TEMPLATE", "config.yml"), "utf8");
-  assert.match(issueConfig, /https:\/\/github\.com\/example\/workspace-linker-public\/security\/policy/);
-  assert.doesNotMatch(issueConfig, /easonwumac\/workspace-linker/);
+  assert.match(issueConfig, /https:\/\/github\.com\/example\/computer-linker-public\/security\/policy/);
+  assert.doesNotMatch(issueConfig, /easonwumac\/computer-linker/);
   const schemaJson = JSON.parse(await readFile(join(outputRoot, "docs", "computer-operation-v1.schema.json"), "utf8"));
-  assert.equal(schemaJson.$id, "https://github.com/example/workspace-linker-public/schemas/computer-operation-v1.schema.json");
+  assert.equal(schemaJson.$id, "https://github.com/example/computer-linker-public/schemas/computer-operation-v1.schema.json");
 
   const dryRunWithExistingOutput = await runSnapshot(["--dry-run", "--skip-audit", "--output", outputRoot]);
   assert.equal(dryRunWithExistingOutput.code, 0, dryRunWithExistingOutput.stderr);
@@ -128,21 +128,21 @@ try {
   const createDefaultSnapshot = await runSnapshot([
     "--skip-audit",
     "--remote",
-    "example/workspace-linker-default",
+    "example/computer-linker-default",
   ]);
   assert.equal(createDefaultSnapshot.code, 0, createDefaultSnapshot.stderr);
   assert.match(createDefaultSnapshot.stdout, /public snapshot created:/);
   assert.match(createDefaultSnapshot.stdout, /snapshot mode: publishable/);
   assert.equal(
     (await gitOutput(defaultOutputRoot, ["remote", "get-url", "origin"])).trim(),
-    "https://github.com/example/workspace-linker-default.git",
+    "https://github.com/example/computer-linker-default.git",
   );
 
   const dryRunWithGeneratedDefaultOutput = await runSnapshot([
     "--dry-run",
     "--skip-audit",
     "--remote",
-    "example/workspace-linker-default",
+    "example/computer-linker-default",
   ]);
   assert.equal(dryRunWithGeneratedDefaultOutput.code, 0, dryRunWithGeneratedDefaultOutput.stderr);
   assert.match(dryRunWithGeneratedDefaultOutput.stdout, /real run will replace this clean generated default snapshot/);
@@ -150,7 +150,7 @@ try {
   const replaceDefaultSnapshot = await runSnapshot([
     "--skip-audit",
     "--remote",
-    "example/workspace-linker-default",
+    "example/computer-linker-default",
   ]);
   assert.equal(replaceDefaultSnapshot.code, 0, replaceDefaultSnapshot.stderr);
   assert.match(replaceDefaultSnapshot.stdout, /existing output: replaced clean generated default snapshot/);
@@ -159,7 +159,7 @@ try {
   const replaceDirtyDefaultSnapshot = await runSnapshot([
     "--skip-audit",
     "--remote",
-    "example/workspace-linker-default",
+    "example/computer-linker-default",
   ]);
   assert.notEqual(replaceDirtyDefaultSnapshot.code, 0);
   assert.match(replaceDirtyDefaultSnapshot.stderr, /output directory is not empty/);
@@ -187,18 +187,18 @@ try {
     "--output",
     outputRootWithRemoteShorthand,
     "--remote",
-    "example/workspace-linker-public",
+    "example/computer-linker-public",
   ]);
   assert.equal(createSnapshotWithRemoteShorthand.code, 0, createSnapshotWithRemoteShorthand.stderr);
-  assert.match(createSnapshotWithRemoteShorthand.stdout, /remote: https:\/\/github\.com\/example\/workspace-linker-public\.git/);
+  assert.match(createSnapshotWithRemoteShorthand.stdout, /remote: https:\/\/github\.com\/example\/computer-linker-public\.git/);
   assert.match(createSnapshotWithRemoteShorthand.stdout, /snapshot mode: publishable/);
-  assert.match(createSnapshotWithRemoteShorthand.stdout, /package links: rewritten for https:\/\/github\.com\/example\/workspace-linker-public/);
+  assert.match(createSnapshotWithRemoteShorthand.stdout, /package links: rewritten for https:\/\/github\.com\/example\/computer-linker-public/);
   assert.equal(
     (await gitOutput(outputRootWithRemoteShorthand, ["remote", "get-url", "origin"])).trim(),
-    "https://github.com/example/workspace-linker-public.git",
+    "https://github.com/example/computer-linker-public.git",
   );
   const shorthandPackageJson = JSON.parse(await readFile(join(outputRootWithRemoteShorthand, "package.json"), "utf8"));
-  assert.equal(shorthandPackageJson.repository.url, "git+https://github.com/example/workspace-linker-public.git");
+  assert.equal(shorthandPackageJson.repository.url, "git+https://github.com/example/computer-linker-public.git");
 
   await writeFile(join(sourceRoot, "CHANGELOG.md"), "# Changelog\n\n## 0.1.0 - Unreleased\n", "utf8");
   await git(["add", "CHANGELOG.md"]);
@@ -209,7 +209,7 @@ try {
     "--output",
     join(root, "snapshot-unreleased-dry-run"),
     "--remote",
-    "example/workspace-linker-unreleased",
+    "example/computer-linker-unreleased",
   ]);
   assert.equal(unreleasedDryRun.code, 0, unreleasedDryRun.stderr);
   assert.match(unreleasedDryRun.stdout, /release tag check: blocked for real run:/);
@@ -218,7 +218,7 @@ try {
     "--output",
     join(root, "snapshot-unreleased"),
     "--remote",
-    "example/workspace-linker-unreleased",
+    "example/computer-linker-unreleased",
   ]);
   assert.notEqual(unreleasedSnapshot.code, 0);
   assert.match(unreleasedSnapshot.stderr, /heading for 0\.1\.0 must be dated before creating publishable release tag v0\.1\.0/);
@@ -247,10 +247,10 @@ async function runSnapshot(args: string[]): Promise<{ code: number; stdout: stri
       cwd: sourceRoot,
       env: {
         ...process.env,
-        GIT_AUTHOR_NAME: "Workspace Linker Test",
-        GIT_AUTHOR_EMAIL: "workspace-linker-test@example.com",
-        GIT_COMMITTER_NAME: "Workspace Linker Test",
-        GIT_COMMITTER_EMAIL: "workspace-linker-test@example.com",
+        GIT_AUTHOR_NAME: "Computer Linker Test",
+        GIT_AUTHOR_EMAIL: "computer-linker-test@example.com",
+        GIT_COMMITTER_NAME: "Computer Linker Test",
+        GIT_COMMITTER_EMAIL: "computer-linker-test@example.com",
       },
       maxBuffer: 1024 * 1024,
       windowsHide: true,

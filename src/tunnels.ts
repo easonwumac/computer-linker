@@ -302,7 +302,7 @@ const openAiTunnelProvider: TunnelProvider = {
       "--mcp.server-url",
       `url=${localMcpUrl}`,
       "--mcp.extra-headers",
-      "Authorization: env:WORKSPACE_LINKER_MCP_AUTHORIZATION",
+      "Authorization: env:COMPUTER_LINKER_MCP_AUTHORIZATION",
       "--health.listen-addr",
       "127.0.0.1:0",
       "--health.url-file",
@@ -315,7 +315,7 @@ const openAiTunnelProvider: TunnelProvider = {
       command,
       args,
       display: ["tunnel-client", ...args].join(" "),
-      env: options.ownerToken ? { WORKSPACE_LINKER_MCP_AUTHORIZATION: `Bearer ${options.ownerToken}` } : undefined,
+      env: options.ownerToken ? { COMPUTER_LINKER_MCP_AUTHORIZATION: `Bearer ${options.ownerToken}` } : undefined,
     };
   },
   expose(options) {
@@ -391,11 +391,15 @@ interface GitHubRelease {
 }
 
 const openAiTunnelClientRepositoryApi = "https://api.github.com/repos/openai/tunnel-client/releases/latest";
-const openAiTunnelClientOverrideEnv = "WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT";
-const openAiTunnelIdEnv = "WORKSPACE_LINKER_OPENAI_TUNNEL_ID";
+const openAiTunnelClientOverrideEnv = "COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT";
+const openAiTunnelIdEnv = "COMPUTER_LINKER_OPENAI_TUNNEL_ID";
+const legacyOpenAiTunnelClientOverrideEnv = "WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT";
+const legacyOpenAiTunnelIdEnv = "WORKSPACE_LINKER_OPENAI_TUNNEL_ID";
 
 export async function ensureOpenAiTunnelClientInstalled(options: { clientPath?: string } = {}): Promise<OpenAiTunnelClientInstallInfo> {
-  const override = normalizeOptionalPath(options.clientPath) ?? normalizeOptionalPath(process.env[openAiTunnelClientOverrideEnv]);
+  const override = normalizeOptionalPath(options.clientPath)
+    ?? normalizeOptionalPath(process.env[openAiTunnelClientOverrideEnv])
+    ?? normalizeOptionalPath(process.env[legacyOpenAiTunnelClientOverrideEnv]);
   if (override) {
     if (!existsSync(override)) {
       throw new Error(`OpenAI tunnel-client override does not exist: ${override}`);
@@ -485,7 +489,8 @@ export function openAiTunnelClientManagedPath(): string {
 }
 
 export function configuredOpenAiTunnelId(): string | undefined {
-  const value = process.env[openAiTunnelIdEnv]?.trim();
+  const value = process.env[openAiTunnelIdEnv]?.trim()
+    || process.env[legacyOpenAiTunnelIdEnv]?.trim();
   return value || undefined;
 }
 
@@ -500,6 +505,7 @@ function openAiTunnelPidFile(tunnelId: string): string {
 function openAiTunnelClientStatus(): TunnelToolStatus {
   const candidates = [
     normalizeOptionalPath(process.env[openAiTunnelClientOverrideEnv]),
+    normalizeOptionalPath(process.env[legacyOpenAiTunnelClientOverrideEnv]),
     existsSync(openAiTunnelClientManagedPath()) ? openAiTunnelClientManagedPath() : undefined,
     "tunnel-client",
   ].filter((item): item is string => Boolean(item));
@@ -513,12 +519,14 @@ function openAiTunnelClientStatus(): TunnelToolStatus {
   return {
     name: "tunnel-client",
     available: false,
-    error: lastError ?? "OpenAI tunnel-client is not installed; `workspace-linker start --tunnel openai` can download the official release.",
+    error: lastError ?? "OpenAI tunnel-client is not installed; `computer-linker start --tunnel openai` can download the official release.",
   };
 }
 
 function openAiTunnelClientCommand(clientPath?: string): string {
-  const override = normalizeOptionalPath(clientPath) ?? normalizeOptionalPath(process.env[openAiTunnelClientOverrideEnv]);
+  const override = normalizeOptionalPath(clientPath)
+    ?? normalizeOptionalPath(process.env[openAiTunnelClientOverrideEnv])
+    ?? normalizeOptionalPath(process.env[legacyOpenAiTunnelClientOverrideEnv]);
   if (override) return override;
   const managedPath = openAiTunnelClientManagedPath();
   return existsSync(managedPath) ? managedPath : "tunnel-client";
@@ -567,7 +575,7 @@ async function fetchOpenAiTunnelClientLatestRelease(): Promise<GitHubRelease> {
   const response = await fetch(openAiTunnelClientRepositoryApi, {
     headers: {
       "Accept": "application/vnd.github+json",
-      "User-Agent": "workspace-linker",
+      "User-Agent": "computer-linker",
     },
   });
   if (!response.ok) {
@@ -592,7 +600,7 @@ async function fetchBinary(url: string): Promise<Buffer> {
   const response = await fetch(url, {
     headers: {
       "Accept": "application/octet-stream",
-      "User-Agent": "workspace-linker",
+      "User-Agent": "computer-linker",
     },
   });
   if (!response.ok) {
@@ -605,7 +613,7 @@ async function fetchText(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: {
       "Accept": "text/plain",
-      "User-Agent": "workspace-linker",
+      "User-Agent": "computer-linker",
     },
   });
   if (!response.ok) {

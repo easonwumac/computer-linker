@@ -1,11 +1,11 @@
 # Manual Test Plan
 
 Use this plan before sharing an alpha build or when dogfooding a local
-checkout. It keeps the first test isolated from your real Workspace Linker
+checkout. It keeps the first test isolated from your real Computer Linker
 config.
 
 Commands below assume this checkout and use `npm run dev --`. When testing an
-installed package instead, replace `npm run dev --` with `workspace-linker`.
+installed package instead, replace `npm run dev --` with `computer-linker`.
 
 ## 1. Build Gate
 
@@ -20,7 +20,7 @@ npm run dev -- self-test
 Expected:
 
 - typecheck, tests, build, release validation, and package smoke pass
-- package smoke reports `workspace-linker-<version>.tgz` and verifies a
+- package smoke reports `computer-linker-<version>.tgz` and verifies a
   temporary consumer install, installed CLI execution, installed self-test,
   isolated setup/status, and SDK import
 - alpha readiness reports `status: ready`, or `status: needs_attention` only
@@ -32,7 +32,7 @@ Expected:
 - `self-test` reports `ready: yes` and verifies the local MCP SDK tool flow
   without touching real user workspaces
 - external MCP client/tunnel evidence is still pending until the later tunnel
-  smoke step writes `.workspace-linker-alpha-evidence.json`
+  smoke step writes `.computer-linker-alpha-evidence.json`
 
 ## 2. Isolated Local Config
 
@@ -41,7 +41,7 @@ Use a disposable config directory for the first manual pass.
 PowerShell:
 
 ```powershell
-$env:WORKSPACE_LINKER_CONFIG_DIR = "$PWD\.workspace-linker-test\config"
+$env:COMPUTER_LINKER_CONFIG_DIR = "$PWD\.computer-linker-test\config"
 npm run dev -- setup . --id app --url https://mcp.example.com --show-token
 npm run dev -- status
 npm run dev -- doctor --fix --dry-run
@@ -52,7 +52,7 @@ npm run dev -- config validate
 Bash:
 
 ```bash
-export WORKSPACE_LINKER_CONFIG_DIR="$PWD/.workspace-linker-test/config"
+export COMPUTER_LINKER_CONFIG_DIR="$PWD/.computer-linker-test/config"
 npm run dev -- setup . --id app --url https://mcp.example.com --show-token
 npm run dev -- status
 npm run dev -- doctor --fix --dry-run
@@ -109,7 +109,7 @@ Expected:
 - start auto-creates the config, owner token, and workspace entry
 - start prints `server: running` and `startup check: ready`
 - first start downloads OpenAI's official `tunnel-client` into
-  `~/.workspace-linker/tools/openai-tunnel-client/`
+  `~/.computer-linker/tools/openai-tunnel-client/`
 - start prints `connect: OpenAI Tunnel mode`, `tunnel: OpenAI Secure MCP
   Tunnel active`, and `tunnel id:`
 - start tells the user that ChatGPT Tunnel mode uses the tunnel id and should
@@ -139,7 +139,7 @@ npm run dev -- client setup --show-token
 npm run dev -- client setup --json
 npm run dev -- diagnose client
 npm run dev -- client smoke --url http://127.0.0.1:3939/mcp --allow-http
-WORKSPACE_LINKER_TOKEN=<ownerToken> node examples/minimal-mcp-client.mjs
+COMPUTER_LINKER_TOKEN=<ownerToken> node examples/minimal-mcp-client.mjs
 npm run dev -- process list app
 npm run dev -- screen status
 npm run dev -- history --view last
@@ -192,7 +192,7 @@ Generic operation smoke:
 ```bash
 curl -s -H "Authorization: Bearer <ownerToken>" \
   -H "content-type: application/json" \
-  -d "{\"action\":\"computer_operation\",\"scope\":\"app\",\"op\":\"file.search\",\"target\":\".\",\"input\":{\"query\":\"Workspace Linker\",\"glob\":\"README.md\"},\"options\":{\"maxResults\":5}}" \
+  -d "{\"action\":\"computer_operation\",\"scope\":\"app\",\"op\":\"file.search\",\"target\":\".\",\"input\":{\"query\":\"Computer Linker\",\"glob\":\"README.md\"},\"options\":{\"maxResults\":5}}" \
   http://127.0.0.1:3939/api/v1/control
 ```
 
@@ -224,7 +224,7 @@ read-only `computer_operation` `file.list`. Keep this manual step for at least
 one external MCP client before announcing a public alpha.
 
 Compatibility clients may still use the older MCP surface after starting with
-`WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility`:
+`COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility`:
 
 1. `get_capabilities`
 2. `list_workspaces`
@@ -280,7 +280,7 @@ short prompt for that missing call. When the preflight no longer fails, run the
 printed `recordCommand`. `smoke` auto-detects the exposure, tunnel target, and
 scope from local preflight state when possible. It does not write the evidence
 file until you run `smoke` and confirm redaction with `--redaction-confirmed`.
-If an older Workspace Linker alpha evidence file already exists, `smoke`
+If an older Computer Linker alpha evidence file already exists, `smoke`
 refreshes it for the current test; unrelated files still require `--force`
 before replacement.
 
@@ -310,13 +310,13 @@ Stop the HTTP server with `Ctrl+C`.
 PowerShell:
 
 ```powershell
-Remove-Item -Recurse -Force .workspace-linker-test
-Remove-Item Env:\WORKSPACE_LINKER_CONFIG_DIR
+Remove-Item -Recurse -Force .computer-linker-test
+Remove-Item Env:\COMPUTER_LINKER_CONFIG_DIR
 ```
 
 Bash:
 
 ```bash
-rm -rf .workspace-linker-test
-unset WORKSPACE_LINKER_CONFIG_DIR
+rm -rf .computer-linker-test
+unset COMPUTER_LINKER_CONFIG_DIR
 ```

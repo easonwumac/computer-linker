@@ -5,20 +5,20 @@ import { join } from "node:path";
 import { configDiagnostics } from "./config-diagnostics.js";
 import { configPath, loadConfig, writeDefaultConfig } from "./config.js";
 
-const originalWorkspaceConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
+const originalWorkspaceConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
-const originalWorkspaceOwnerToken = process.env.WORKSPACE_LINKER_OWNER_TOKEN;
+const originalWorkspaceOwnerToken = process.env.COMPUTER_LINKER_OWNER_TOKEN;
 const originalOwnerToken = process.env.LOCALPORT_OWNER_TOKEN;
-const originalWorkspacePublicBaseUrl = process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL;
+const originalWorkspacePublicBaseUrl = process.env.COMPUTER_LINKER_PUBLIC_BASE_URL;
 const originalLocalportPublicBaseUrl = process.env.LOCALPORT_PUBLIC_BASE_URL;
 const root = await mkdtemp(join(tmpdir(), "localport-config-test-"));
 
 try {
-  process.env.WORKSPACE_LINKER_CONFIG_DIR = "";
+  process.env.COMPUTER_LINKER_CONFIG_DIR = "";
   process.env.LOCALPORT_CONFIG_DIR = root;
-  process.env.WORKSPACE_LINKER_OWNER_TOKEN = "";
+  process.env.COMPUTER_LINKER_OWNER_TOKEN = "";
   delete process.env.LOCALPORT_OWNER_TOKEN;
-  process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL = "";
+  process.env.COMPUTER_LINKER_PUBLIC_BASE_URL = "";
   process.env.LOCALPORT_PUBLIC_BASE_URL = "";
   assert.equal(configPath(), join(root, "config.json"));
 
@@ -51,7 +51,7 @@ try {
     publicBaseUrl: "https://file.example.com",
     workspaces: [],
   }, null, 2), "utf8");
-  process.env.WORKSPACE_LINKER_OWNER_TOKEN = "";
+  process.env.COMPUTER_LINKER_OWNER_TOKEN = "";
   process.env.LOCALPORT_OWNER_TOKEN = "env-owner-token";
   const migrated = loadConfig();
   assert.match(migrated.machineId ?? "", /^machine_/);
@@ -109,20 +109,20 @@ try {
   assert.equal(safeDiagnostics.length, 1);
   assert.equal(safeDiagnostics[0].id, "config-baseline-ok");
 } finally {
-  if (originalWorkspaceConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-  else process.env.WORKSPACE_LINKER_CONFIG_DIR = originalWorkspaceConfigDir;
+  if (originalWorkspaceConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+  else process.env.COMPUTER_LINKER_CONFIG_DIR = originalWorkspaceConfigDir;
 
   if (originalConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalConfigDir;
 
-  if (originalWorkspaceOwnerToken === undefined) delete process.env.WORKSPACE_LINKER_OWNER_TOKEN;
-  else process.env.WORKSPACE_LINKER_OWNER_TOKEN = originalWorkspaceOwnerToken;
+  if (originalWorkspaceOwnerToken === undefined) delete process.env.COMPUTER_LINKER_OWNER_TOKEN;
+  else process.env.COMPUTER_LINKER_OWNER_TOKEN = originalWorkspaceOwnerToken;
 
   if (originalOwnerToken === undefined) delete process.env.LOCALPORT_OWNER_TOKEN;
   else process.env.LOCALPORT_OWNER_TOKEN = originalOwnerToken;
 
-  if (originalWorkspacePublicBaseUrl === undefined) delete process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL;
-  else process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL = originalWorkspacePublicBaseUrl;
+  if (originalWorkspacePublicBaseUrl === undefined) delete process.env.COMPUTER_LINKER_PUBLIC_BASE_URL;
+  else process.env.COMPUTER_LINKER_PUBLIC_BASE_URL = originalWorkspacePublicBaseUrl;
 
   if (originalLocalportPublicBaseUrl === undefined) delete process.env.LOCALPORT_PUBLIC_BASE_URL;
   else process.env.LOCALPORT_PUBLIC_BASE_URL = originalLocalportPublicBaseUrl;

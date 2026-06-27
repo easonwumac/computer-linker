@@ -154,8 +154,8 @@ async function main(argv: string[]): Promise<void> {
 function normalizeCommand(command: string | undefined): Command {
   if (!command) return "help";
   if (command === "serve") return "serve";
-  if (command === "connect-profile") throw new Error("connect-profile was removed; use `workspace-linker client chatgpt profile` only when ChatGPT asks for connector-specific fields.");
-  if (command === "chatgpt") throw new Error("chatgpt was removed; use `workspace-linker client chatgpt <subcommand>` only when ChatGPT asks for connector-specific fields.");
+  if (command === "connect-profile") throw new Error("connect-profile was removed; use `computer-linker client chatgpt profile` only when ChatGPT asks for connector-specific fields.");
+  if (command === "chatgpt") throw new Error("chatgpt was removed; use `computer-linker client chatgpt <subcommand>` only when ChatGPT asks for connector-specific fields.");
   if (command === "init" || command === "start" || command === "quickstart" || command === "status" || command === "self-test" || command === "expose" || command === "tunnel" || command === "service" || command === "workspace" || command === "process" || command === "screen" || command === "doctor" || command === "diagnose" || command === "history" || command === "profile" || command === "client" || command === "config" || command === "setup") return command;
   if (command === "version" || command === "--version" || command === "-v") return "version";
   if (command === "help" || command === "--help" || command === "-h") return "help";
@@ -163,7 +163,7 @@ function normalizeCommand(command: string | undefined): Command {
 }
 
 interface CliStatusReport {
-  kind: "workspace-linker-status";
+  kind: "computer-linker-status";
   schemaVersion: 1;
   machine: {
     machineId?: string;
@@ -238,7 +238,7 @@ function status(args: string[]): void {
 }
 
 interface SelfTestReport {
-  kind: "workspace-linker-self-test";
+  kind: "computer-linker-self-test";
   schemaVersion: 1;
   ready: boolean;
   tempRoot: string;
@@ -265,21 +265,21 @@ async function selfTest(args: string[]): Promise<void> {
   if (unknown.length > 0) throw new Error(`Unknown self-test option: ${unknown[0]}`);
   const timeoutMs = readOptionalIntegerOption(args, "--timeout-ms", "self-test --timeout-ms") ?? 8000;
   const keepTemp = args.includes("--keep-temp");
-  const tempRoot = mkdtempSync(join(tmpdir(), "workspace-linker-self-test-"));
+  const tempRoot = mkdtempSync(join(tmpdir(), "computer-linker-self-test-"));
   const configDir = join(tempRoot, "config");
   const workspacePath = join(tempRoot, "workspace");
-  const previousWorkspaceConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
+  const previousWorkspaceConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
   const previousLocalPortConfigDir = process.env.LOCALPORT_CONFIG_DIR;
   let server: ReturnType<typeof serveHttp> | undefined;
 
   try {
     mkdirSync(workspacePath, { recursive: true });
-    writeFileSync(join(workspacePath, "README.md"), "# Workspace Linker self-test\n\nThis temporary workspace is safe to delete.\n", "utf8");
+    writeFileSync(join(workspacePath, "README.md"), "# Computer Linker self-test\n\nThis temporary workspace is safe to delete.\n", "utf8");
     const port = await findAvailableLoopbackPort();
-    process.env.WORKSPACE_LINKER_CONFIG_DIR = configDir;
+    process.env.COMPUTER_LINKER_CONFIG_DIR = configDir;
     delete process.env.LOCALPORT_CONFIG_DIR;
     const config: LocalPortConfig = {
-      machineName: "workspace-linker-self-test",
+      machineName: "computer-linker-self-test",
       host: "127.0.0.1",
       port,
       ownerToken: generateOwnerToken(),
@@ -301,7 +301,7 @@ async function selfTest(args: string[]): Promise<void> {
       timeoutMs,
     });
     const report: SelfTestReport = {
-      kind: "workspace-linker-self-test",
+      kind: "computer-linker-self-test",
       schemaVersion: 1,
       ready: smoke.ready,
       tempRoot,
@@ -320,11 +320,11 @@ async function selfTest(args: string[]): Promise<void> {
     } else {
       process.stdout.write(formatSelfTestReport(report));
     }
-    if (!report.ready) throw new Error("workspace-linker self-test failed");
+    if (!report.ready) throw new Error("computer-linker self-test failed");
   } finally {
     if (server) server.close();
-    if (previousWorkspaceConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-    else process.env.WORKSPACE_LINKER_CONFIG_DIR = previousWorkspaceConfigDir;
+    if (previousWorkspaceConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+    else process.env.COMPUTER_LINKER_CONFIG_DIR = previousWorkspaceConfigDir;
     if (previousLocalPortConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
     else process.env.LOCALPORT_CONFIG_DIR = previousLocalPortConfigDir;
     if (!keepTemp) rmSync(tempRoot, { recursive: true, force: true });
@@ -333,7 +333,7 @@ async function selfTest(args: string[]): Promise<void> {
 
 function formatSelfTestReport(report: SelfTestReport): string {
   const lines = [
-    "Workspace Linker self-test",
+    "Computer Linker self-test",
     `ready: ${report.ready ? "yes" : "no"}`,
     `localMcpUrl: ${report.localMcpUrl}`,
     `localApiUrl: ${report.localApiUrl}`,
@@ -440,7 +440,7 @@ function cliStatusReport(): CliStatusReport {
   });
 
   return {
-    kind: "workspace-linker-status",
+    kind: "computer-linker-status",
     schemaVersion: 1,
     machine: {
       machineId: doctor.machineId,
@@ -494,7 +494,7 @@ function cliStatusReport(): CliStatusReport {
 
 function formatCliStatus(report: CliStatusReport): string {
   const lines = [
-    `Workspace Linker status for ${report.machine.machineName}`,
+    `Computer Linker status for ${report.machine.machineName}`,
     `ready: ${humanReadiness(report)}`,
     `connect: ${statusConnectionSummary(report)}`,
     `local MCP: ${report.urls.localMcpUrl}`,
@@ -508,14 +508,14 @@ function formatCliStatus(report: CliStatusReport): string {
     for (const reason of report.readiness.blockingReasons.slice(0, 3)) lines.push(`  - ${formatStatusIssue(reason)}`);
     appendRemainingCount(lines, report.readiness.blockingReasons.length, 3, "blocking reason", "status --details");
   } else if (report.readiness.warnings.length > 0) {
-    lines.push(`attention: ${report.readiness.warnings.length} warning${report.readiness.warnings.length === 1 ? "" : "s"}; run \`workspace-linker status --details\``);
+    lines.push(`attention: ${report.readiness.warnings.length} warning${report.readiness.warnings.length === 1 ? "" : "s"}; run \`computer-linker status --details\``);
   }
 
   lines.push("next:");
   const nextActions = report.nextActions.length > 0 ? report.nextActions.slice(0, 3) : ["No action needed."];
   for (const action of nextActions) lines.push(`  - ${action}`);
   appendRemainingCount(lines, report.nextActions.length, 3, "action", "status --details");
-  lines.push("details: workspace-linker status --details");
+  lines.push("details: computer-linker status --details");
   return `${lines.join("\n")}\n`;
 }
 
@@ -528,7 +528,7 @@ function formatDetailedCliStatus(report: CliStatusReport): string {
   const publicMcpUrl = report.urls.publicMcpUrl
     ?? (report.tunnel.openAiSecureTunnelActive ? "not used in OpenAI tunnel mode" : "not configured");
   const lines = [
-    `Workspace Linker status for ${report.machine.machineName}`,
+    `Computer Linker status for ${report.machine.machineName}`,
     `operational: ${report.ready ? "yes" : "no"}`,
     `readiness: ${humanReadiness(report)}`,
     `config: ${report.configPath}`,
@@ -564,7 +564,7 @@ function appendRemainingCount(lines: string[], total: number, shown: number, sin
   const remaining = total - shown;
   if (remaining <= 0) return;
   const label = remaining === 1 ? singularLabel : `${singularLabel}s`;
-  const displayCommand = command.startsWith("workspace-linker ") || command.startsWith("npm ") ? command : `workspace-linker ${command}`;
+  const displayCommand = command.startsWith("computer-linker ") || command.startsWith("npm ") ? command : `computer-linker ${command}`;
   lines.push(`  - ${remaining} more ${label} in \`${displayCommand}\``);
 }
 
@@ -608,7 +608,7 @@ function statusTunnelSummary(report: CliStatusReport): string {
 
 function humanAuthStatus(auth: CliStatusReport["auth"]): string {
   if (auth.ownerTokenConfigured) return "owner token configured";
-  if (auth.localOnly) return "loopback only; run `workspace-linker init` before exposing";
+  if (auth.localOnly) return "loopback only; run `computer-linker init` before exposing";
   return auth.mode.replaceAll("-", " ");
 }
 
@@ -710,12 +710,12 @@ function statusExecutionPolicyAction(
   const affectedNonBootstrap = affectedWorkspaces.filter((workspace) => !isBootstrapDefaultWorkspace(workspace));
 
   if (bootstrapWillBeRemoved && affectedNonBootstrap.length === 0) {
-    return "Run `workspace-linker doctor --fix` to remove the default current-directory scope now that explicit workspaces are configured.";
+    return "Run `computer-linker doctor --fix` to remove the default current-directory scope now that explicit workspaces are configured.";
   }
   if (bootstrapWillBeRemoved) {
-    return "Run `workspace-linker doctor --fix` to remove the default current-directory scope and add default execution policy for remaining shell/Codex scopes.";
+    return "Run `computer-linker doctor --fix` to remove the default current-directory scope and add default execution policy for remaining shell/Codex scopes.";
   }
-  return "Run `workspace-linker doctor --fix` to add default execution policy for shell/Codex scopes.";
+  return "Run `computer-linker doctor --fix` to add default execution policy for shell/Codex scopes.";
 }
 
 function duplicateWorkspacePathActions(workspaces: WorkspaceConfigEntry[], findings: StatusFinding[]): string[] {
@@ -724,9 +724,9 @@ function duplicateWorkspacePathActions(workspaces: WorkspaceConfigEntry[], findi
   return duplicateGroups.map((group) => {
     const scopeList = group.map((workspace) => `${workspace.id} ${permissionSummary(workspace.permissions)}`).join(", ");
     if (group.every((workspace) => workspaceEquivalentForDuplicateCleanup(workspace, group[0]))) {
-      return `Run \`workspace-linker doctor --fix\` to remove exact duplicate workspace scopes: ${scopeList}.`;
+      return `Run \`computer-linker doctor --fix\` to remove exact duplicate workspace scopes: ${scopeList}.`;
     }
-    return `Duplicate workspace scopes share one folder but have different permissions: ${scopeList}. Keep them only if intentional; otherwise remove the unwanted id with \`workspace-linker workspace remove <id>\`.`;
+    return `Duplicate workspace scopes share one folder but have different permissions: ${scopeList}. Keep them only if intentional; otherwise remove the unwanted id with \`computer-linker workspace remove <id>\`.`;
   });
 }
 
@@ -956,7 +956,7 @@ function assertKnownServiceOptions(args: string[], ...extraFlags: string[]): voi
 type CliServiceOptions = ReturnType<typeof serviceOptions>;
 
 interface ServiceActionReport {
-  kind: "workspace-linker-service-action";
+  kind: "computer-linker-service-action";
   schemaVersion: 1;
   action: "install" | "uninstall" | "start" | "stop";
   platform: CliServiceOptions["platform"];
@@ -984,7 +984,7 @@ function applyServiceInstallAction(
     stdio: ["ignore", "pipe", "pipe"],
   });
   return {
-    kind: "workspace-linker-service-action",
+    kind: "computer-linker-service-action",
     schemaVersion: 1,
     action,
     platform: status.platform,
@@ -1009,7 +1009,7 @@ function applyServiceControlAction(
     stdio: ["ignore", "pipe", "pipe"],
   });
   return {
-    kind: "workspace-linker-service-action",
+    kind: "computer-linker-service-action",
     schemaVersion: 1,
     action,
     platform: status.platform,
@@ -1022,7 +1022,7 @@ function applyServiceControlAction(
 
 function formatServiceActionReport(report: ServiceActionReport): string {
   return [
-    `Workspace Linker service ${report.action} completed (${report.platform})`,
+    `Computer Linker service ${report.action} completed (${report.platform})`,
     `serviceName: ${report.serviceName}`,
     `command: ${report.command}`,
     report.outputDir ? `profileDir: ${report.outputDir}` : undefined,
@@ -1142,13 +1142,13 @@ async function processCommand(args: string[]): Promise<void> {
     printProcessResult("stop", data, options.json);
     return;
   }
-  throw new Error("Usage: workspace-linker process <list|read|stop> <workspace-id> [process-id] [--signal SIGTERM|SIGINT|SIGKILL] [--json]");
+  throw new Error("Usage: computer-linker process <list|read|stop> <workspace-id> [process-id] [--signal SIGTERM|SIGINT|SIGKILL] [--json]");
 }
 
 function parseProcessListOptions(args: string[]): { workspace: string; json: boolean } {
   const positional = processCommandPositionals(args, new Set(["--json"]));
   if (positional.length !== 1) {
-    throw new Error("Usage: workspace-linker process list <workspace-id> [--json]");
+    throw new Error("Usage: computer-linker process list <workspace-id> [--json]");
   }
   return {
     workspace: positional[0],
@@ -1160,7 +1160,7 @@ function parseProcessTargetOptions(args: string[], command: "read" | "stop"): { 
   const flagOptions = new Set(command === "stop" ? ["--json", "--signal"] : ["--json"]);
   const positional = processCommandPositionals(args, flagOptions);
   if (positional.length !== 2) {
-    throw new Error(`Usage: workspace-linker process ${command} <workspace-id> <process-id>${command === "stop" ? " [--signal SIGTERM|SIGINT|SIGKILL]" : ""} [--json]`);
+    throw new Error(`Usage: computer-linker process ${command} <workspace-id> <process-id>${command === "stop" ? " [--signal SIGTERM|SIGINT|SIGKILL]" : ""} [--json]`);
   }
   const signal = command === "stop" ? readOptionalStringOption(args, "--signal", "process stop --signal") : undefined;
   if (signal && signal !== "SIGTERM" && signal !== "SIGINT" && signal !== "SIGKILL") {
@@ -1227,7 +1227,7 @@ async function postLocalControl(body: Record<string, unknown>): Promise<unknown>
       signal: AbortSignal.timeout(5000),
     });
   } catch (error) {
-    throw new Error(`Local Workspace Linker HTTP server is not reachable at ${url}. Start it with \`${invocationCommand("start")}\`. ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Local Computer Linker HTTP server is not reachable at ${url}. Start it with \`${invocationCommand("start")}\`. ${error instanceof Error ? error.message : String(error)}`);
   }
 
   const text = await response.text();
@@ -1254,7 +1254,7 @@ function printProcessResult(action: "list" | "read" | "stop", data: unknown, jso
   }
   if (action === "list") {
     const processes = processListFromData(data);
-    console.log("Workspace Linker managed processes");
+    console.log("Computer Linker managed processes");
     if (processes.length === 0) {
       console.log("none");
       return;
@@ -1332,7 +1332,7 @@ function processSummaryFromUnknown(value: unknown): ProcessSummary {
 function screen(args: string[]): void {
   const [subcommand = "status", ...rest] = args;
   if (subcommand !== "status" && subcommand !== "diagnose") {
-    throw new Error("Usage: workspace-linker screen status [--json]");
+    throw new Error("Usage: computer-linker screen status [--json]");
   }
   const unknown = rest.filter((arg) => arg !== "--json");
   if (unknown.length > 0) {
@@ -1350,7 +1350,7 @@ function screen(args: string[]): void {
     }));
   const nextActions = screenNextActions(capability.supported, capability.permission.status, screenWorkspaces.length);
   const report = {
-    kind: "workspace-linker-screen-status",
+    kind: "computer-linker-screen-status",
     schemaVersion: 1,
     provider: capability.provider,
     supported: capability.supported,
@@ -1367,7 +1367,7 @@ function screen(args: string[]): void {
     return;
   }
 
-  console.log("Workspace Linker screen status");
+  console.log("Computer Linker screen status");
   console.log(`provider: ${report.provider}`);
   console.log(`supported: ${report.supported ? "yes" : "no"}`);
   console.log(`permission: ${report.permission.status}${report.permission.detail ? ` - ${report.permission.detail}` : ""}`);
@@ -1398,7 +1398,7 @@ function screenNextActions(supported: boolean, permissionStatus: string, screenW
     actions.push("Run a trusted screen capture once if the OS needs to prompt for screen-recording permission.");
   }
   if (screenWorkspaceCount === 0) {
-    actions.push("Enable screen only for scopes that need it: workspace-linker workspace update <id> --screen");
+    actions.push("Enable screen only for scopes that need it: computer-linker workspace update <id> --screen");
   }
   if (actions.length === 0) {
     actions.push("Screen diagnostics are ready; use MCP screen_list before any screen_capture operation.");
@@ -1424,15 +1424,15 @@ function doctor(args: string[] = []): void {
       console.log(JSON.stringify(repair, null, 2));
       return;
     }
-    console.log(args.includes("--dry-run") ? "Workspace Linker doctor fix dry run" : "Workspace Linker doctor fix");
+    console.log(args.includes("--dry-run") ? "Computer Linker doctor fix dry run" : "Computer Linker doctor fix");
     console.log(`configPath: ${repair.configPath}`);
     console.log(`dryRun: ${repair.dryRun ? "yes" : "no"}`);
     console.log(`changed: ${repair.changed ? "yes" : "no"}${repair.dryRun && repair.changed ? " (not written)" : ""}`);
     for (const item of repair.repairs) {
       console.log(`${item.status}: ${item.id}${item.workspaceId ? ` ${item.workspaceId}` : ""} - ${item.detail}`);
     }
-    if (repair.dryRun && repair.changed) console.log("Run `workspace-linker doctor --fix` to apply these repairs.");
-    else if (repair.changed) console.log("Run `workspace-linker doctor` again to review remaining warnings.");
+    if (repair.dryRun && repair.changed) console.log("Run `computer-linker doctor --fix` to apply these repairs.");
+    else if (repair.changed) console.log("Run `computer-linker doctor` again to review remaining warnings.");
     return;
   }
   const report = getLocalPortDoctor() as {
@@ -1503,7 +1503,7 @@ function doctor(args: string[] = []): void {
     return;
   }
 
-  console.log(`Workspace Linker doctor for ${report.machineName}`);
+  console.log(`Computer Linker doctor for ${report.machineName}`);
   console.log(`machineId: ${report.machineId ?? "not set"}`);
   console.log(`runtime: platform=${report.machine.platform} arch=${report.machine.arch} node=${report.machine.nodeVersion} shell=${report.machine.shell ?? "unknown"}`);
   console.log(`localMcpUrl: ${report.runtime.localMcpUrl}`);
@@ -1596,7 +1596,7 @@ function doctor(args: string[] = []): void {
 }
 
 function repairConfig(options: { dryRun?: boolean } = {}): {
-  kind: "workspace-linker-config-repair";
+  kind: "computer-linker-config-repair";
   schemaVersion: 1;
   configPath: string;
   dryRun: boolean;
@@ -1626,7 +1626,7 @@ function repairConfig(options: { dryRun?: boolean } = {}): {
       id: "remove-bootstrap-current-workspace",
       status: "skipped",
       workspaceId: bootstrapWorkspaces[0].id,
-      detail: "Skipped because it is the only configured workspace. Add an explicit folder with `workspace-linker start <folder>` first.",
+      detail: "Skipped because it is the only configured workspace. Add an explicit folder with `computer-linker start <folder>` first.",
     });
   }
 
@@ -1671,7 +1671,7 @@ function repairConfig(options: { dryRun?: boolean } = {}): {
     ? writeConfig({ ...config, workspaces })
     : configPath();
   return {
-    kind: "workspace-linker-config-repair",
+    kind: "computer-linker-config-repair",
     schemaVersion: 1,
     configPath: writtenPath,
     dryRun,
@@ -1707,7 +1707,7 @@ function history(args: string[] = []): void {
     return;
   }
 
-  console.log(`Workspace Linker history (${insight.view})`);
+  console.log(`Computer Linker history (${insight.view})`);
   console.log(`generatedAt: ${insight.generatedAt}`);
   console.log(`events: total=${insight.summary.totalEvents} success=${insight.summary.successfulEvents} failed=${insight.summary.failedEvents}`);
   if (insight.summary.lastWorkspaceOperation) {
@@ -1764,13 +1764,13 @@ function profile(args: string[]): void {
     return;
   }
   if (args.includes("--chatgpt")) {
-    throw new Error("profile --chatgpt was removed; use `workspace-linker client chatgpt profile` only when ChatGPT asks for connector-specific fields.");
+    throw new Error("profile --chatgpt was removed; use `computer-linker client chatgpt profile` only when ChatGPT asks for connector-specific fields.");
   }
   if (args.includes("--mode")) {
-    throw new Error("profile --mode is only supported by `workspace-linker client chatgpt profile --mode ...`.");
+    throw new Error("profile --mode is only supported by `computer-linker client chatgpt profile --mode ...`.");
   }
   if (args.includes("--url")) {
-    throw new Error("profile --url is only supported by `workspace-linker client chatgpt profile --url ...`.");
+    throw new Error("profile --url is only supported by `computer-linker client chatgpt profile --url ...`.");
   }
   const includeSecrets = args.includes("--show-token");
   const unknown = args.filter((arg) => arg !== "--show-token");
@@ -1807,7 +1807,7 @@ async function client(args: string[]): Promise<void> {
     return;
   }
   if (clientName !== "chatgpt") {
-    throw new Error("Usage: workspace-linker client <setup|smoke|diagnose|chatgpt>");
+    throw new Error("Usage: computer-linker client <setup|smoke|diagnose|chatgpt>");
   }
   await chatGptClient(rest, "client chatgpt");
 }
@@ -1862,7 +1862,7 @@ function clientSetup(args: string[]): void {
 
 function formatMcpClientSetup(report: McpClientSetupCliReport): string {
   const lines = [
-    "Workspace Linker MCP client setup",
+    "Computer Linker MCP client setup",
     `ready: ${clientSetupReadySummary(report)}`,
     `connect: ${clientSetupConnectionSummary(report)}`,
     `auth: ${clientSetupAuthSummary(report)}`,
@@ -1895,7 +1895,7 @@ function formatDetailedMcpClientSetup(report: McpClientSetupCliReport): string {
     ? "(not used in OpenAI tunnel mode)"
     : report.connection?.publicMcpUrl ?? "(not configured)";
   const lines = [
-    "Workspace Linker MCP client setup",
+    "Computer Linker MCP client setup",
     `machine: ${report.machineName ?? "unknown"}`,
     `localReady: ${report.localReady ? "yes" : "no"}`,
     `remoteReady: ${report.remoteReady ? "yes" : "no"}`,
@@ -2010,7 +2010,7 @@ async function clientSmoke(args: string[]): Promise<void> {
 type ClientDiagnosisTarget = "local" | "remote" | "url";
 
 interface McpClientDiagnosisReport {
-  kind: "workspace-linker-client-diagnosis";
+  kind: "computer-linker-client-diagnosis";
   schemaVersion: 1;
   target: ClientDiagnosisTarget;
   url: string | null;
@@ -2036,7 +2036,7 @@ async function diagnose(args: string[]): Promise<void> {
     return;
   }
   if (target !== "client") {
-    throw new Error("Usage: workspace-linker diagnose client [--local|--remote|--url https://.../mcp] [--json]");
+    throw new Error("Usage: computer-linker diagnose client [--local|--remote|--url https://.../mcp] [--json]");
   }
   if (hasHelpFlag(rest)) {
     printDiagnoseHelp();
@@ -2083,7 +2083,7 @@ async function diagnoseClient(args: string[]): Promise<void> {
     includeSecret: args.includes("--show-token"),
     allowHttp: target === "local" || args.includes("--allow-http"),
     timeoutMs,
-    clientName: "workspace-linker-client-diagnose",
+    clientName: "computer-linker-client-diagnose",
   });
   const historyConnections = historyInsight({ view: "connections", limit: 20 });
   const historyLast = historyInsight({ view: "last", limit: 20 });
@@ -2122,13 +2122,13 @@ function buildClientDiagnosisReport(input: {
     for (const action of input.setup.nextActions ?? []) nextActions.add(action);
   }
   if (!hasConnectionHistory) {
-    nextActions.add("After an external MCP client connects, run `workspace-linker history --view connections` to verify incoming traffic.");
+    nextActions.add("After an external MCP client connects, run `computer-linker history --view connections` to verify incoming traffic.");
   }
   if (input.smoke.ready && (input.target !== "remote" || input.setup.remoteReady)) {
-    nextActions.add("Use `workspace-linker client setup --details` for the agent prompt and stable tool contract.");
+    nextActions.add("Use `computer-linker client setup --details` for the agent prompt and stable tool contract.");
   }
   return {
-    kind: "workspace-linker-client-diagnosis",
+    kind: "computer-linker-client-diagnosis",
     schemaVersion: 1,
     target: input.target,
     url: input.url,
@@ -2150,7 +2150,7 @@ function buildClientDiagnosisReport(input: {
 
 function formatClientDiagnosis(report: McpClientDiagnosisReport): string {
   const lines = [
-    "Workspace Linker client diagnosis",
+    "Computer Linker client diagnosis",
     `target: ${report.target}${report.url ? ` ${report.url}` : ""}`,
     `ready: ${report.diagnosis.ready ? "yes" : "no"}`,
     `setup: local=${report.setup.localReady ? "ready" : "not-ready"} remote=${report.setup.remoteReady ? "ready" : "not-ready"}`,
@@ -2455,7 +2455,7 @@ function configToken(args: string[]): void {
     }
   }
   if (positional.length > 1 || (action !== "status" && action !== "rotate")) {
-    throw new Error("Usage: workspace-linker config token [rotate] [--show-token] [--json]");
+    throw new Error("Usage: computer-linker config token [rotate] [--show-token] [--json]");
   }
 
   const includeSecret = args.includes("--show-token");
@@ -2482,10 +2482,10 @@ function configToken(args: string[]): void {
           "Update MCP clients with the new Authorization bearer token.",
           "Restart the HTTP server after token-state changes when using OAuth clients.",
         ]
-      : ["Run `workspace-linker config token rotate --show-token` when you need to replace the owner token."]
-    : ["Run `workspace-linker config token rotate --show-token` before exposing Workspace Linker through a tunnel."];
+      : ["Run `computer-linker config token rotate --show-token` when you need to replace the owner token."]
+    : ["Run `computer-linker config token rotate --show-token` before exposing Computer Linker through a tunnel."];
   const report = {
-    kind: "workspace-linker-owner-token",
+    kind: "computer-linker-owner-token",
     schemaVersion: 1,
     configPath: writtenPath,
     tokenConfigured,
@@ -2500,7 +2500,7 @@ function configToken(args: string[]): void {
     return;
   }
 
-  console.log("Workspace Linker owner token");
+  console.log("Computer Linker owner token");
   console.log(`configPath: ${report.configPath}`);
   console.log(`tokenConfigured: ${report.tokenConfigured ? "yes" : "no"}`);
   console.log(`rotated: ${report.rotated ? "yes" : "no"}`);
@@ -2620,7 +2620,7 @@ function setupMcpOnly(args: string[], commandLabel = "setup", outputMode: SetupO
   if (options.tunnelProvider === "openai") startCommandParts.push("--tunnel-id", options.openaiTunnelId ?? "tunnel_...");
   const startCommand = formatCliCommand(startCommandParts);
   const result = {
-    kind: "workspace-linker-mcp-only-setup",
+    kind: "computer-linker-mcp-only-setup",
     schemaVersion: 1,
     configPath: writtenPath,
     publicBaseUrl: options.publicBaseUrl ?? null,
@@ -2694,7 +2694,7 @@ type SetupMcpOnlyTextResult = {
 };
 
 function printStartupSetupSummary(result: SetupMcpOnlyTextResult): void {
-  const lines = ["Workspace Linker auto setup"];
+  const lines = ["Computer Linker auto setup"];
   if (result.ownerTokenCreated) lines.push("owner token: created");
   if (result.ownerToken) lines.push(`owner token: ${result.ownerToken}`);
   if (result.workspace) {
@@ -2711,7 +2711,7 @@ function printStartupSetupSummary(result: SetupMcpOnlyTextResult): void {
 
 function printSetupSummary(result: SetupMcpOnlyTextResult): void {
   const lines = [
-    "Workspace Linker setup",
+    "Computer Linker setup",
     `connect: ${setupConnectionSummary(result)}`,
     "public access: MCP endpoint only",
     `auth: ${result.ownerToken ? "bearer token shown below" : "bearer token configured"}`,
@@ -2868,9 +2868,9 @@ function parseSetupMcpOnlyOptions(args: string[], commandLabel = "setup"): {
 
 function setupMcpOnlyUsage(): string {
   return [
-    "Usage: workspace-linker setup <workspace-path> [--dev|--coding|--read-only|--full-trust] [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--id workspace-id] [--name name] [--write] [--shell] [--codex] [--screen] [--show-token] [--json]",
-    "       workspace-linker setup <https-url> [workspace-path] [--write] [--screen] [--show-token]",
-    "Legacy: workspace-linker setup mcp-only <https-url|workspace-path> [workspace-path] [...]",
+    "Usage: computer-linker setup <workspace-path> [--dev|--coding|--read-only|--full-trust] [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--id workspace-id] [--name name] [--write] [--shell] [--codex] [--screen] [--show-token] [--json]",
+    "       computer-linker setup <https-url> [workspace-path] [--write] [--screen] [--show-token]",
+    "Legacy: computer-linker setup mcp-only <https-url|workspace-path> [workspace-path] [...]",
   ].join("\n");
 }
 
@@ -3034,7 +3034,7 @@ function validateConfig(args: string[]): void {
     };
   };
   const report = {
-    kind: "workspace-linker-config-validation",
+    kind: "computer-linker-config-validation",
     schemaVersion: 1,
     configPath: configPath(),
     ready: doctor.releaseReadiness.ready,
@@ -3047,7 +3047,7 @@ function validateConfig(args: string[]): void {
   if (args.includes("--json")) {
     console.log(JSON.stringify(report, null, 2));
   } else {
-    console.log("Workspace Linker config validation");
+    console.log("Computer Linker config validation");
     console.log(`configPath: ${report.configPath}`);
     console.log(`status: ${report.status} ready=${report.ready ? "yes" : "no"}`);
     console.log(`config: critical=${report.configDiagnostics.criticalCount} warning=${report.configDiagnostics.warningCount}`);
@@ -3074,7 +3074,7 @@ function validateConfig(args: string[]): void {
 function configPolicy(args: string[]): void {
   const [workspaceId] = args;
   if (!workspaceId || workspaceId.startsWith("--")) {
-    throw new Error("Usage: workspace-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--clear|--clear-allowed|--clear-denied]");
+    throw new Error("Usage: computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--clear|--clear-allowed|--clear-denied]");
   }
   assertKnownConfigPolicyOptions(args.slice(1));
   const config = loadConfig();
@@ -3101,7 +3101,7 @@ function configPolicy(args: string[]): void {
   const updated = loadConfig().workspaces.find((workspace) => workspace.id === workspaceId);
   if (rest.includes("--json")) {
     console.log(JSON.stringify({
-      kind: "workspace-linker-config-policy",
+      kind: "computer-linker-config-policy",
       workspaceId,
       configPath: writtenPath,
       policy: updated?.policy ?? {},
@@ -3193,14 +3193,14 @@ function mergePolicyList(current: string[] | undefined, next: string[]): string[
 function printConfigPolicy(workspaceId: string, policy: WorkspacePolicy | undefined, json: boolean): void {
   if (json) {
     console.log(JSON.stringify({
-      kind: "workspace-linker-config-policy",
+      kind: "computer-linker-config-policy",
       workspaceId,
       configPath: configPath(),
       policy: policy ?? {},
     }, null, 2));
     return;
   }
-  console.log(`Workspace Linker policy for ${workspaceId}`);
+  console.log(`Computer Linker policy for ${workspaceId}`);
   printPolicyLines(policy);
 }
 
@@ -3255,7 +3255,7 @@ function parseWorkspaceAddOptions(args: string[]): {
   codex: boolean;
   screen: boolean;
 } {
-  const usage = "Usage: workspace-linker workspace add <path> [--id workspace-id] [--name name] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]\nLegacy: workspace-linker workspace add <id> <path> [--name name] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]";
+  const usage = "Usage: computer-linker workspace add <path> [--id workspace-id] [--name name] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]\nLegacy: computer-linker workspace add <id> <path> [--name name] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]";
   const valueOptions = new Set(["--id", "--name"]);
   const flagOptions = new Set(["--dev", "--coding", "--full-trust", "--read-only", "--write", "--shell", "--codex", "--screen"]);
   const positional: string[] = [];
@@ -3299,7 +3299,7 @@ function parseWorkspaceAddOptions(args: string[]): {
 function updateWorkspace(args: string[]): void {
   const [id] = args;
   if (!id) {
-    throw new Error("Usage: workspace-linker workspace update <id> [--name name] [--path path] [--dev|--coding|--read-only|--full-trust] [--write|--no-write] [--shell|--no-shell] [--codex|--no-codex] [--screen|--no-screen]");
+    throw new Error("Usage: computer-linker workspace update <id> [--name name] [--path path] [--dev|--coding|--read-only|--full-trust] [--write|--no-write] [--shell|--no-shell] [--codex|--no-codex] [--screen|--no-screen]");
   }
   assertReadOnlyNotMixed(args, "workspace update");
 
@@ -3333,7 +3333,7 @@ function updateWorkspace(args: string[]): void {
 function removeWorkspace(args: string[]): void {
   const [id] = args;
   if (!id) {
-    throw new Error("Usage: workspace-linker workspace remove <id>");
+    throw new Error("Usage: computer-linker workspace remove <id>");
   }
 
   const config = loadConfig();
@@ -3365,7 +3365,7 @@ async function serve(args: string[]): Promise<void> {
 
   const config = loadConfig();
   const server = serveHttp();
-  console.log(`Workspace Linker HTTP MCP server listening at ${server.url}`);
+  console.log(`Computer Linker HTTP MCP server listening at ${server.url}`);
   console.log(startupPublicMcpUrlLine(config, undefined, server.publicUrl));
   console.log(`Local API: ${server.apiUrl}`);
   printHttpAuthHint();
@@ -3518,7 +3518,7 @@ async function runStartupCheck(config: LocalPortConfig, localMcpUrl: string): Pr
       url: localMcpUrl,
       allowHttp: true,
       timeoutMs: 10000,
-      clientName: "workspace-linker-startup-check",
+      clientName: "computer-linker-startup-check",
     });
     const passed = report.checks.filter((check) => check.status === "pass").length;
     const total = report.checks.length;
@@ -3542,7 +3542,7 @@ function printStartSummary(input: {
   const { config, options, server, startupCheck, tunnel } = input;
   const localMcpUrl = server.url;
   const lines = [
-    "Workspace Linker started",
+    "Computer Linker started",
     "server: running",
     `local MCP: ${localMcpUrl}`,
     `connect: ${startConnectionSummary(config, options, server, tunnel)}`,
@@ -3595,7 +3595,7 @@ function startConnectionSummary(
 }
 
 function startAuthSummary(config: LocalPortConfig, tunnelProvider?: TunnelProviderName): string {
-  if (!config.ownerToken) return "loopback only; run workspace-linker init before exposing";
+  if (!config.ownerToken) return "loopback only; run computer-linker init before exposing";
   if (tunnelProvider === "openai") return "handled by tunnel-client; do not paste a bearer token into ChatGPT";
   return `bearer token configured; setup command: ${invocationCommand("client", "setup")}`;
 }
@@ -3636,7 +3636,7 @@ function startNextActions(config: LocalPortConfig, options: StartOptions, tunnel
   }
   return [
     `Use ${invocationCommand("client", "setup")} to connect a local MCP client.`,
-    "For ChatGPT remote access, restart with `workspace-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...`.",
+    "For ChatGPT remote access, restart with `computer-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...`.",
     config.ownerToken ? "Keep this terminal running while the client is connected." : `Run ${invocationCommand("init")} before exposing this computer.`,
   ];
 }
@@ -3699,7 +3699,7 @@ async function expose(args: string[]): Promise<void> {
     return;
   }
   if (provider !== "cloudflare" && provider !== "tailscale") {
-    throw new Error("Usage: workspace-linker expose <cloudflare|tailscale> [--mode funnel]");
+    throw new Error("Usage: computer-linker expose <cloudflare|tailscale> [--mode funnel]");
   }
 
   let config = loadConfig();
@@ -3715,7 +3715,7 @@ async function expose(args: string[]): Promise<void> {
   config = ensurePublicMcpOnlyForTunnel(config, provider);
 
   const server = serveHttp();
-  console.log(`Workspace Linker HTTP MCP server listening at ${server.url}`);
+  console.log(`Computer Linker HTTP MCP server listening at ${server.url}`);
   console.log(startupPublicMcpUrlLine(config, provider, server.publicUrl));
   console.log(`Local API: ${server.apiUrl}`);
   printHttpAuthHint(provider);
@@ -3773,7 +3773,7 @@ function parseStartOptions(args: string[]): StartOptions {
   }
 
   if (positional.length > 1) {
-    throw new Error("Usage: workspace-linker start [workspace-path] [--no-tunnel|--tunnel cloudflare|tailscale|openai] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]");
+    throw new Error("Usage: computer-linker start [workspace-path] [--no-tunnel|--tunnel cloudflare|tailscale|openai] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]");
   }
   const workspacePath = positional[0];
   const setupOnlyOptions = ["--url", "--id", "--name", "--dev", "--coding", "--full-trust", "--write", "--shell", "--codex", "--screen", "--read-only", "--show-token"];
@@ -3843,7 +3843,7 @@ function assertTunnelToolAvailable(provider: TunnelProviderName, localPort: numb
 function assertOpenAiTunnelConfigured(tunnelIdOption: string | undefined): string {
   const tunnelId = tunnelIdOption ?? configuredOpenAiTunnelId();
   if (!tunnelId) {
-    throw new Error("start --tunnel openai requires --tunnel-id tunnel_... or WORKSPACE_LINKER_OPENAI_TUNNEL_ID.");
+    throw new Error("start --tunnel openai requires --tunnel-id tunnel_... or COMPUTER_LINKER_OPENAI_TUNNEL_ID.");
   }
   if (!/^tunnel_[A-Za-z0-9_-]+$/.test(tunnelId)) {
     throw new Error("OpenAI tunnel id must look like tunnel_...");
@@ -3888,7 +3888,7 @@ async function waitForTunnelPublicUrl(id: string, timeoutMs: number): Promise<Tu
 function assertExposeAuthConfigured(config: LocalPortConfig, command: string): void {
   if (config.ownerToken) return;
   throw new Error(
-    `Refusing to expose Workspace Linker without an owner token. Run \`${invocationCommand("init")}\` or set WORKSPACE_LINKER_OWNER_TOKEN before using \`${command}\`.`,
+    `Refusing to expose Computer Linker without an owner token. Run \`${invocationCommand("init")}\` or set COMPUTER_LINKER_OWNER_TOKEN before using \`${command}\`.`,
   );
 }
 
@@ -3896,7 +3896,7 @@ function printHttpAuthHint(tunnelProvider?: TunnelProviderName): void {
   const config = loadConfig();
   if (!config.ownerToken) {
     console.log("HTTP auth: local loopback only because ownerToken is not configured.");
-    console.log(`Run \`${invocationCommand("init")}\` or set WORKSPACE_LINKER_OWNER_TOKEN before exposing this server.`);
+    console.log(`Run \`${invocationCommand("init")}\` or set COMPUTER_LINKER_OWNER_TOKEN before exposing this server.`);
     return;
   }
 
@@ -3932,18 +3932,18 @@ function init(args: string[] = []): void {
         ...config,
         ownerToken,
       });
-      console.log(`Updated Workspace Linker config with owner token: ${path}`);
+      console.log(`Updated Computer Linker config with owner token: ${path}`);
       printOwnerTokenSetup(ownerToken, showToken, true);
       return;
     }
-    console.log(`Workspace Linker config already exists: ${path}`);
+    console.log(`Computer Linker config already exists: ${path}`);
     printOwnerTokenSetup(config.ownerToken, showToken, false);
     return;
   }
 
   const createdPath = writeDefaultConfig();
   const config = JSON.parse(readFileSync(createdPath, "utf8")) as { ownerToken?: string };
-  console.log(`Created Workspace Linker config: ${createdPath}`);
+  console.log(`Created Computer Linker config: ${createdPath}`);
   if (config.ownerToken) {
     printOwnerTokenSetup(config.ownerToken, showToken, true);
   }
@@ -3974,7 +3974,7 @@ type QuickstartOptions = {
 };
 
 type QuickstartReport = {
-  kind: "workspace-linker-quickstart";
+  kind: "computer-linker-quickstart";
   schemaVersion: 1;
   commandPrefix: string;
   workspacePath: string | null;
@@ -4045,14 +4045,14 @@ function parseQuickstartOptions(args: string[]): QuickstartOptions {
   }
 
   if (positional.length > 1) {
-    throw new Error("Usage: workspace-linker quickstart [workspace-path] [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--url https://...] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen] [--json]");
+    throw new Error("Usage: computer-linker quickstart [workspace-path] [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--url https://...] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen] [--json]");
   }
 
   const tunnelOption = readOptionalStringOption(args, "--tunnel", "quickstart --tunnel");
   const tunnelProvider = tunnelOption ? parseTunnelProvider(tunnelOption, "quickstart --tunnel") : undefined;
   const openaiTunnelId = readOptionalStringOption(args, "--tunnel-id", "quickstart --tunnel-id");
   const publicBaseUrl = args.includes("--url")
-    ? requireHttpsUrl(readOptionalStringOption(args, "--url", "quickstart --url"), "quickstart --url", "workspace-linker quickstart [workspace-path] --url <https-url>")
+    ? requireHttpsUrl(readOptionalStringOption(args, "--url", "quickstart --url"), "quickstart --url", "computer-linker quickstart [workspace-path] --url <https-url>")
     : undefined;
 
   if (openaiTunnelId && tunnelProvider !== "openai") {
@@ -4119,7 +4119,7 @@ function buildQuickstartReport(options: QuickstartOptions): QuickstartReport {
   }
 
   return {
-    kind: "workspace-linker-quickstart",
+    kind: "computer-linker-quickstart",
     schemaVersion: 1,
     commandPrefix,
     workspacePath: options.workspacePath ?? null,
@@ -4162,7 +4162,7 @@ function buildQuickstartReport(options: QuickstartOptions): QuickstartReport {
 }
 
 function printQuickstartReport(report: QuickstartReport): void {
-  console.log("Workspace Linker quickstart");
+  console.log("Computer Linker quickstart");
   console.log("");
   if (!report.workspacePath) {
     console.log(`workspace path: not provided; example uses ${report.placeholderWorkspacePath}`);
@@ -4170,7 +4170,7 @@ function printQuickstartReport(report: QuickstartReport): void {
     console.log(`workspace path: ${report.workspacePath}`);
   }
   console.log("");
-  console.log("1. Start Workspace Linker:");
+  console.log("1. Start Computer Linker:");
   if (report.prerequisites.length > 0) {
     console.log(`   Prerequisite: ${report.prerequisites[0]}`);
     for (const prerequisite of report.prerequisites.slice(1)) {
@@ -4215,14 +4215,18 @@ function invocationCommandParts(): string[] {
   const normalizedInvokedPath = invokedPath.replaceAll("\\", "/").toLowerCase();
   if (
     normalizedInvokedPath.endsWith("/dist/cli.js") &&
-    !normalizedInvokedPath.includes("/node_modules/workspace-linker/dist/cli.js")
+    !isInstalledPackageCliPath(normalizedInvokedPath)
   ) {
     if (invokedPath === checkoutDistCliPath) {
       return ["node", process.platform === "win32" ? "dist\\cli.js" : "dist/cli.js"];
     }
     return ["node", invokedPath];
   }
-  return ["workspace-linker"];
+  return ["computer-linker"];
+}
+
+function isInstalledPackageCliPath(normalizedInvokedPath: string): boolean {
+  return /\/node_modules\/(?:@[^/]+\/)?computer-linker\/dist\/cli\.js$/.test(normalizedInvokedPath);
 }
 
 function isNpmDevCliInvocation(): boolean {
@@ -4338,7 +4342,7 @@ function hasHelpFlag(args: string[]): boolean {
 }
 
 function printVersion(): void {
-  console.log(`workspace-linker ${workspaceLinkerVersion()}`);
+  console.log(`computer-linker ${workspaceLinkerVersion()}`);
 }
 
 function printCliHelp(lines: string[]): void {
@@ -4348,24 +4352,24 @@ function printCliHelp(lines: string[]): void {
 function formatCliHelp(text: string): string {
   if (!isNpmDevCliInvocation()) return text;
   return text
-    .replace(/\bworkspace-linker\b/g, "npm run dev --")
+    .replace(/\bcomputer-linker\b/g, "npm run dev --")
     .replace(/npm run dev -- --version/g, "npm run dev -- version");
 }
 
 function printInitHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker init",
+      "Computer Linker init",
       "",
       "Usage:",
-      "  workspace-linker init [--show-token]",
+      "  computer-linker init [--show-token]",
       "",
       "What it does:",
       "  Creates the local config and owner token if they do not exist.",
       "  Use --show-token only on a trusted local setup screen.",
       "",
       "Example:",
-      "  workspace-linker init",
+      "  computer-linker init",
     ],
   );
 }
@@ -4373,16 +4377,16 @@ function printInitHelp(): void {
 function printServeHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker serve",
+      "Computer Linker serve",
       "",
       "Usage:",
-      "  workspace-linker serve",
-      "  workspace-linker serve --transport http",
-      "  workspace-linker serve --transport stdio",
+      "  computer-linker serve",
+      "  computer-linker serve --transport http",
+      "  computer-linker serve --transport stdio",
       "",
       "What it does:",
       "  Starts the MCP server without changing workspace config.",
-      "  For daily use, prefer `workspace-linker start <folder>` so setup and server start happen together.",
+      "  For daily use, prefer `computer-linker start <folder>` so setup and server start happen together.",
     ],
   );
 }
@@ -4390,27 +4394,27 @@ function printServeHelp(): void {
 function printCoreHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker",
+      "Computer Linker",
       "",
       "Usage:",
-      "  workspace-linker start <workspace-path> --dev",
-      "  workspace-linker start <workspace-path> --dev --tunnel openai|tailscale|cloudflare",
-      "  workspace-linker client setup",
-      "  workspace-linker status",
-      "  workspace-linker help advanced",
+      "  computer-linker start <workspace-path> --dev",
+      "  computer-linker start <workspace-path> --dev --tunnel openai|tailscale|cloudflare",
+      "  computer-linker client setup",
+      "  computer-linker status",
+      "  computer-linker help advanced",
       "",
       "First run:",
-      "  1. Start local: workspace-linker start C:\\Projects\\my-app --dev",
-      "  2. Connect client: workspace-linker client setup",
-      "  3. Check state: workspace-linker status",
+      "  1. Start local: computer-linker start C:\\Projects\\my-app --dev",
+      "  2. Connect client: computer-linker client setup",
+      "  3. Check state: computer-linker status",
       "",
       "Cloud client:",
-      "  workspace-linker start C:\\Projects\\my-app --dev --tunnel openai --tunnel-id tunnel_...",
-      "  workspace-linker start C:\\Projects\\my-app --dev --tunnel tailscale",
-      "  workspace-linker start C:\\Projects\\my-app --dev --tunnel cloudflare",
+      "  computer-linker start C:\\Projects\\my-app --dev --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker start C:\\Projects\\my-app --dev --tunnel tailscale",
+      "  computer-linker start C:\\Projects\\my-app --dev --tunnel cloudflare",
       "",
       "Before changing config:",
-      "  workspace-linker quickstart C:\\Projects\\my-app --dev",
+      "  computer-linker quickstart C:\\Projects\\my-app --dev",
       "",
       "Notes:",
       "  <workspace-path> is the folder to expose.",
@@ -4418,7 +4422,7 @@ function printCoreHelp(): void {
       "  Workspace names default to the folder name.",
       "  --dev allows file edits and approved project commands for normal development work.",
       "  Tokens stay hidden by default; use client setup --show-token only on a trusted local setup screen.",
-      "  Details: workspace-linker help start | workspace-linker help client setup | workspace-linker help advanced",
+      "  Details: computer-linker help start | computer-linker help client setup | computer-linker help advanced",
     ],
   );
 }
@@ -4426,14 +4430,14 @@ function printCoreHelp(): void {
 function printStartHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker start",
+      "Computer Linker start",
       "",
       "Usage:",
-      "  workspace-linker start <workspace-path> [--dev] [--codex] [--screen]",
-      "  workspace-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...",
-      "  workspace-linker start <workspace-path> --dev --tunnel tailscale",
-      "  workspace-linker start <workspace-path> --dev --tunnel cloudflare",
-      "  workspace-linker start",
+      "  computer-linker start <workspace-path> [--dev] [--codex] [--screen]",
+      "  computer-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker start <workspace-path> --dev --tunnel tailscale",
+      "  computer-linker start <workspace-path> --dev --tunnel cloudflare",
+      "  computer-linker start",
       "",
       "What it does:",
       "  Creates config, owner token, and a workspace entry when needed.",
@@ -4454,9 +4458,9 @@ function printStartHelp(): void {
       "  OpenAI tunnel requires CONTROL_PLANE_API_KEY or OPENAI_API_KEY with Tunnels Read+Use permissions.",
       "",
       "Examples:",
-      "  workspace-linker start C:\\Projects\\my-app --dev",
-      "  workspace-linker start C:\\Projects\\my-app --dev --tunnel openai --tunnel-id tunnel_...",
-      "  workspace-linker start C:\\Projects\\my-app --dev --tunnel tailscale",
+      "  computer-linker start C:\\Projects\\my-app --dev",
+      "  computer-linker start C:\\Projects\\my-app --dev --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker start C:\\Projects\\my-app --dev --tunnel tailscale",
     ],
   );
 }
@@ -4464,16 +4468,16 @@ function printStartHelp(): void {
 function printQuickstartHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker quickstart",
+      "Computer Linker quickstart",
       "",
       "Usage:",
-      "  workspace-linker quickstart [workspace-path] [--dev]",
-      "  workspace-linker quickstart [workspace-path] --dev --tunnel openai --tunnel-id tunnel_...",
-      "  workspace-linker quickstart [workspace-path] --dev --tunnel tailscale",
-      "  workspace-linker quickstart [workspace-path] --dev --tunnel cloudflare",
+      "  computer-linker quickstart [workspace-path] [--dev]",
+      "  computer-linker quickstart [workspace-path] --dev --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker quickstart [workspace-path] --dev --tunnel tailscale",
+      "  computer-linker quickstart [workspace-path] --dev --tunnel cloudflare",
       "",
       "What it does:",
-      "  Prints the exact commands to test, start, configure, and verify Workspace Linker.",
+      "  Prints the exact commands to test, start, configure, and verify Computer Linker.",
       "  Does not read or write config.",
       "",
       "Common options:",
@@ -4488,8 +4492,8 @@ function printQuickstartHelp(): void {
       "  --json         Print the quickstart plan as JSON.",
       "",
       "Examples:",
-      "  workspace-linker quickstart C:\\Projects\\my-app --dev",
-      "  workspace-linker quickstart C:\\Projects\\my-app --dev --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker quickstart C:\\Projects\\my-app --dev",
+      "  computer-linker quickstart C:\\Projects\\my-app --dev --tunnel openai --tunnel-id tunnel_...",
     ],
   );
 }
@@ -4497,17 +4501,17 @@ function printQuickstartHelp(): void {
 function printProfileHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker profile",
+      "Computer Linker profile",
       "",
       "Usage:",
-      "  workspace-linker profile [--show-token]",
+      "  computer-linker profile [--show-token]",
       "",
       "What it does:",
       "  Prints MCP connection profile JSON for local setup screens and clients.",
       "  Tokens are redacted unless --show-token is passed on a trusted local screen.",
       "",
       "Example:",
-      "  workspace-linker profile",
+      "  computer-linker profile",
     ],
   );
 }
@@ -4540,22 +4544,22 @@ function printClientHelpTopic(args: string[]): void {
 function printClientHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker client",
+      "Computer Linker client",
       "",
       "Usage:",
-      "  workspace-linker client setup [--details] [--show-token] [--json]",
-      "  workspace-linker client smoke [--url https://.../mcp] [--token token] [--allow-http] [--show-token] [--json]",
-      "  workspace-linker client diagnose [--local|--remote|--url https://.../mcp] [--json]",
-      "  workspace-linker client chatgpt <subcommand>",
+      "  computer-linker client setup [--details] [--show-token] [--json]",
+      "  computer-linker client smoke [--url https://.../mcp] [--token token] [--allow-http] [--show-token] [--json]",
+      "  computer-linker client diagnose [--local|--remote|--url https://.../mcp] [--json]",
+      "  computer-linker client chatgpt <subcommand>",
       "",
       "What it does:",
       "  Prints generic MCP client setup details and runs connection smoke tests.",
       "  ChatGPT-specific exports are compatibility helpers; prefer generic setup first.",
       "",
       "More help:",
-      "  workspace-linker client help setup",
-      "  workspace-linker client help smoke",
-      "  workspace-linker client help diagnose",
+      "  computer-linker client help setup",
+      "  computer-linker client help smoke",
+      "  computer-linker client help diagnose",
     ],
   );
 }
@@ -4563,10 +4567,10 @@ function printClientHelp(): void {
 function printClientSetupHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker client setup",
+      "Computer Linker client setup",
       "",
       "Usage:",
-      "  workspace-linker client setup [--details] [--show-token] [--json]",
+      "  computer-linker client setup [--details] [--show-token] [--json]",
       "",
       "What it does:",
       "  Prints a short MCP client connection summary by default.",
@@ -4574,9 +4578,9 @@ function printClientSetupHelp(): void {
       "  Use --show-token only on a trusted local setup screen when the client needs a bearer token.",
       "",
       "Examples:",
-      "  workspace-linker client setup",
-      "  workspace-linker client setup --details",
-      "  workspace-linker client setup --show-token",
+      "  computer-linker client setup",
+      "  computer-linker client setup --details",
+      "  computer-linker client setup --show-token",
     ],
   );
 }
@@ -4584,17 +4588,17 @@ function printClientSetupHelp(): void {
 function printClientSmokeHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker client smoke",
+      "Computer Linker client smoke",
       "",
       "Usage:",
-      "  workspace-linker client smoke [--url https://.../mcp] [--token token] [--allow-http] [--show-token] [--json] [--timeout-ms ms]",
+      "  computer-linker client smoke [--url https://.../mcp] [--token token] [--allow-http] [--show-token] [--json] [--timeout-ms ms]",
       "",
       "What it does:",
       "  Runs a small MCP client smoke test against the configured or provided MCP URL.",
       "  Use --allow-http only for trusted local loopback tests.",
       "",
       "Example:",
-      "  workspace-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp",
+      "  computer-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp",
     ],
   );
 }
@@ -4602,20 +4606,20 @@ function printClientSmokeHelp(): void {
 function printClientDiagnoseHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker client diagnose",
+      "Computer Linker client diagnose",
       "",
       "Usage:",
-      "  workspace-linker client diagnose [--local|--remote|--url https://.../mcp] [--json] [--timeout-ms ms]",
-      "  workspace-linker diagnose client [--local|--remote|--url https://.../mcp] [--json] [--timeout-ms ms]",
+      "  computer-linker client diagnose [--local|--remote|--url https://.../mcp] [--json] [--timeout-ms ms]",
+      "  computer-linker diagnose client [--local|--remote|--url https://.../mcp] [--json] [--timeout-ms ms]",
       "",
       "What it does:",
       "  Runs MCP client setup checks, a minimal MCP client smoke test, and redacted connection-history inspection.",
       "  Defaults to local loopback. Use --remote for the configured public URL or --url for one explicit endpoint.",
       "",
       "Examples:",
-      "  workspace-linker diagnose client",
-      "  workspace-linker diagnose client --remote",
-      "  workspace-linker diagnose client --url https://example.com/mcp",
+      "  computer-linker diagnose client",
+      "  computer-linker diagnose client --remote",
+      "  computer-linker diagnose client --url https://example.com/mcp",
     ],
   );
 }
@@ -4637,22 +4641,22 @@ function printSetupHelpTopic(args: string[]): void {
 function printSetupHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker setup",
+      "Computer Linker setup",
       "",
       "Usage:",
-      "  workspace-linker setup <workspace-path> [--dev|--coding|--read-only|--full-trust]",
-      "  workspace-linker setup <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...",
-      "  workspace-linker setup <workspace-path> --dev --tunnel tailscale",
-      "  workspace-linker setup <workspace-path> --dev --tunnel cloudflare",
+      "  computer-linker setup <workspace-path> [--dev|--coding|--read-only|--full-trust]",
+      "  computer-linker setup <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker setup <workspace-path> --dev --tunnel tailscale",
+      "  computer-linker setup <workspace-path> --dev --tunnel cloudflare",
       "",
       "What it does:",
       "  Creates or updates config, owner token, public MCP-only mode, and one workspace entry without starting the server.",
       "  Workspace names default to the folder name.",
-      "  For one-command daily use, prefer `workspace-linker start <workspace-path>`.",
+      "  For one-command daily use, prefer `computer-linker start <workspace-path>`.",
       "  Use --read-only, --coding, or --full-trust when you want explicit permission presets.",
       "",
       "Example:",
-      "  workspace-linker setup C:\\Projects\\my-app --dev",
+      "  computer-linker setup C:\\Projects\\my-app --dev",
     ],
   );
 }
@@ -4673,19 +4677,19 @@ function printExposeHelpTopic(args: string[]): void {
 function printExposeHelp(): void {
   console.log(
     [
-      "Workspace Linker expose",
+      "Computer Linker expose",
       "",
       "Usage:",
-      "  workspace-linker expose tailscale [--mode funnel]",
-      "  workspace-linker expose cloudflare",
+      "  computer-linker expose tailscale [--mode funnel]",
+      "  computer-linker expose cloudflare",
       "",
       "What it does:",
       "  Starts an HTTP MCP server and opens a tunnel to it.",
       "  `start <workspace-path> --dev --tunnel ...` is the simpler development path.",
       "",
       "More help:",
-      "  workspace-linker expose help tailscale",
-      "  workspace-linker expose help cloudflare",
+      "  computer-linker expose help tailscale",
+      "  computer-linker expose help cloudflare",
     ].join("\n"),
   );
 }
@@ -4693,18 +4697,18 @@ function printExposeHelp(): void {
 function printExposeProviderHelp(provider: string): void {
   console.log(
     [
-      `Workspace Linker expose ${provider}`,
+      `Computer Linker expose ${provider}`,
       "",
       "Usage:",
       provider === "tailscale"
-        ? "  workspace-linker expose tailscale [--mode funnel]"
-        : "  workspace-linker expose cloudflare",
+        ? "  computer-linker expose tailscale [--mode funnel]"
+        : "  computer-linker expose cloudflare",
       "",
       "What it does:",
       provider === "tailscale"
         ? "  Opens a Tailscale Funnel tunnel to the local HTTP MCP server."
         : "  Opens a Cloudflare tunnel to the local HTTP MCP server.",
-      "  Public host requests are restricted to the MCP endpoint by Workspace Linker.",
+      "  Public host requests are restricted to the MCP endpoint by Computer Linker.",
     ].join("\n"),
   );
 }
@@ -4712,17 +4716,17 @@ function printExposeProviderHelp(provider: string): void {
 function printStatusHelp(): void {
   console.log(
     [
-      "Workspace Linker status",
+      "Computer Linker status",
       "",
       "Usage:",
-      "  workspace-linker status [--details] [--json]",
+      "  computer-linker status [--details] [--json]",
       "",
       "What it does:",
       "  Prints the daily readiness summary: connection mode, local MCP URL, workspace/tunnel counts, and the next few actions.",
       "  Use --details for warnings, workspace rows, running tunnel rows, and all next actions.",
       "",
       "Example:",
-      "  workspace-linker status",
+      "  computer-linker status",
     ].join("\n"),
   );
 }
@@ -4730,17 +4734,17 @@ function printStatusHelp(): void {
 function printSelfTestHelp(): void {
   console.log(
     [
-      "Workspace Linker self-test",
+      "Computer Linker self-test",
       "",
       "Usage:",
-      "  workspace-linker self-test [--json] [--keep-temp] [--timeout-ms ms]",
+      "  computer-linker self-test [--json] [--keep-temp] [--timeout-ms ms]",
       "",
       "What it does:",
       "  Starts a temporary local MCP server, runs a safe client smoke test, then cleans up.",
       "  It does not use your configured workspaces unless --keep-temp leaves the temporary files for inspection.",
       "",
       "Example:",
-      "  workspace-linker self-test",
+      "  computer-linker self-test",
     ].join("\n"),
   );
 }
@@ -4748,19 +4752,19 @@ function printSelfTestHelp(): void {
 function printDoctorHelp(): void {
   console.log(
     [
-      "Workspace Linker doctor",
+      "Computer Linker doctor",
       "",
       "Usage:",
-      "  workspace-linker doctor [--json]",
-      "  workspace-linker doctor --fix [--dry-run] [--json]",
+      "  computer-linker doctor [--json]",
+      "  computer-linker doctor --fix [--dry-run] [--json]",
       "",
       "What it does:",
       "  Checks config, auth, tunnel tools, local tools, startup readiness, and release readiness.",
       "  --fix applies low-risk config repairs, such as removing exact duplicate scopes and filling execution policy defaults.",
       "",
       "Examples:",
-      "  workspace-linker doctor",
-      "  workspace-linker doctor --fix --dry-run",
+      "  computer-linker doctor",
+      "  computer-linker doctor --fix --dry-run",
     ].join("\n"),
   );
 }
@@ -4768,17 +4772,17 @@ function printDoctorHelp(): void {
 function printHistoryHelp(): void {
   console.log(
     [
-      "Workspace Linker history",
+      "Computer Linker history",
       "",
       "Usage:",
-      "  workspace-linker history [--view summary|last|timeline|sessions|connections|failed_replay|debug_bundle] [--workspace id] [--query text] [--limit n] [--json] [--output file]",
+      "  computer-linker history [--view summary|last|timeline|sessions|connections|failed_replay|debug_bundle] [--workspace id] [--query text] [--limit n] [--json] [--output file]",
       "",
       "What it does:",
       "  Reads redacted local operation history for troubleshooting MCP client behavior.",
       "",
       "Examples:",
-      "  workspace-linker history --view last",
-      "  workspace-linker history --view connections",
+      "  computer-linker history --view last",
+      "  computer-linker history --view connections",
     ].join("\n"),
   );
 }
@@ -4820,24 +4824,24 @@ function printConfigHelpTopic(args: string[]): void {
 function printConfigHelp(): void {
   console.log(
     [
-      "Workspace Linker config",
+      "Computer Linker config",
       "",
       "Usage:",
-      "  workspace-linker config path",
-      "  workspace-linker config show [--show-token]",
-      "  workspace-linker config validate [--json]",
-      "  workspace-linker config token [rotate] [--show-token] [--json]",
-      "  workspace-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern]",
-      "  workspace-linker config set-public-url <https-url>",
-      "  workspace-linker config clear-public-url",
+      "  computer-linker config path",
+      "  computer-linker config show [--show-token]",
+      "  computer-linker config validate [--json]",
+      "  computer-linker config token [rotate] [--show-token] [--json]",
+      "  computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern]",
+      "  computer-linker config set-public-url <https-url>",
+      "  computer-linker config clear-public-url",
       "",
       "What it does:",
-      "  Inspects and updates the local Workspace Linker config file.",
+      "  Inspects and updates the local Computer Linker config file.",
       "  Tokens are redacted unless --show-token is explicitly passed on a trusted local screen.",
       "",
       "More help:",
-      "  workspace-linker config help token",
-      "  workspace-linker config help policy",
+      "  computer-linker config help token",
+      "  computer-linker config help policy",
     ].join("\n"),
   );
 }
@@ -4845,10 +4849,10 @@ function printConfigHelp(): void {
 function printConfigShowHelp(): void {
   console.log(
     [
-      "Workspace Linker config show",
+      "Computer Linker config show",
       "",
       "Usage:",
-      "  workspace-linker config show [--show-token]",
+      "  computer-linker config show [--show-token]",
       "",
       "What it does:",
       "  Prints the local config as JSON. The owner token is redacted unless --show-token is passed.",
@@ -4859,10 +4863,10 @@ function printConfigShowHelp(): void {
 function printConfigValidateHelp(): void {
   console.log(
     [
-      "Workspace Linker config validate",
+      "Computer Linker config validate",
       "",
       "Usage:",
-      "  workspace-linker config validate [--json]",
+      "  computer-linker config validate [--json]",
       "",
       "What it does:",
       "  Checks config and security diagnostics without modifying the config.",
@@ -4873,10 +4877,10 @@ function printConfigValidateHelp(): void {
 function printConfigTokenHelp(): void {
   console.log(
     [
-      "Workspace Linker config token",
+      "Computer Linker config token",
       "",
       "Usage:",
-      "  workspace-linker config token [rotate] [--show-token] [--json]",
+      "  computer-linker config token [rotate] [--show-token] [--json]",
       "",
       "What it does:",
       "  Shows token status or rotates the owner token.",
@@ -4888,11 +4892,11 @@ function printConfigTokenHelp(): void {
 function printConfigPolicyHelp(): void {
   console.log(
     [
-      "Workspace Linker config policy",
+      "Computer Linker config policy",
       "",
       "Usage:",
-      "  workspace-linker config policy <workspace-id> [--json]",
-      "  workspace-linker config policy <workspace-id> [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n]",
+      "  computer-linker config policy <workspace-id> [--json]",
+      "  computer-linker config policy <workspace-id> [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n]",
       "",
       "What it does:",
       "  Reads or updates command policy for shell/Codex-enabled workspaces.",
@@ -4903,10 +4907,10 @@ function printConfigPolicyHelp(): void {
 function printConfigPublicUrlHelp(): void {
   console.log(
     [
-      "Workspace Linker config set-public-url",
+      "Computer Linker config set-public-url",
       "",
       "Usage:",
-      "  workspace-linker config set-public-url <https-url>",
+      "  computer-linker config set-public-url <https-url>",
       "",
       "What it does:",
       "  Stores the public HTTPS base URL used by URL-based remote MCP clients.",
@@ -4917,10 +4921,10 @@ function printConfigPublicUrlHelp(): void {
 function printConfigClearPublicUrlHelp(): void {
   console.log(
     [
-      "Workspace Linker config clear-public-url",
+      "Computer Linker config clear-public-url",
       "",
       "Usage:",
-      "  workspace-linker config clear-public-url",
+      "  computer-linker config clear-public-url",
       "",
       "What it does:",
       "  Removes the configured public base URL. This does not stop any running tunnel.",
@@ -4941,17 +4945,17 @@ function printTunnelHelpTopic(args: string[]): void {
 function printTunnelHelp(): void {
   console.log(
     [
-      "Workspace Linker tunnel",
+      "Computer Linker tunnel",
       "",
       "Usage:",
-      "  workspace-linker tunnel status [--json]",
+      "  computer-linker tunnel status [--json]",
       "",
       "What it does:",
       "  Shows detected tunnel tools, running tunnel processes, effective public URL, and suggested commands.",
       "  OpenAI Secure MCP Tunnel mode reports a tunnel id, not a public URL.",
       "",
       "Example:",
-      "  workspace-linker tunnel status",
+      "  computer-linker tunnel status",
     ].join("\n"),
   );
 }
@@ -4985,26 +4989,26 @@ function printServiceHelpTopic(args: string[]): void {
 function printServiceHelp(): void {
   console.log(
     [
-      "Workspace Linker service",
+      "Computer Linker service",
       "",
       "Usage:",
-      "  workspace-linker service profile [--platform linux|macos|windows] [--format profile|manifest]",
-      "  workspace-linker service profile --output-dir ./service-profile [--platform linux|macos|windows]",
-      "  workspace-linker service status [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service install --dry-run [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service install --yes [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service uninstall --yes [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service start|stop [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service logs [--lines 100] [--platform linux|macos|windows] [--json]",
+      "  computer-linker service profile [--platform linux|macos|windows] [--format profile|manifest]",
+      "  computer-linker service profile --output-dir ./service-profile [--platform linux|macos|windows]",
+      "  computer-linker service status [--platform linux|macos|windows] [--json]",
+      "  computer-linker service install --dry-run [--platform linux|macos|windows] [--json]",
+      "  computer-linker service install --yes [--platform linux|macos|windows] [--json]",
+      "  computer-linker service uninstall --yes [--platform linux|macos|windows] [--json]",
+      "  computer-linker service start|stop [--platform linux|macos|windows] [--json]",
+      "  computer-linker service logs [--lines 100] [--platform linux|macos|windows] [--json]",
       "",
       "What it does:",
       "  Generates service-manager profiles and controls the local background service.",
       "  Install and uninstall require --yes; use --dry-run to preview without changing the OS.",
       "",
       "More help:",
-      "  workspace-linker service help status",
-      "  workspace-linker service help install",
-      "  workspace-linker service help logs",
+      "  computer-linker service help status",
+      "  computer-linker service help install",
+      "  computer-linker service help logs",
     ].join("\n"),
   );
 }
@@ -5012,10 +5016,10 @@ function printServiceHelp(): void {
 function printServiceStatusHelp(): void {
   console.log(
     [
-      "Workspace Linker service status",
+      "Computer Linker service status",
       "",
       "Usage:",
-      "  workspace-linker service status [--platform linux|macos|windows] [--json]",
+      "  computer-linker service status [--platform linux|macos|windows] [--json]",
       "",
       "What it does:",
       "  Prints service-manager status metadata, daily start/stop commands, and log locations.",
@@ -5026,11 +5030,11 @@ function printServiceStatusHelp(): void {
 function printServiceInstallHelp(action: string): void {
   console.log(
     [
-      `Workspace Linker service ${action}`,
+      `Computer Linker service ${action}`,
       "",
       "Usage:",
-      `  workspace-linker service ${action} --dry-run [--platform linux|macos|windows] [--json]`,
-      `  workspace-linker service ${action} --yes [--platform linux|macos|windows] [--json]`,
+      `  computer-linker service ${action} --dry-run [--platform linux|macos|windows] [--json]`,
+      `  computer-linker service ${action} --yes [--platform linux|macos|windows] [--json]`,
       "",
       "What it does:",
       `  Prints the ${action} plan with --dry-run, or applies it with --yes.`,
@@ -5041,11 +5045,11 @@ function printServiceInstallHelp(action: string): void {
 function printServiceControlHelp(action: string): void {
   console.log(
     [
-      `Workspace Linker service ${action}`,
+      `Computer Linker service ${action}`,
       "",
       "Usage:",
-      `  workspace-linker service ${action} [--platform linux|macos|windows] [--json]`,
-      `  workspace-linker service ${action} --dry-run [--platform linux|macos|windows] [--json]`,
+      `  computer-linker service ${action} [--platform linux|macos|windows] [--json]`,
+      `  computer-linker service ${action} --dry-run [--platform linux|macos|windows] [--json]`,
       "",
       "What it does:",
       `  ${action === "start" ? "Starts" : "Stops"} the installed service on the current platform.`,
@@ -5056,10 +5060,10 @@ function printServiceControlHelp(action: string): void {
 function printServiceLogsHelp(): void {
   console.log(
     [
-      "Workspace Linker service logs",
+      "Computer Linker service logs",
       "",
       "Usage:",
-      "  workspace-linker service logs [--lines 100] [--platform linux|macos|windows] [--json]",
+      "  computer-linker service logs [--lines 100] [--platform linux|macos|windows] [--json]",
       "",
       "What it does:",
       "  Reads generated service stdout/stderr logs when available and prints the native log command.",
@@ -5092,13 +5096,13 @@ function printWorkspaceHelpTopic(args: string[]): void {
 function printWorkspaceHelp(): void {
   console.log(
     [
-      "Workspace Linker workspace",
+      "Computer Linker workspace",
       "",
       "Usage:",
-      "  workspace-linker workspace list",
-      "  workspace-linker workspace add <path> [--id workspace-id] [--name name] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]",
-      "  workspace-linker workspace update <id> [--name name] [--path path] [--dev|--coding|--read-only|--full-trust] [--write|--no-write] [--shell|--no-shell] [--codex|--no-codex] [--screen|--no-screen]",
-      "  workspace-linker workspace remove <id>",
+      "  computer-linker workspace list",
+      "  computer-linker workspace add <path> [--id workspace-id] [--name name] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]",
+      "  computer-linker workspace update <id> [--name name] [--path path] [--dev|--coding|--read-only|--full-trust] [--write|--no-write] [--shell|--no-shell] [--codex|--no-codex] [--screen|--no-screen]",
+      "  computer-linker workspace remove <id>",
       "",
       "What it does:",
       "  Manages the local list of folders exposed to MCP clients.",
@@ -5108,14 +5112,14 @@ function printWorkspaceHelp(): void {
       "  This does not delete the folder on disk when removing a workspace entry.",
       "",
       "Examples:",
-      "  workspace-linker workspace add C:\\Projects\\my-app --dev",
-      "  workspace-linker workspace update my-app --dev",
-      "  workspace-linker workspace remove my-app",
+      "  computer-linker workspace add C:\\Projects\\my-app --dev",
+      "  computer-linker workspace update my-app --dev",
+      "  computer-linker workspace remove my-app",
       "",
       "More help:",
-      "  workspace-linker workspace help add",
-      "  workspace-linker workspace help update",
-      "  workspace-linker workspace help remove",
+      "  computer-linker workspace help add",
+      "  computer-linker workspace help update",
+      "  computer-linker workspace help remove",
     ].join("\n"),
   );
 }
@@ -5123,10 +5127,10 @@ function printWorkspaceHelp(): void {
 function printWorkspaceAddHelp(): void {
   console.log(
     [
-      "Workspace Linker workspace add",
+      "Computer Linker workspace add",
       "",
       "Usage:",
-      "  workspace-linker workspace add <path> [--id workspace-id] [--name name] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]",
+      "  computer-linker workspace add <path> [--id workspace-id] [--name name] [--dev|--coding|--read-only|--full-trust] [--write] [--shell] [--codex] [--screen]",
       "",
       "What it does:",
       "  Adds one folder to the local MCP workspace list.",
@@ -5144,7 +5148,7 @@ function printWorkspaceAddHelp(): void {
       "  --screen       Allow screen capture operations.",
       "",
       "Example:",
-      "  workspace-linker workspace add C:\\Projects\\my-app --dev",
+      "  computer-linker workspace add C:\\Projects\\my-app --dev",
     ].join("\n"),
   );
 }
@@ -5152,17 +5156,17 @@ function printWorkspaceAddHelp(): void {
 function printWorkspaceUpdateHelp(): void {
   console.log(
     [
-      "Workspace Linker workspace update",
+      "Computer Linker workspace update",
       "",
       "Usage:",
-      "  workspace-linker workspace update <id> [--name name] [--path path] [--dev|--coding|--read-only|--full-trust] [--write|--no-write] [--shell|--no-shell] [--codex|--no-codex] [--screen|--no-screen]",
+      "  computer-linker workspace update <id> [--name name] [--path path] [--dev|--coding|--read-only|--full-trust] [--write|--no-write] [--shell|--no-shell] [--codex|--no-codex] [--screen|--no-screen]",
       "",
       "What it does:",
       "  Updates an existing workspace entry without changing unrelated entries.",
       "",
       "Examples:",
-      "  workspace-linker workspace update my-app --dev",
-      "  workspace-linker workspace update my-app --no-shell",
+      "  computer-linker workspace update my-app --dev",
+      "  computer-linker workspace update my-app --no-shell",
     ].join("\n"),
   );
 }
@@ -5170,17 +5174,17 @@ function printWorkspaceUpdateHelp(): void {
 function printWorkspaceRemoveHelp(): void {
   console.log(
     [
-      "Workspace Linker workspace remove",
+      "Computer Linker workspace remove",
       "",
       "Usage:",
-      "  workspace-linker workspace remove <id>",
+      "  computer-linker workspace remove <id>",
       "",
       "What it does:",
       "  Removes one workspace entry from the local MCP workspace list.",
       "  This does not delete the folder on disk.",
       "",
       "Example:",
-      "  workspace-linker workspace remove my-app",
+      "  computer-linker workspace remove my-app",
     ].join("\n"),
   );
 }
@@ -5188,63 +5192,63 @@ function printWorkspaceRemoveHelp(): void {
 function printAdvancedHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker",
+      "Computer Linker",
       "",
       "Advanced Usage:",
-      "  workspace-linker init [--show-token]",
-      "  workspace-linker --version",
-      "  workspace-linker quickstart [workspace-path] [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--url https://...] [--dev] [--write] [--shell] [--codex] [--screen] [--read-only|--coding|--full-trust] [--json]",
-      "  workspace-linker serve      Start the stdio MCP server",
-      "  workspace-linker serve --transport http",
-      "  workspace-linker start [workspace-path] [--dev] [--write] [--shell] [--codex] [--screen] [--read-only|--coding|--full-trust]",
+      "  computer-linker init [--show-token]",
+      "  computer-linker --version",
+      "  computer-linker quickstart [workspace-path] [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--url https://...] [--dev] [--write] [--shell] [--codex] [--screen] [--read-only|--coding|--full-trust] [--json]",
+      "  computer-linker serve      Start the stdio MCP server",
+      "  computer-linker serve --transport http",
+      "  computer-linker start [workspace-path] [--dev] [--write] [--shell] [--codex] [--screen] [--read-only|--coding|--full-trust]",
       "                           Configure a workspace when provided, then start the HTTP MCP server",
-      "  workspace-linker start      Start local HTTP MCP server",
-      "  workspace-linker start --tunnel cloudflare",
-      "  workspace-linker start --no-tunnel",
-      "  workspace-linker start --tunnel tailscale",
-      "  workspace-linker start --tunnel openai --tunnel-id tunnel_...",
-      "  workspace-linker status [--details] [--json]",
-      "  workspace-linker self-test [--json] [--keep-temp] [--timeout-ms ms]",
-      "  workspace-linker process list <workspace-id> [--json]",
-      "  workspace-linker process read <workspace-id> <process-id> [--json]",
-      "  workspace-linker process stop <workspace-id> <process-id> [--signal SIGTERM|SIGINT|SIGKILL] [--json]",
-      "  workspace-linker screen status [--json]",
-      "  workspace-linker expose cloudflare",
-      "  workspace-linker expose tailscale --mode funnel",
-      "  workspace-linker tunnel status [--json]",
-      "  workspace-linker service profile [--platform linux|macos|windows] [--format profile|manifest]",
-      "  workspace-linker service profile --output-dir ./service-profile [--platform linux|macos|windows]",
-      "  workspace-linker service status [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service install --dry-run [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service install --yes [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service uninstall --dry-run [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service uninstall --yes [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service start|stop [--platform linux|macos|windows] [--json]",
-      "  workspace-linker service logs [--lines 100] [--platform linux|macos|windows] [--json]",
-      "  workspace-linker doctor",
-      "  workspace-linker doctor --json",
-      "  workspace-linker doctor --fix [--dry-run] [--json]",
-      "  workspace-linker diagnose client [--local|--remote|--url https://.../mcp] [--json]",
-      "  workspace-linker profile [--show-token]",
-      "  workspace-linker client setup [--details] [--show-token] [--json]",
-      "  workspace-linker client smoke [--url https://.../mcp] [--token token] [--allow-http] [--show-token] [--json]",
-      "  workspace-linker client diagnose [--local|--remote|--url https://.../mcp] [--json]",
-      "  workspace-linker setup <workspace-path> [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--id workspace-id] [--name name] [--dev] [--write] [--shell] [--codex] [--screen] [--read-only|--coding|--full-trust] [--show-token] [--json]",
-      "  workspace-linker history [--view summary|last|timeline|sessions|connections|failed_replay|debug_bundle] [--workspace id] [--query text] [--limit n] [--json] [--output file]",
-      "  workspace-linker config path",
-      "  workspace-linker config show [--show-token]",
-      "  workspace-linker config validate [--json]",
-      "  workspace-linker config token [rotate] [--show-token] [--json]",
-      "  workspace-linker config policy <workspace-id> [--json]",
-      "  workspace-linker config policy <workspace-id> [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n]",
-      "  workspace-linker config set-public-url <https-url>",
-      "  workspace-linker config clear-public-url",
-      "  workspace-linker workspace list",
-      "  workspace-linker workspace add <path> [--id workspace-id] [--name name] [--dev] [--write] [--shell] [--codex] [--screen] [--read-only|--coding|--full-trust]",
-      "  workspace-linker workspace update <id> [--name name] [--path path] [--dev] [--write|--no-write] [--shell|--no-shell] [--codex|--no-codex] [--screen|--no-screen] [--read-only|--coding|--full-trust]",
-      "  workspace-linker workspace remove <id>",
-      "  workspace-linker help",
-      "  workspace-linker help chatgpt",
+      "  computer-linker start      Start local HTTP MCP server",
+      "  computer-linker start --tunnel cloudflare",
+      "  computer-linker start --no-tunnel",
+      "  computer-linker start --tunnel tailscale",
+      "  computer-linker start --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker status [--details] [--json]",
+      "  computer-linker self-test [--json] [--keep-temp] [--timeout-ms ms]",
+      "  computer-linker process list <workspace-id> [--json]",
+      "  computer-linker process read <workspace-id> <process-id> [--json]",
+      "  computer-linker process stop <workspace-id> <process-id> [--signal SIGTERM|SIGINT|SIGKILL] [--json]",
+      "  computer-linker screen status [--json]",
+      "  computer-linker expose cloudflare",
+      "  computer-linker expose tailscale --mode funnel",
+      "  computer-linker tunnel status [--json]",
+      "  computer-linker service profile [--platform linux|macos|windows] [--format profile|manifest]",
+      "  computer-linker service profile --output-dir ./service-profile [--platform linux|macos|windows]",
+      "  computer-linker service status [--platform linux|macos|windows] [--json]",
+      "  computer-linker service install --dry-run [--platform linux|macos|windows] [--json]",
+      "  computer-linker service install --yes [--platform linux|macos|windows] [--json]",
+      "  computer-linker service uninstall --dry-run [--platform linux|macos|windows] [--json]",
+      "  computer-linker service uninstall --yes [--platform linux|macos|windows] [--json]",
+      "  computer-linker service start|stop [--platform linux|macos|windows] [--json]",
+      "  computer-linker service logs [--lines 100] [--platform linux|macos|windows] [--json]",
+      "  computer-linker doctor",
+      "  computer-linker doctor --json",
+      "  computer-linker doctor --fix [--dry-run] [--json]",
+      "  computer-linker diagnose client [--local|--remote|--url https://.../mcp] [--json]",
+      "  computer-linker profile [--show-token]",
+      "  computer-linker client setup [--details] [--show-token] [--json]",
+      "  computer-linker client smoke [--url https://.../mcp] [--token token] [--allow-http] [--show-token] [--json]",
+      "  computer-linker client diagnose [--local|--remote|--url https://.../mcp] [--json]",
+      "  computer-linker setup <workspace-path> [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--id workspace-id] [--name name] [--dev] [--write] [--shell] [--codex] [--screen] [--read-only|--coding|--full-trust] [--show-token] [--json]",
+      "  computer-linker history [--view summary|last|timeline|sessions|connections|failed_replay|debug_bundle] [--workspace id] [--query text] [--limit n] [--json] [--output file]",
+      "  computer-linker config path",
+      "  computer-linker config show [--show-token]",
+      "  computer-linker config validate [--json]",
+      "  computer-linker config token [rotate] [--show-token] [--json]",
+      "  computer-linker config policy <workspace-id> [--json]",
+      "  computer-linker config policy <workspace-id> [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n]",
+      "  computer-linker config set-public-url <https-url>",
+      "  computer-linker config clear-public-url",
+      "  computer-linker workspace list",
+      "  computer-linker workspace add <path> [--id workspace-id] [--name name] [--dev] [--write] [--shell] [--codex] [--screen] [--read-only|--coding|--full-trust]",
+      "  computer-linker workspace update <id> [--name name] [--path path] [--dev] [--write|--no-write] [--shell|--no-shell] [--codex|--no-codex] [--screen|--no-screen] [--read-only|--coding|--full-trust]",
+      "  computer-linker workspace remove <id>",
+      "  computer-linker help",
+      "  computer-linker help chatgpt",
       "",
       "Client-specific helpers are compatibility exports layered over the generic MCP contract.",
       "Compatibility: LOCALPORT_* env vars and x-localport-token still work for existing configs.",
@@ -5255,23 +5259,23 @@ function printAdvancedHelp(): void {
 function printChatGptHelp(): void {
   printCliHelp(
     [
-      "Workspace Linker ChatGPT Compatibility Helpers",
+      "Computer Linker ChatGPT Compatibility Helpers",
       "",
       "ChatGPT is one MCP client, not the product axis. Prefer the generic setup commands first:",
-      "  workspace-linker client setup",
-      "  workspace-linker client smoke [--url https://.../mcp] [--token token] [--allow-http]",
+      "  computer-linker client setup",
+      "  computer-linker client smoke [--url https://.../mcp] [--token token] [--allow-http]",
       "",
       "Use these only when ChatGPT asks for connector-specific fields or files:",
-      "  workspace-linker client chatgpt url [--show-token] [--json]",
-      "  workspace-linker client chatgpt smoke [--url https://.../mcp] [--token token] [--allow-http] [--show-token] [--json]",
-      "  workspace-linker client chatgpt verify [--mode safe|coding|full] [--json]",
-      "  workspace-linker client chatgpt profile [--mode safe|coding|full] [--url https://...] [--show-token]",
-      "  workspace-linker client chatgpt manifest [--mode safe|coding|full] [--url https://...]",
-      "  workspace-linker client chatgpt connector [--mode safe|coding|full] [--url https://...] [--show-token]",
-      "  workspace-linker client chatgpt files ./chatgpt-config [--mode safe|coding|full] [--url https://...] [--show-token]",
+      "  computer-linker client chatgpt url [--show-token] [--json]",
+      "  computer-linker client chatgpt smoke [--url https://.../mcp] [--token token] [--allow-http] [--show-token] [--json]",
+      "  computer-linker client chatgpt verify [--mode safe|coding|full] [--json]",
+      "  computer-linker client chatgpt profile [--mode safe|coding|full] [--url https://...] [--show-token]",
+      "  computer-linker client chatgpt manifest [--mode safe|coding|full] [--url https://...]",
+      "  computer-linker client chatgpt connector [--mode safe|coding|full] [--url https://...] [--show-token]",
+      "  computer-linker client chatgpt files ./chatgpt-config [--mode safe|coding|full] [--url https://...] [--show-token]",
       "",
       "For OpenAI Secure MCP Tunnel, start with:",
-      "  workspace-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...",
     ],
   );
 }
@@ -5328,7 +5332,7 @@ function readChatGptModeOption(args: string[], command: string): ReturnType<type
 
 function readPublicUrlOption(args: string[], command: string): string | undefined {
   if (!args.includes("--url")) return undefined;
-  return requireHttpsUrl(readOption(args, "--url"), command, `workspace-linker ${command} <https-url>`);
+  return requireHttpsUrl(readOption(args, "--url"), command, `computer-linker ${command} <https-url>`);
 }
 
 function booleanFlag(args: string[], name: string, current: boolean): boolean {
@@ -5337,7 +5341,7 @@ function booleanFlag(args: string[], name: string, current: boolean): boolean {
   return current;
 }
 
-function requireHttpsUrl(value: string | undefined, name: string, usage = "workspace-linker config set-public-url <https-url>"): string {
+function requireHttpsUrl(value: string | undefined, name: string, usage = "computer-linker config set-public-url <https-url>"): string {
   if (!value) throw new Error(`Usage: ${usage}`);
   let parsed: URL;
   try {

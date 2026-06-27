@@ -1,4 +1,4 @@
-# Workspace Linker Architecture
+# Computer Linker Architecture
 
 The product boundary is defined in [product-spec.md](product-spec.md). This
 architecture should serve that spec: a local computer MCP service for controlled
@@ -7,11 +7,11 @@ ChatGPT-specific setup is a client helper, not the product axis.
 
 ## Product Name
 
-The product is named **Workspace Linker**. It intentionally does not reuse DevSpace.
+The product is named **Computer Linker**. It intentionally does not reuse DevSpace.
 
 ## Mental Model
 
-One computer runs one Workspace Linker MCP server.
+One computer runs one Computer Linker MCP server.
 The runtime target is Node.js on macOS, Linux, and Windows. The default GitHub
 Actions product gate is manual and runs on `windows-latest` with Node 22 to
 keep routine Actions usage bounded. Broader OS or Node coverage should be run
@@ -21,7 +21,7 @@ the progress-reporting test runner, build, and package smoke.
 The package smoke uses `npm pack --dry-run` to verify packed files, CLI bins,
 SDK exports, release docs, security policy, and the published
 `computer_operation` schema, then creates a real `.tgz`, installs it into a
-temporary consumer project, runs the installed `workspace-linker` bin, verifies
+temporary consumer project, runs the installed `computer-linker` bin, verifies
 installed `self-test`, `setup`, and `status` against isolated config
 directories, and imports the installed SDK entrypoint. The package build uses
 `tsconfig.build.json` so tests are typechecked but are not emitted into the
@@ -29,9 +29,9 @@ runtime package.
 
 ```text
 ChatGPT / Claude / MCP host
-  -> Workspace Linker: desktop-pc
+  -> Computer Linker: desktop-pc
        workspaces: ~/work/app-a, ~/open-source/lib-b
-  -> Workspace Linker: laptop-pc
+  -> Computer Linker: laptop-pc
        workspaces: ~/client-a/site, ~/notes/dev
 ```
 
@@ -41,24 +41,24 @@ display name changes. Inside that connector, the model calls
 `get_computer_info`, chooses one reported scope, and then sends stable
 `computer_operation` envelopes.
 
-When no config file exists, Workspace Linker writes a loopback-only default config on
+When no config file exists, Computer Linker writes a loopback-only default config on
 first load so the `machineId` is durable even before explicit initialization.
-`workspace-linker init` adds an owner token to that existing config when needed.
-`workspace-linker config token rotate` replaces the owner token for routine
+`computer-linker init` adds an owner token to that existing config when needed.
+`computer-linker config token rotate` replaces the owner token for routine
 credential rotation; `--show-token` is required before the raw token is printed.
 
-`workspace-linker client setup` exports MCP setup guidance with redacted auth by
+`computer-linker client setup` exports MCP setup guidance with redacted auth by
 default; `client setup --show-token` includes the owner token only for trusted
-local setup screens. `workspace-linker profile` exports a lower-level
+local setup screens. `computer-linker profile` exports a lower-level
 per-computer connection profile with machine ID, machine name, stdio command,
 local/public MCP URLs, local/public JSON API URLs, and the same redaction
 default. Capabilities also expose the redacted profile so clients can identify
 which computer they are connected to.
 
 The previous prototype name was LocalPort. New installs expose only the
-`workspace-linker` CLI. `LOCALPORT_*` and `x-localport-token` remain config and
-HTTP auth compatibility aliases while the product moves to `WORKSPACE_LINKER_*`
-and `x-workspace-linker-token`.
+`computer-linker` CLI. `LOCALPORT_*` and `x-localport-token` remain config and
+HTTP auth compatibility aliases while the product moves to `COMPUTER_LINKER_*`
+and `x-computer-linker-token`.
 
 `get_computer_info` is the public MCP introspection entrypoint. The local
 `/api/v1/capabilities` endpoint and compatibility `get_capabilities` tool
@@ -80,7 +80,7 @@ diagnostics, tool readiness, startup readiness, workspace scope presence, and
 command policy coverage. A release is blocked when
 `releaseReadiness.status === "blocked"`; `needs_attention` keeps the local
 service usable but should be reviewed before tagging an alpha release.
-`workspace-linker config validate` exposes this release-focused subset for
+`computer-linker config validate` exposes this release-focused subset for
 local release scripts, while the manual GitHub Actions `Release Package`
 workflow runs the product gate and uploads the packed npm artifact.
 The local `alpha:evidence` release tool captures one manually verified external
@@ -91,11 +91,11 @@ marking individual checks as passed without hand-editing JSON. `init` and
 Git HEAD, age, concrete client/exposure/tunnel target, `/mcp` path, required
 generic MCP tool flow, MCP-only public surface, history review, and common
 secret-shaped values before a public alpha announcement.
-`workspace-linker status` is the short daily readiness command for humans and
+`computer-linker status` is the short daily readiness command for humans and
 scripts. Its text output uses user-facing readiness labels; release-focused
 `releaseReadiness` details stay in `doctor`, `config validate`, and JSON
 outputs, while verbose status rows stay behind `status --details`.
-`workspace-linker doctor --fix` applies local, deterministic config
+`computer-linker doctor --fix` applies local, deterministic config
 repairs only: bootstrap scope cleanup, exact duplicate folder-scope cleanup,
 and missing execution policy defaults. It does not guess tunnel URLs or mutate
 external services.
@@ -123,7 +123,7 @@ The default MCP surface is the spec-defined `get_computer_info`,
 `computer_operation`, and `get_operation_history`. Compatibility tools
 `get_capabilities`, `list_workspaces`, `open_workspace`,
 `workspace_operation`, `read`, `ls`, `grep`, `glob`, and `create_file` are
-hidden unless `WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility` is set for an
+hidden unless `COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility` is set for an
 older client. Those tools call the same workspace operation dispatcher.
 Operations inherit the scope's policy, and file path resolution cannot leave
 configured roots.
@@ -191,7 +191,7 @@ blocking local agent loops, or allow Codex only for selected repos.
 
 `command`, raw `codex`, and Codex workflow operations return structured process
 results, including non-zero `exitCode`, `stdout`, `stderr`, signal, and timeout
-status. A failed test command is still a successful Workspace Linker operation
+status. A failed test command is still a successful Computer Linker operation
 because the diagnostic output is the useful result. `process_start`,
 `codex_start`, `process_list`, `process_read`, and `process_stop` provide
 workspace-scoped in-memory management for dev servers, watch tests,
@@ -202,14 +202,14 @@ permissions. On Unix-like systems, managed processes are started in a process
 group so stop and timeout can terminate child processes started by commands
 such as `npm run dev` or `codex exec`. HTTP server shutdown also stops all
 managed processes to avoid leaving detached tasks behind. If a managed process
-does not exit after the requested stop signal, Workspace Linker follows up with
+does not exit after the requested stop signal, Computer Linker follows up with
 `SIGKILL`.
 
 Workspace config can add an optional `policy` block per scope. Command,
 package, managed process, and Codex execution check `allowedCommands` and
 `deniedCommands` wildcard patterns before launch, cap runtime with
 `maxRuntimeSeconds`, and bound command stdout/stderr with `maxOutputBytes`.
-`workspace-linker start <folder>` and `workspace-linker setup <folder>` attach
+`computer-linker start <folder>` and `computer-linker setup <folder>` attach
 a default execution policy when `--shell` or `--codex` is enabled. Manual
 `workspace add/update` flows keep policy management explicit. Absent policy
 keeps the existing permission-flag behavior.
@@ -217,7 +217,7 @@ Config diagnostics and security diagnostics warn when shell or Codex execution
 is enabled without an `allowedCommands` policy, because those operations remain
 cwd-bound local execution rather than a filesystem sandbox.
 
-These operations are intentionally flagged by security diagnostics. Workspace Linker
+These operations are intentionally flagged by security diagnostics. Computer Linker
 sets the working directory to the workspace, but a normal OS shell or Codex
 process is not a filesystem sandbox. Read/write/search operations enforce path
 boundaries directly; shell/codex should only be enabled for workspaces where
@@ -225,7 +225,7 @@ that broader local execution is acceptable.
 
 ## HTTP Mode
 
-Workspace Linker supports stdio, a Streamable HTTP MCP endpoint, and a small JSON API
+Computer Linker supports stdio, a Streamable HTTP MCP endpoint, and a small JSON API
 for non-MCP clients. Tunnel commands start the HTTP server and then shell out to
 the provider CLI:
 
@@ -244,11 +244,11 @@ approval, access tokens, and refresh tokens. It also accepts the owner token as
 a direct bearer token for simpler clients that support custom headers.
 
 OAuth registered clients, access tokens, and refresh tokens are persisted in
-`~/.workspace-linker/oauth-state.json` with `0600` permissions. Short-lived
+`~/.computer-linker/oauth-state.json` with `0600` permissions. Short-lived
 authorization codes stay in memory and expire quickly; they are not persisted
 across restarts.
 
-When running behind a tunnel, `publicBaseUrl` or `WORKSPACE_LINKER_PUBLIC_BASE_URL`
+When running behind a tunnel, `publicBaseUrl` or `COMPUTER_LINKER_PUBLIC_BASE_URL`
 must match the reachable origin so OAuth issuer and resource metadata are
 correct. OpenAI Secure MCP Tunnel does not use `publicBaseUrl`; connector setup
 uses the `tunnel_...` id instead. Daily status output should treat a running
@@ -407,52 +407,52 @@ changing the workspace permission boundary.
 
 ## CLI/API Management
 
-Workspace Linker is CLI-first. The CLI and JSON API are the administrative
+Computer Linker is CLI-first. The CLI and JSON API are the administrative
 surface for the same config file used by the MCP server:
 
-- `workspace-linker status` shows the short daily readiness view: connection
+- `computer-linker status` shows the short daily readiness view: connection
   mode, local MCP URL, auth summary, workspace/tunnel summary, user-facing
   readiness, and the next few actions. `status --details` prints the full
   workspace rows, warnings, running tunnel rows, and all next actions.
-- `workspace-linker self-test` creates an isolated temporary config/workspace,
+- `computer-linker self-test` creates an isolated temporary config/workspace,
   starts the loopback HTTP MCP server, runs the generic MCP SDK smoke flow, and
   exits non-zero when the installed CLI/server/tool flow is not working.
-- `workspace-linker doctor` shows full runtime diagnostics, startup readiness,
+- `computer-linker doctor` shows full runtime diagnostics, startup readiness,
   local MCP/API URLs, security findings, tool availability, release readiness,
   and next actions.
-- `workspace-linker doctor --fix` applies deterministic local config repairs.
-- `workspace-linker setup` and `workspace-linker start <folder>` initialize
+- `computer-linker doctor --fix` applies deterministic local config repairs.
+- `computer-linker setup` and `computer-linker start <folder>` initialize
   machine identity, owner token, workspace scopes, permissions, and default
   command policy.
-- `workspace-linker config ...` shows and edits config values such as
+- `computer-linker config ...` shows and edits config values such as
   `publicBaseUrl` and per-workspace execution policy.
-- `workspace-linker process list/read/stop` talks to the running local HTTP
+- `computer-linker process list/read/stop` talks to the running local HTTP
   server and manages background command/Codex processes started through MCP.
-- `workspace-linker screen status` reports screenshot provider readiness,
+- `computer-linker screen status` reports screenshot provider readiness,
   permission status, supported modes, and screen-enabled workspaces without
   capturing pixels.
-- `workspace-linker tunnel status` shows provider status, public URL detection,
+- `computer-linker tunnel status` shows provider status, public URL detection,
   and managed tunnel process state.
-- `workspace-linker history ...` reads recent events, sessions, failed replay
+- `computer-linker history ...` reads recent events, sessions, failed replay
   templates, connection summaries, and redacted debug bundles.
-- `workspace-linker client setup` prints a short generic MCP connection summary
+- `computer-linker client setup` prints a short generic MCP connection summary
   without using ChatGPT-specific profile formats. `client setup --details`
   prints tool names, first-prompt guidance, and copy-pasteable agent
   instructions. `--show-token` prints bearer headers only when explicitly
   requested on a trusted local setup screen. OpenAI Secure MCP Tunnel is treated
   as remote-ready without a public URL because the local tunnel client forwards
   the owner token to the private loopback MCP server.
-- `workspace-linker client smoke` runs a generic HTTP/MCP reachability check.
+- `computer-linker client smoke` runs a generic HTTP/MCP reachability check.
   Local loopback smoke validates `/healthz`, authenticated JSON API
   capabilities, `get_computer_info`, one read-only `computer_operation`
   `file.list`, and an MCP SDK flow over `/mcp`: initialize, tools/list,
   `get_computer_info`, and one read-only `computer_operation`. Public HTTPS
   smoke skips JSON API checks but still runs the MCP SDK tool flow, matching
   the default MCP-only tunnel exposure.
-- `workspace-linker diagnose client` is the product troubleshooting wrapper:
+- `computer-linker diagnose client` is the product troubleshooting wrapper:
   it combines generic setup readiness, the same MCP SDK smoke flow, and
   redacted connection history into one local or remote diagnosis payload.
-- `workspace-linker client chatgpt ...` exports profile/manifest/connector
+- `computer-linker client chatgpt ...` exports profile/manifest/connector
   setup data; its smoke command is a thin compatibility wrapper over the same
   generic client smoke core.
 - `/api/v1/control` exposes the same management/introspection contracts for
@@ -469,16 +469,16 @@ events remain the durable history.
 
 ## Tunnel Diagnostics
 
-Workspace Linker treats tunnel providers as local CLIs rather than hidden services.
+Computer Linker treats tunnel providers as local CLIs rather than hidden services.
 Each provider implements `detect`, `status`, `expose`, `getPublicUrl`, and
-`stop`. The product-mode CLI entrypoint is `workspace-linker start`, which starts
+`stop`. The product-mode CLI entrypoint is `computer-linker start`, which starts
 local HTTP mode by default and starts a tunnel only when `--tunnel` is explicit.
-When a tunnel is selected, `workspace-linker start --tunnel ...` and
-`workspace-linker expose ...` enable `publicMcpOnly` before the HTTP server
+When a tunnel is selected, `computer-linker start --tunnel ...` and
+`computer-linker expose ...` enable `publicMcpOnly` before the HTTP server
 listens so public-host requests expose `/mcp` only; local `/api/v1` and
 `/healthz` remain available for CLI smoke checks.
 Tailscale product-mode startup uses Funnel by default once selected;
-`workspace-linker expose <provider>` remains as a lower-level compatibility
+`computer-linker expose <provider>` remains as a lower-level compatibility
 entrypoint:
 
 - Cloudflare Quick Tunnel uses `cloudflared tunnel --url http://127.0.0.1:<port>`.
@@ -488,24 +488,24 @@ entrypoint:
 - Tailscale Serve still exists at the provider layer for compatibility, but is
   not part of the default public ChatGPT flow.
 
-`workspace-linker tunnel status --json`, `doctor`, capabilities, and ChatGPT
+`computer-linker tunnel status --json`, `doctor`, capabilities, and ChatGPT
 setup helpers all use this provider layer. Diagnostics include a serializable
 `providerContracts` list with each provider's modes, commands, lifecycle
 capabilities, and public URL sources, plus live provider status and managed
 process output. Managed tunnel snapshots are persisted to `tunnels.json` under
-the Workspace Linker config directory, which lets a separate CLI process show a
+the Computer Linker config directory, which lets a separate CLI process show a
 detected public URL in `tunnel status`, `doctor`, `capabilities`, and `client
 chatgpt url`. Cloudflare custom hostnames are still configured explicitly as
 `publicBaseUrl`. Tailscale Funnel startup can detect the `https://*.ts.net`
 origin from the managed tunnel output and save it as `publicBaseUrl` for future
 OAuth metadata. OpenAI Secure MCP Tunnel has no public URL source; on first CLI
-startup Workspace Linker downloads the official `openai/tunnel-client` release
+startup Computer Linker downloads the official `openai/tunnel-client` release
 into its config directory, verifies the selected asset against
 `SHA256SUMS.txt`, and runs that managed binary. It never scans user directories
 such as Desktop for executables unless a path is explicitly provided with
-`--tunnel-client` or `WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT`.
+`--tunnel-client` or `COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT`.
 
-`workspace-linker start` and `workspace-linker expose` require an owner token
+`computer-linker start` and `computer-linker expose` require an owner token
 before starting a tunnel. Loopback
 HTTP mode can run without a token for local-only development, and `init`,
 `setup`, `start <folder>`, or `config token rotate` can generate the token
@@ -518,7 +518,7 @@ changes for full OAuth client setup.
 
 ## Audit Log
 
-Workspace Linker writes local JSONL audit events to `~/.workspace-linker/audit.jsonl`.
+Computer Linker writes local JSONL audit events to `~/.computer-linker/audit.jsonl`.
 Events cover MCP sessions, workspace opens, tool calls, auth failures, admin
 actions, success/failure, timing, workspace identifiers, operation names,
 targets, paths, request paths, remote addresses, and command previews. File
@@ -549,12 +549,12 @@ non-replayable because they can expose current screen pixels; raw shell commands
 and Codex prompts are represented as templates with `requiresInput` because
 full sensitive text is not written to the audit log.
 For local support/debug workflows, the same redacted views are available through
-`workspace-linker history --view last` and
-`workspace-linker history --view debug_bundle --json --output <file>`.
+`computer-linker history --view last` and
+`computer-linker history --view debug_bundle --json --output <file>`.
 
-Reachability is verified through CLI smoke checks. `workspace-linker doctor`
-reports local readiness, `workspace-linker diagnose client` summarizes client
-setup, MCP SDK smoke, and recent connection history, `workspace-linker client
+Reachability is verified through CLI smoke checks. `computer-linker doctor`
+reports local readiness, `computer-linker diagnose client` summarizes client
+setup, MCP SDK smoke, and recent connection history, `computer-linker client
 smoke` verifies the configured local or public MCP origin,
 local/trusted-private smoke also proves the authenticated `get_computer_info`
 and read-only `computer_operation` contract, and `/api/v1/control` exposes

@@ -125,11 +125,11 @@ const scanPatterns = [
   { id: "openai-tunnel-id", regex: /tunnel_[A-Za-z0-9_-]{20,}/g },
   {
     id: "quoted-secret-env-assignment",
-    regex: /(?:OPENAI_API_KEY|CONTROL_PLANE_API_KEY|WORKSPACE_LINKER_OWNER_TOKEN|LOCALPORT_OWNER_TOKEN)\s*=\s*["'](?!<|sk-\.\.\.|token\b|test\b|smoke\b)[A-Za-z0-9._~+/=-]{16,}["']/g,
+    regex: /(?:OPENAI_API_KEY|CONTROL_PLANE_API_KEY|COMPUTER_LINKER_OWNER_TOKEN|LOCALPORT_OWNER_TOKEN)\s*=\s*["'](?!<|sk-\.\.\.|token\b|test\b|smoke\b)[A-Za-z0-9._~+/=-]{16,}["']/g,
   },
   {
     id: "env-file-secret-assignment",
-    regex: /(?:^|\n)(?:OPENAI_API_KEY|CONTROL_PLANE_API_KEY|WORKSPACE_LINKER_OWNER_TOKEN|LOCALPORT_OWNER_TOKEN)\s*=\s*(?!<|sk-\.\.\.|token\b|test\b|smoke\b)[A-Za-z0-9._~+/=-]{16,}/g,
+    regex: /(?:^|\n)(?:OPENAI_API_KEY|CONTROL_PLANE_API_KEY|COMPUTER_LINKER_OWNER_TOKEN|LOCALPORT_OWNER_TOKEN)\s*=\s*(?!<|sk-\.\.\.|token\b|test\b|smoke\b)[A-Za-z0-9._~+/=-]{16,}/g,
   },
   { id: "url-embedded-credential", regex: /https?:\/\/[^/\s:@]+:[^/\s:@]+@[^/\s]+/g },
   { id: "private-windows-path", regex: /[A-Z]:\\(?:Users|code|workspaces)\\[^\s"'`<>]+/gi },
@@ -174,14 +174,14 @@ function checkPackedFiles(packedFiles) {
   for (const path of packedFiles) {
     const parts = path.split("/");
     assert(!parts.includes(".env"), `packed package contains environment file: ${path}`);
-    assert(!path.startsWith(".workspace-linker/"), `packed package contains local Workspace Linker state: ${path}`);
+    assert(!path.startsWith(".computer-linker/"), `packed package contains local Computer Linker state: ${path}`);
     assert(!path.startsWith(".localport/"), `packed package contains legacy local state: ${path}`);
     assert(!path.endsWith(".tgz"), `packed package contains package artifact: ${path}`);
   }
 }
 
 function checkLocalEvidenceFiles(gitFiles, packedFiles) {
-  const localEvidencePath = ".workspace-linker-alpha-evidence.json";
+  const localEvidencePath = ".computer-linker-alpha-evidence.json";
   if (gitFiles.includes(localEvidencePath)) {
     fail(`${localEvidencePath} is local dogfooding evidence and must not be tracked; keep it gitignored and publish docs/alpha-evidence.example.json as the schema example`);
   }

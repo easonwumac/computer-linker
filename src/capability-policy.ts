@@ -75,8 +75,8 @@ export function workspaceCapabilityPolicy(permissions: PathPermissions): Capabil
     limits: DEFAULT_LIMITS,
     notes: [
       "This policy is derived from the current read/write/shell/codex workspace permissions.",
-      "network:false means Workspace Linker does not grant network access as a first-class capability; shell, package, and Codex processes may still use the host network if the underlying tools do.",
-      "maxRuntimeSeconds is the upper bound accepted by Workspace Linker for shell, process, package, and Codex timeouts.",
+      "network:false means Computer Linker does not grant network access as a first-class capability; shell, package, and Codex processes may still use the host network if the underlying tools do.",
+      "maxRuntimeSeconds is the upper bound accepted by Computer Linker for shell, process, package, and Codex timeouts.",
     ],
   };
 }

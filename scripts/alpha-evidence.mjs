@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 
-const DEFAULT_EVIDENCE_FILE = ".workspace-linker-alpha-evidence.json";
+const DEFAULT_EVIDENCE_FILE = ".computer-linker-alpha-evidence.json";
 const REQUIRED_CHECKS = [
   "external-mcp-tool-flow",
   "tunnel-transport",
@@ -109,7 +109,7 @@ if (command === "init") {
 
 function printHelp() {
   console.log([
-    "Workspace Linker alpha evidence",
+    "Computer Linker alpha evidence",
     "",
     "Usage:",
     "  node scripts/alpha-evidence.mjs init [--file path] [--client name] [--exposure name] [--tunnel-or-url value] [--scope id] [--force]",
@@ -158,7 +158,7 @@ function initEvidence(filePath, force, initOptions = {}, options = {}) {
   const fullHead = git(["rev-parse", "HEAD"], { allowFailure: true });
   const shortHead = git(["rev-parse", "--short=12", "HEAD"], { allowFailure: true });
   const evidence = {
-    kind: "workspace-linker-alpha-evidence",
+    kind: "computer-linker-alpha-evidence",
     schemaVersion: 1,
     testedAt: new Date().toISOString(),
     package: {
@@ -217,7 +217,7 @@ function recordEvidence(filePath, options) {
 
   writeFileSync(filePath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
   const report = {
-    kind: "workspace-linker-alpha-evidence-record",
+    kind: "computer-linker-alpha-evidence-record",
     schemaVersion: 1,
     file: filePath,
     checkId: options.checkId,
@@ -253,7 +253,7 @@ function recordSmokeEvidence(filePath, options, output = {}) {
 
   writeFileSync(filePath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
   const report = {
-    kind: "workspace-linker-alpha-evidence-record-smoke",
+    kind: "computer-linker-alpha-evidence-record-smoke",
     schemaVersion: 1,
     file: filePath,
     status: "pass",
@@ -314,7 +314,7 @@ function smokeEvidence(filePath, force, options) {
     jsonOutput: false,
   }, { quiet: true });
   const report = {
-    kind: "workspace-linker-alpha-evidence-smoke",
+    kind: "computer-linker-alpha-evidence-smoke",
     schemaVersion: 1,
     file: filePath,
     status: "pass",
@@ -365,7 +365,7 @@ function detectedSmokeDefaults() {
 function isAlphaEvidenceFile(filePath) {
   try {
     const evidence = JSON.parse(readFileSync(filePath, "utf8"));
-    return evidence?.kind === "workspace-linker-alpha-evidence";
+    return evidence?.kind === "computer-linker-alpha-evidence";
   } catch {
     return false;
   }
@@ -385,7 +385,7 @@ function preflightEvidence(options) {
   const missingToolCalls = Object.entries(tools)
     .filter(([, present]) => !present)
     .map(([name]) => name);
-  console.log("Workspace Linker alpha evidence preflight");
+  console.log("Computer Linker alpha evidence preflight");
   console.log(`status: ${preflightTextStatus(report.status)}`);
   console.log("observed:");
   console.log(`  tunnel traffic: ${observed.dispatcherEvents > 0 ? `yes (${observed.dispatcherEvents} events)` : "no"}`);
@@ -517,7 +517,7 @@ function buildEvidencePreflightReport(options) {
     recordCommand,
   });
   const report = {
-    kind: "workspace-linker-alpha-evidence-preflight",
+    kind: "computer-linker-alpha-evidence-preflight",
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     status,
@@ -591,7 +591,7 @@ function preflightNextActions({ failures, missingToolCalls, recordCommand }) {
     actions.push("Send one request from the external MCP client through the configured tunnel, then rerun this preflight.");
   }
   if (failedIds.has("mcp-only-public-surface")) {
-    actions.push("Start Workspace Linker with `start <workspace-path> --dev --tunnel ...` or rerun setup with a tunnel so publicMcpOnly is enabled.");
+    actions.push("Start Computer Linker with `start <workspace-path> --dev --tunnel ...` or rerun setup with a tunnel so publicMcpOnly is enabled.");
   }
   if (failedIds.has("evidence-target")) {
     actions.push("Start a tunnel and send one external request so preflight can detect the tunnel id or public URL, or pass --tunnel-or-url explicitly.");
@@ -685,8 +685,8 @@ function loadEvidenceForRecord(filePath) {
   } catch (error) {
     fail(`Evidence file is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
-  if (evidence.kind !== "workspace-linker-alpha-evidence") {
-    fail("Evidence kind must be workspace-linker-alpha-evidence.");
+  if (evidence.kind !== "computer-linker-alpha-evidence") {
+    fail("Evidence kind must be computer-linker-alpha-evidence.");
   }
   if (!Array.isArray(evidence.checks)) {
     fail("Evidence must contain a checks array.");
@@ -734,10 +734,10 @@ function checkEvidence(filePath, options) {
   }
 
   const packageJson = readPackageJson();
-  if (evidence.kind === "workspace-linker-alpha-evidence") {
+  if (evidence.kind === "computer-linker-alpha-evidence") {
     add("kind", "pass", "Evidence kind is correct.");
   } else {
-    add("kind", "fail", "Evidence kind must be workspace-linker-alpha-evidence.");
+    add("kind", "fail", "Evidence kind must be computer-linker-alpha-evidence.");
   }
 
   if (evidence.schemaVersion === 1) {
@@ -887,7 +887,7 @@ function printReport({ filePath, checks, options }) {
   const warnings = checks.filter((check) => check.status === "warn");
   const status = failures.length > 0 ? "fail" : warnings.length > 0 ? "warn" : "pass";
   const report = {
-    kind: "workspace-linker-alpha-evidence-check",
+    kind: "computer-linker-alpha-evidence-check",
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     status,
@@ -899,7 +899,7 @@ function printReport({ filePath, checks, options }) {
     console.log(JSON.stringify(report, null, 2));
     return;
   }
-  console.log("Workspace Linker alpha evidence");
+  console.log("Computer Linker alpha evidence");
   console.log(`status: ${status}`);
   console.log(`file: ${filePath}`);
   console.log("checks:");
@@ -927,9 +927,9 @@ function readPositiveInteger(option, fallback) {
 
 function workspaceLinkerConfigDir() {
   return resolve(expandHomePath(
-    process.env.WORKSPACE_LINKER_CONFIG_DIR ??
+    process.env.COMPUTER_LINKER_CONFIG_DIR ??
     process.env.LOCALPORT_CONFIG_DIR ??
-    "~/.workspace-linker",
+    "~/.computer-linker",
   ));
 }
 
@@ -1037,8 +1037,8 @@ function missingList(items) {
 
 function externalSmokePrompt(scope) {
   return [
-    "Run a read-only Workspace Linker alpha smoke test.",
-    "Use only the Workspace Linker MCP tools exposed by this connector.",
+    "Run a read-only Computer Linker alpha smoke test.",
+    "Use only the Computer Linker MCP tools exposed by this connector.",
     "1. Call get_computer_info.",
     `2. Call computer_operation with {"scope":"${jsonStringLiteralContent(scope)}","op":"file.list","target":".","options":{"maxEntries":5}}.`,
     "3. Call get_operation_history with {\"view\":\"connections\",\"limit\":20}.",
@@ -1059,8 +1059,8 @@ function externalMissingPrompt(scope, missingTools) {
     toolLines.push("Call get_operation_history with {\"view\":\"connections\",\"limit\":20}.");
   }
   return [
-    "Complete the remaining Workspace Linker alpha smoke step.",
-    "Use only the Workspace Linker MCP tools exposed by this connector.",
+    "Complete the remaining Computer Linker alpha smoke step.",
+    "Use only the Computer Linker MCP tools exposed by this connector.",
     "The local preflight already observed the other smoke calls; run only the missing call(s) below.",
     ...toolLines.map((line, index) => `${index + 1}. ${line}`),
     "Then summarize whether the remaining call(s) succeeded.",
@@ -1118,7 +1118,7 @@ function describeEvidence(id) {
     case "mcp-only-public-surface":
       return "Public exposure allowed /mcp and did not expose /api/v1 or /healthz.";
     case "operation-history-reviewed":
-      return "workspace-linker history --view connections and --view last showed the expected external session without secrets.";
+      return "computer-linker history --view connections and --view last showed the expected external session without secrets.";
     case "client-instructions-usable":
       return "README Agent Instructions were pasted into the client and produced the expected first operations.";
     default:

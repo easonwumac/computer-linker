@@ -231,7 +231,7 @@ export function chatGptVerify(config: LocalPortConfig, mode: ChatGptVerifyMode =
     blockingReasons,
     warnings,
     nextActions: chatGptNextActions(blockingReasons, warnings, mode),
-    recommendedProfileCommand: "workspace-linker client chatgpt profile --show-token",
+    recommendedProfileCommand: "computer-linker client chatgpt profile --show-token",
     recommendedSmokeTest: [
       "get_computer_info",
       "computer_operation op=code.context",
@@ -257,13 +257,13 @@ export function chatGptSetupStatus(config: LocalPortConfig, mode: ChatGptVerifyM
   const publicUrlArg = effectivePublicBaseUrl ? ` --url ${effectivePublicBaseUrl}` : "";
   const localBaseUrl = `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}`;
   const cliCommands = {
-    verify: `workspace-linker client chatgpt verify --mode ${mode}`,
-    profile: `workspace-linker client chatgpt profile --mode ${mode}${publicUrlArg} --show-token`,
-    manifest: `workspace-linker client chatgpt manifest --mode ${mode}${publicUrlArg}`,
-    connectorConfig: `workspace-linker client chatgpt connector --mode ${mode}${publicUrlArg} --show-token`,
-    files: `workspace-linker client chatgpt files ./chatgpt-config --mode ${mode}${publicUrlArg} --show-token`,
-    localSmoke: `workspace-linker client chatgpt smoke --allow-http --url ${localBaseUrl}`,
-    publicSmoke: effectivePublicBaseUrl ? `workspace-linker client chatgpt smoke --url ${effectivePublicBaseUrl}` : null,
+    verify: `computer-linker client chatgpt verify --mode ${mode}`,
+    profile: `computer-linker client chatgpt profile --mode ${mode}${publicUrlArg} --show-token`,
+    manifest: `computer-linker client chatgpt manifest --mode ${mode}${publicUrlArg}`,
+    connectorConfig: `computer-linker client chatgpt connector --mode ${mode}${publicUrlArg} --show-token`,
+    files: `computer-linker client chatgpt files ./chatgpt-config --mode ${mode}${publicUrlArg} --show-token`,
+    localSmoke: `computer-linker client chatgpt smoke --allow-http --url ${localBaseUrl}`,
+    publicSmoke: effectivePublicBaseUrl ? `computer-linker client chatgpt smoke --url ${effectivePublicBaseUrl}` : null,
   };
   const setupFields = {
     appName: profile.appManifest.appName,
@@ -373,7 +373,7 @@ function chatGptSetupWizard(
       label: "Owner token",
       status: hasOwnerToken ? "complete" : "blocked",
       detail: hasOwnerToken ? "Owner token is configured for bearer/OAuth access." : "Owner token is required before exposing this machine.",
-      action: hasOwnerToken ? undefined : "Run `workspace-linker init`.",
+      action: hasOwnerToken ? undefined : "Run `computer-linker init`.",
     },
     {
       id: "public_url",
@@ -387,8 +387,8 @@ function chatGptSetupWizard(
       action: configuredPublicUrlIsHttps
         ? undefined
         : urls.detectedPublicUrl
-          ? `Optional: run \`workspace-linker config set-public-url ${urls.detectedPublicUrl}\` to save it for OAuth and stable reuse.`
-          : "For first setup, run `workspace-linker start <workspace-path> --dev --tunnel tailscale`; for Cloudflare/custom hostnames, pass `--dev --url https://... --tunnel cloudflare`; for ChatGPT Tunnel mode, use `workspace-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...`.",
+          ? `Optional: run \`computer-linker config set-public-url ${urls.detectedPublicUrl}\` to save it for OAuth and stable reuse.`
+          : "For first setup, run `computer-linker start <workspace-path> --dev --tunnel tailscale`; for Cloudflare/custom hostnames, pass `--dev --url https://... --tunnel cloudflare`; for ChatGPT Tunnel mode, use `computer-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...`.",
     },
     {
       id: "mcp_url",
@@ -409,14 +409,14 @@ function chatGptSetupWizard(
       label: "Workspace boundary",
       status: hasWorkspace ? "complete" : "blocked",
       detail: hasWorkspace ? `${config.workspaces.length} predefined workspace(s) configured.` : "At least one predefined workspace is required.",
-      action: hasWorkspace ? undefined : "Run `workspace-linker setup <workspace-path>`.",
+      action: hasWorkspace ? undefined : "Run `computer-linker setup <workspace-path>`.",
     },
     {
       id: "ready",
       label: "Ready check",
       status: verify.ready ? "complete" : "pending",
       detail: verify.ready ? "Ready to connect from ChatGPT." : `Not ready: ${verify.blockingReasons[0] ?? "review checks"}`,
-      action: verify.ready ? "Run `workspace-linker client chatgpt smoke`, then connect ChatGPT." : verify.nextActions[0],
+      action: verify.ready ? "Run `computer-linker client chatgpt smoke`, then connect ChatGPT." : verify.nextActions[0],
     },
   ];
   const current = verify.ready
@@ -445,15 +445,15 @@ export function chatGptUrl(config: LocalPortConfig, includeSecret = false, optio
 
   if (!mcpServerUrl) {
     warnings.push("No public HTTPS MCP URL is configured.");
-    nextActions.push("For first setup, run `workspace-linker start <workspace-path> --dev --tunnel tailscale` to auto-save a Funnel URL; for Cloudflare/custom hostnames, pass `--dev --url https://... --tunnel cloudflare`; for ChatGPT Tunnel mode, use `workspace-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...`.");
+    nextActions.push("For first setup, run `computer-linker start <workspace-path> --dev --tunnel tailscale` to auto-save a Funnel URL; for Cloudflare/custom hostnames, pass `--dev --url https://... --tunnel cloudflare`; for ChatGPT Tunnel mode, use `computer-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...`.");
   } else if (!mcpServerUrl.startsWith("https://")) {
     warnings.push("ChatGPT requires an https:// MCP URL.");
-    nextActions.push("Use an HTTPS tunnel origin, then run `workspace-linker config set-public-url https://...`.");
+    nextActions.push("Use an HTTPS tunnel origin, then run `computer-linker config set-public-url https://...`.");
   }
 
   if (!config.ownerToken) {
     warnings.push("ownerToken is not configured.");
-    nextActions.push("Run `workspace-linker init` before exposing Workspace Linker to ChatGPT.");
+    nextActions.push("Run `computer-linker init` before exposing Computer Linker to ChatGPT.");
   }
 
   if (nextActions.length === 0) {
@@ -484,7 +484,7 @@ function chatGptDetectedPublicBaseUrl(tunnels: TunnelProcessSnapshot[]): string 
 
 export function formatChatGptUrl(report: ChatGptUrlReport): string {
   return [
-    "Workspace Linker ChatGPT URL",
+    "Computer Linker ChatGPT URL",
     `ready: ${report.ready ? "yes" : "no"}`,
     `mcpServerUrl: ${report.mcpServerUrl ?? "not configured"}`,
     `publicBaseUrl: ${report.publicBaseUrl ?? "not detected"}`,
@@ -504,7 +504,7 @@ export async function chatGptSmoke(config: LocalPortConfig, options: ChatGptSmok
     allowHttp: options.allowHttp,
     timeoutMs: options.timeoutMs,
     fetchImpl: options.fetchImpl,
-    clientName: "workspace-linker-smoke",
+    clientName: "computer-linker-smoke",
   });
   const checks = clientSmoke.checks.map(chatGptSmokeCheck);
   const blockingReasons = checks
@@ -546,7 +546,7 @@ function chatGptSmokeText(value: string): string {
 
 export function formatChatGptSmoke(report: ChatGptSmokeReport): string {
   return [
-    "Workspace Linker ChatGPT smoke",
+    "Computer Linker ChatGPT smoke",
     `ready: ${report.ready ? "yes" : "no"}`,
     `baseUrl: ${report.baseUrl ?? "not configured"}`,
     `mcpServerUrl: ${report.mcpServerUrl ?? "not configured"}`,
@@ -560,7 +560,7 @@ export function formatChatGptSmoke(report: ChatGptSmokeReport): string {
 
 export function formatChatGptVerify(report: ChatGptVerifyReport): string {
   return [
-    `Workspace Linker ChatGPT verify (${report.mode})`,
+    `Computer Linker ChatGPT verify (${report.mode})`,
     `ready: ${report.ready ? "yes" : "no"}`,
     `mcpServerUrl: ${report.mcpServerUrl}`,
     `auth: ${report.authMode}`,
@@ -577,7 +577,7 @@ function chatGptSmokeNextActions(blockingReasons: string[], warnings: string[]):
     actions.add("Set publicBaseUrl or rerun with `--url https://...`; use `--allow-http` only for local testing.");
   }
   if (blockingReasons.some((reason) => reason.includes("auth"))) {
-    actions.add("Run `workspace-linker init` or pass `--token <ownerToken>` for the smoke test.");
+    actions.add("Run `computer-linker init` or pass `--token <ownerToken>` for the smoke test.");
   }
   if (blockingReasons.some((reason) => reason.includes("capabilities") || reason.includes("mcp-") || reason.includes("healthz"))) {
     actions.add("Confirm the HTTP server is running and the tunnel routes to this machine.");
@@ -597,7 +597,7 @@ function publicBaseUrlCheck(publicBaseUrl: string | undefined): ChatGptVerifyChe
       id: "public-base-url",
       status: "fail",
       message: "publicBaseUrl is required for ChatGPT cloud access.",
-      detail: "Run `workspace-linker config set-public-url https://...` after configuring a tunnel.",
+      detail: "Run `computer-linker config set-public-url https://...` after configuring a tunnel.",
     };
   }
   let parsed: URL;
@@ -665,8 +665,8 @@ function ownerTokenCheck(config: LocalPortConfig): ChatGptVerifyCheck {
     : {
         id: "auth",
         status: "fail",
-        message: "ownerToken is required before exposing Workspace Linker to ChatGPT.",
-        detail: "Run `workspace-linker init` or set WORKSPACE_LINKER_OWNER_TOKEN.",
+        message: "ownerToken is required before exposing Computer Linker to ChatGPT.",
+        detail: "Run `computer-linker init` or set COMPUTER_LINKER_OWNER_TOKEN.",
       };
 }
 
@@ -743,10 +743,10 @@ function modePermissionCheck(config: LocalPortConfig, mode: ChatGptVerifyMode): 
 function chatGptNextActions(blockingReasons: string[], warnings: string[], mode: ChatGptVerifyMode): string[] {
   const actions = new Set<string>();
   if (blockingReasons.some((reason) => reason.includes("public-base-url"))) {
-    actions.add("For first setup, run `workspace-linker start <workspace-path> --dev --tunnel tailscale` to auto-save a Funnel URL; for Cloudflare/custom hostnames, pass `--dev --url https://... --tunnel cloudflare`; for OpenAI Secure MCP Tunnel, use `workspace-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...`.");
+    actions.add("For first setup, run `computer-linker start <workspace-path> --dev --tunnel tailscale` to auto-save a Funnel URL; for Cloudflare/custom hostnames, pass `--dev --url https://... --tunnel cloudflare`; for OpenAI Secure MCP Tunnel, use `computer-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...`.");
   }
   if (blockingReasons.some((reason) => reason.includes("auth"))) {
-    actions.add("Run `workspace-linker init` to generate an owner token before exposing the MCP server.");
+    actions.add("Run `computer-linker init` to generate an owner token before exposing the MCP server.");
   }
   if (blockingReasons.some((reason) => reason.includes("mode-permissions")) && mode === "safe") {
     actions.add("Create a read-only workspace profile or rerun with `--mode coding` after reviewing write/shell/Codex permissions.");
@@ -755,7 +755,7 @@ function chatGptNextActions(blockingReasons: string[], warnings: string[], mode:
     actions.add("Review workspace permissions and only expose shell/Codex to ChatGPT when you intend broad local execution.");
   }
   if (actions.size === 0) {
-    actions.add("Run `workspace-linker client chatgpt profile --show-token` and use the MCP URL in ChatGPT developer mode.");
+    actions.add("Run `computer-linker client chatgpt profile --show-token` and use the MCP URL in ChatGPT developer mode.");
   }
   return [...actions];
 }

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/easonwumac/workspace-linker/schemas/computer-operation-v1.schema.json",
-  "title": "Workspace Linker computer_operation v1",
-  "description": "Stable request and result envelope for Workspace Linker computer_operation.",
+  "$id": "https://github.com/easonwumac/computer-linker/schemas/computer-operation-v1.schema.json",
+  "title": "Computer Linker computer_operation v1",
+  "description": "Stable request and result envelope for Computer Linker computer_operation.",
   "type": "object",
   "required": ["request", "result"],
   "properties": {

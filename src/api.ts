@@ -42,7 +42,7 @@ export function registerApiRoutes(app: express.Express): void {
 
   app.get("/api/v1/health", (_req, res) => {
     const config = loadConfig();
-    res.json({ ok: true, data: { name: "workspace-linker", machineId: config.machineId, machineName: config.machineName } });
+    res.json({ ok: true, data: { name: "computer-linker", machineId: config.machineId, machineName: config.machineName } });
   });
 
   app.get("/api/v1/capabilities", (_req, res) => {

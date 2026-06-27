@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible Workspace Linker problem.
+description: Report a reproducible Computer Linker problem.
 title: "[Bug]: "
 labels:
   - bug
@@ -91,5 +91,5 @@ body:
     id: diagnostics
     attributes:
       label: Redacted diagnostics
-      description: Include `workspace-linker status`, `workspace-linker doctor`, or `workspace-linker config validate` output after redaction when relevant.
+      description: Include `computer-linker status`, `computer-linker doctor`, or `computer-linker config validate` output after redaction when relevant.
       render: text

@@ -39,6 +39,6 @@ jobs:
       - name: Upload Package
         uses: actions/upload-artifact@v4
         with:
-          name: workspace-linker-package
-          path: workspace-linker-*.tgz
+          name: computer-linker-package
+          path: "*.tgz"
           if-no-files-found: error

@@ -1,6 +1,6 @@
 # Contributing
 
-Workspace Linker is pre-1.0 local-first MCP software. It can expose local
+Computer Linker is pre-1.0 local-first MCP software. It can expose local
 files, command execution, Codex runs, screenshots, and audit metadata through a
 configured MCP server, so changes should be reviewed with security boundaries
 in mind.
@@ -16,7 +16,7 @@ in mind.
 
 Useful issue context:
 
-- Workspace Linker version or commit.
+- Computer Linker version or commit.
 - Node version and operating system.
 - Command you ran and the redacted output.
 - Whether the server was loopback-only, Tailscale Funnel, Cloudflare, OpenAI

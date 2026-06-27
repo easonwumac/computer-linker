@@ -16,9 +16,9 @@ function runResult(args, options = {}) {
     ...(options.env ?? {}),
   };
   if (options.useDefaultEvidence) {
-    delete env.WORKSPACE_LINKER_ALPHA_EVIDENCE;
-  } else if (!Object.hasOwn(options.env ?? {}, "WORKSPACE_LINKER_ALPHA_EVIDENCE")) {
-    env.WORKSPACE_LINKER_ALPHA_EVIDENCE = "";
+    delete env.COMPUTER_LINKER_ALPHA_EVIDENCE;
+  } else if (!Object.hasOwn(options.env ?? {}, "COMPUTER_LINKER_ALPHA_EVIDENCE")) {
+    env.COMPUTER_LINKER_ALPHA_EVIDENCE = "";
   }
   return spawnSync(process.execPath, [scriptPath, ...args], {
     cwd: repoRoot,
@@ -40,8 +40,8 @@ function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const tempRoot = mkdtempSync(join(tmpdir(), "workspace-linker-alpha-readiness-test-"));
-const defaultEvidencePath = join(repoRoot, ".workspace-linker-alpha-evidence.json");
+const tempRoot = mkdtempSync(join(tmpdir(), "computer-linker-alpha-readiness-test-"));
+const defaultEvidencePath = join(repoRoot, ".computer-linker-alpha-evidence.json");
 let defaultEvidenceTouched = false;
 let defaultEvidenceExisted = false;
 let defaultEvidenceBackup = "";
@@ -63,7 +63,7 @@ try {
   ]);
   assert.notEqual(result.status, 0);
   const report = parseJsonOutput(result.stdout);
-  assert.equal(report.kind, "workspace-linker-alpha-readiness");
+  assert.equal(report.kind, "computer-linker-alpha-readiness");
   assert.equal(report.status, "blocked");
   const evidenceCheck = report.checks.find((check) => check.id === "external-alpha-evidence");
   assert.equal(evidenceCheck?.status, "fail");
@@ -114,7 +114,7 @@ try {
 
   const staleEvidencePath = join(tempRoot, "stale-evidence.json");
   writeFileSync(staleEvidencePath, `${JSON.stringify({
-    kind: "workspace-linker-alpha-evidence",
+    kind: "computer-linker-alpha-evidence",
     schemaVersion: 1,
     testedAt: new Date().toISOString(),
     package: {
@@ -188,7 +188,7 @@ try {
     "--evidence",
     staleEvidencePath,
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: stalePreflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: stalePreflightConfigDir },
   });
   assert.notEqual(staleEvidenceResult.status, 0);
   const staleEvidenceReport = parseJsonOutput(staleEvidenceResult.stdout);
@@ -239,7 +239,7 @@ try {
   const requiredDefaultEvidenceReport = parseJsonOutput(requiredDefaultEvidenceResult.stdout);
   const requiredDefaultEvidenceCheck = requiredDefaultEvidenceReport.checks.find((check) => check.id === "external-alpha-evidence");
   assert.equal(requiredDefaultEvidenceCheck?.status, "fail");
-  assert.match(requiredDefaultEvidenceCheck?.command ?? "", /--file \.workspace-linker-alpha-evidence\.json/);
+  assert.match(requiredDefaultEvidenceCheck?.command ?? "", /--file \.computer-linker-alpha-evidence\.json/);
   assert.match(requiredDefaultEvidenceCheck?.detail ?? "", /preflight status=fail/);
 
   const preflightConfigDir = join(tempRoot, "preflight-config");
@@ -262,7 +262,7 @@ try {
     "--allow-dirty",
     "--require-evidence",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(noEvidenceResult.status, 0);
   const noEvidenceReport = parseJsonOutput(noEvidenceResult.stdout);
@@ -286,7 +286,7 @@ try {
     "--allow-dirty",
     "--require-evidence",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(noEvidenceTextResult.status, 0);
   assert.match(noEvidenceTextResult.stdout, /status: needs action/);
@@ -322,7 +322,7 @@ try {
     "--allow-dirty",
     "--require-evidence",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(missingTunnelResult.status, 0);
   const missingTunnelReport = parseJsonOutput(missingTunnelResult.stdout);
@@ -349,7 +349,7 @@ try {
     "--allow-dirty",
     "--require-evidence",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(readyPreflightResult.status, 0);
   const readyPreflightReport = parseJsonOutput(readyPreflightResult.stdout);

@@ -18,15 +18,17 @@ export function packageMetadata(): PackageMetadata {
       version?: unknown;
     };
     cachedPackageMetadata = {
-      name: typeof value.name === "string" && value.name.trim() ? value.name : "workspace-linker",
+      name: typeof value.name === "string" && value.name.trim() ? value.name : "@easonwumac/computer-linker",
       version: typeof value.version === "string" && value.version.trim() ? value.version : "unknown",
     };
   } catch {
-    cachedPackageMetadata = { name: "workspace-linker", version: "unknown" };
+    cachedPackageMetadata = { name: "@easonwumac/computer-linker", version: "unknown" };
   }
   return cachedPackageMetadata;
 }
 
-export function workspaceLinkerVersion(): string {
+export function computerLinkerVersion(): string {
   return packageMetadata().version;
 }
+
+export const workspaceLinkerVersion = computerLinkerVersion;

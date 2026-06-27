@@ -9,7 +9,8 @@ export function isAuthorizedLocalPortRequest(req: Request, ownerToken: string | 
     return true;
   }
 
-  return req.header("x-workspace-linker-token") === ownerToken ||
+  return req.header("x-computer-linker-token") === ownerToken ||
+    req.header("x-workspace-linker-token") === ownerToken ||
     req.header("x-localport-token") === ownerToken;
 }
 

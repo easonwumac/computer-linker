@@ -451,10 +451,10 @@ try {
   assert.equal(codexPlan.runRecord.preRunChangeSummary.isGitRepository, true);
   assert.equal(codexPlan.runRecord.postRunChangeSummary.isGitRepository, true);
   assert.equal(codexPlan.result.exitCode, 9);
-  assert.match(codexPlan.result.stdout, /Workspace Linker Codex workflow: codex_plan/);
+  assert.match(codexPlan.result.stdout, /Computer Linker Codex workflow: codex_plan/);
   assert.match(codexPlan.result.stdout, /plan operation registry cleanup/);
   assert.match(codexPlan.result.stdout, /Do not edit files/);
-  assert.match(codexPlan.runRecord.stdoutPreview, /Workspace Linker Codex workflow: codex_plan/);
+  assert.match(codexPlan.runRecord.stdoutPreview, /Computer Linker Codex workflow: codex_plan/);
   assert.equal(codexPlan.runRecord.stderrPreview, "codex-err");
 
   const codexRuns = await runWorkspaceOperation(registry, codexEnabled, {
@@ -517,7 +517,7 @@ try {
   assert.equal(codexContinue.workflow.type, "codex_continue");
   assert.equal(codexContinue.workflow.continuedFromWorkflowId, "codex_fix_previous");
   assert.equal(codexContinue.historyInsight.view, "debug_bundle");
-  assert.match(codexContinue.result.stdout, /Recent Workspace Linker history\/debug bundle/);
+  assert.match(codexContinue.result.stdout, /Recent Computer Linker history\/debug bundle/);
 
   await assert.rejects(
     () => runWorkspaceOperation(registry, codexEnabled, {

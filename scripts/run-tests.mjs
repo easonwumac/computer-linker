@@ -48,7 +48,7 @@ if (args.includes("--help") || args.includes("-h")) {
   console.log([
     "Usage: node scripts/run-tests.mjs [--list] [filter...]",
     "",
-    "Runs the Workspace Linker test suite with per-file progress output.",
+    "Runs the Computer Linker test suite with per-file progress output.",
     "When filters are provided, exact label/path matches are preferred.",
     "If there is no exact match, a test runs if its label or path contains any filter.",
   ].join("\n"));

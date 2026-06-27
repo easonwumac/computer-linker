@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Workspace Linker will be documented in this file.
+All notable changes to Computer Linker will be documented in this file.
 
 This project follows a small pre-1.0 changelog: breaking contract changes are
 called out even when the package version is still `0.x`.
@@ -13,7 +13,7 @@ called out even when the package version is still `0.x`.
 - `get_computer_info`, `computer_operation`, and `get_operation_history`
   product-level contracts.
 - One-minute README onboarding now leads with the installed CLI,
-  `workspace-linker start <folder> --coding`, and `client setup` instead of
+  `computer-linker start <folder> --coding`, and `client setup` instead of
   source-checkout development commands.
 - Added MCP client recipes for local clients, OpenAI Secure MCP Tunnel,
   Tailscale Funnel, Cloudflare, and the minimal SDK client.
@@ -29,7 +29,7 @@ called out even when the package version is still `0.x`.
 - Command policy support for shell, package, process, and Codex operations.
 - Windows primary-display screenshot capture through a PowerShell provider,
   with automated fake-provider coverage that does not read real screen pixels.
-- `workspace-linker config validate` and `workspace-linker config policy`
+- `computer-linker config validate` and `computer-linker config policy`
   commands for release readiness and policy maintenance.
 - Cost-capped manual CI product gate on Windows with Node 22.
 - Release metadata validation for version, lockfile, changelog, security
@@ -42,23 +42,23 @@ called out even when the package version is still `0.x`.
   loopback clients are not marked blocked by cloud exposure requirements.
 - `workspace add` now accepts a single folder path and derives the scope id and
   display name from that folder, while keeping the legacy `<id> <path>` form.
-- `workspace-linker --version` and `workspace-linker version` now report the
+- `computer-linker --version` and `computer-linker version` now report the
   installed package version.
 - MCP server metadata, `get_computer_info`, and capabilities now report the
   installed package version from the same package metadata source.
 - Package smoke now verifies that an installed tarball can create and read an
-  isolated Workspace Linker config through `setup` and `status`.
-- `workspace-linker self-test` now performs an isolated installed CLI/server/MCP
+  isolated Computer Linker config through `setup` and `status`.
+- `computer-linker self-test` now performs an isolated installed CLI/server/MCP
   smoke test using a temporary config and workspace.
-- `workspace-linker client setup` now prints generic MCP client connection,
+- `computer-linker client setup` now prints generic MCP client connection,
   auth, readiness, tool, and first-prompt guidance without using ChatGPT
   profile formats.
-- `workspace-linker client setup` now keeps the default text output to a short
+- `computer-linker client setup` now keeps the default text output to a short
   MCP connection summary and moves tool lists, first prompt, and full agent
   instructions behind `--details`.
-- `workspace-linker client smoke` now runs generic MCP client HTTP/MCP
+- `computer-linker client smoke` now runs generic MCP client HTTP/MCP
   reachability checks without ChatGPT-specific output.
-- `workspace-linker diagnose client` now combines MCP client setup readiness,
+- `computer-linker diagnose client` now combines MCP client setup readiness,
   a minimal MCP SDK smoke test, and redacted connection-history inspection into
   one troubleshooting report.
 - Setup, start, quickstart, and workspace management now accept `--read-only`,
@@ -70,7 +70,7 @@ called out even when the package version is still `0.x`.
   `get_computer_info`, `computer_operation`, and `get_operation_history`
   product contract.
 - SDK `smoke()` now runs generic local/trusted-private HTTP API and MCP
-  reachability checks and returns a `workspace-linker-client-smoke` report.
+  reachability checks and returns a `computer-linker-client-smoke` report.
 - Local/trusted-private client smoke now verifies authenticated
   `get_computer_info` and one read-only `computer_operation` `file.list`
   instead of only checking reachability.
@@ -80,7 +80,7 @@ called out even when the package version is still `0.x`.
   preserving ChatGPT-specific output shape and setup wording.
 - Default MCP tool exposure is now limited to `get_computer_info`,
   `computer_operation`, and `get_operation_history`; legacy workspace and
-  direct file tools require `WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility`.
+  direct file tools require `COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility`.
 - Generic `computer_operation` registry now includes product-level dotted ops
   for code context/symbol search, Git, package scripts, managed processes, and
   Codex stop/read/list flows instead of relying on legacy workspace op names.
@@ -136,9 +136,9 @@ called out even when the package version is still `0.x`.
 - Agent setup guidance now tells connected clients to use generic
   `computer_operation` dotted ops and avoid compatibility workspace tools
   unless explicitly exposed.
-- `workspace-linker client setup` now prints copy-pasteable generic agent
+- `computer-linker client setup` now prints copy-pasteable generic agent
   instructions in text output and includes them in JSON output.
-- Package smoke now verifies the installed `workspace-linker client setup
+- Package smoke now verifies the installed `computer-linker client setup
   --json` output, including generic tools, redacted auth, first prompt, and
   agent instructions.
 - Default CLI help, startup readiness, and ChatGPT setup guidance now show
@@ -162,7 +162,7 @@ called out even when the package version is still `0.x`.
 - `alpha:check` preserved-history warnings now include the exact
   `npm run public:mirror -- --remote <github-owner>/<public-repo>` command in
   next actions.
-- `workspace-linker tunnel status` now explains that OpenAI Secure MCP Tunnel
+- `computer-linker tunnel status` now explains that OpenAI Secure MCP Tunnel
   mode intentionally has no public URL instead of reporting the URL as merely
   not detected.
 - `alpha:evidence preflight` now shows the current Git HEAD and the exact
@@ -183,7 +183,7 @@ called out even when the package version is still `0.x`.
 - Default CLI help now keeps the first-run surface to start, tunnel, status,
   client setup, and quickstart preview while moving self-test, smoke, repair,
   service, config, API, and compatibility commands behind focused help topics.
-- Package metadata now positions Workspace Linker as a generic MCP/local
+- Package metadata now positions Computer Linker as a generic MCP/local
   automation package instead of using ChatGPT as the product keyword.
 
 ### Security
@@ -204,5 +204,5 @@ called out even when the package version is still `0.x`.
 - Release readiness now warns on shell or Codex scopes without an
   `allowedCommands` policy.
 - Public release audit now blocks tracked or packed
-  `.workspace-linker-alpha-evidence.json`, keeping real dogfooding tunnel and
+  `.computer-linker-alpha-evidence.json`, keeping real dogfooding tunnel and
   client evidence local while publishing only the example schema.

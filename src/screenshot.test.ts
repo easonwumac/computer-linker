@@ -4,14 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { captureScreenshot, listScreenshotTargets, screenshotCapability } from "./screenshot.js";
 
-const originalWindowsScreenshotCommand = process.env.WORKSPACE_LINKER_WINDOWS_SCREENSHOT_COMMAND;
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-screenshot-test-"));
+const originalWindowsScreenshotCommand = process.env.COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND;
+const root = await mkdtemp(join(tmpdir(), "computer-linker-screenshot-test-"));
 const twoByTwoPng = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGP4/7/hPwMYMzT8ZwBiAGO/CfnRtiYIAAAAAElFTkSuQmCC";
 
 try {
   if (process.platform === "win32") {
     const fakeProvider = await installFakeWindowsScreenshotProvider(root);
-    process.env.WORKSPACE_LINKER_WINDOWS_SCREENSHOT_COMMAND = fakeProvider;
+    process.env.COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND = fakeProvider;
 
     const capability = screenshotCapability();
     assert.equal(capability.provider, "windows-powershell-screenshot");
@@ -78,9 +78,9 @@ try {
   }
 } finally {
   if (originalWindowsScreenshotCommand === undefined) {
-    delete process.env.WORKSPACE_LINKER_WINDOWS_SCREENSHOT_COMMAND;
+    delete process.env.COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND;
   } else {
-    process.env.WORKSPACE_LINKER_WINDOWS_SCREENSHOT_COMMAND = originalWindowsScreenshotCommand;
+    process.env.COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND = originalWindowsScreenshotCommand;
   }
   await rm(root, { recursive: true, force: true });
 }

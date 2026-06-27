@@ -3,11 +3,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeConfig } from "./config.js";
-import { WorkspaceLinkerClient } from "./client.js";
+import { ComputerLinkerClient, WorkspaceLinkerClient } from "./client.js";
 import { serveHttp } from "./server.js";
 
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-client-test-"));
+const root = await mkdtemp(join(tmpdir(), "computer-linker-client-test-"));
 const configRoot = join(root, "config");
 const workspaceRoot = join(root, "workspace");
 
@@ -38,7 +38,9 @@ try {
 
   const server = serveHttp();
   try {
-    const client = new WorkspaceLinkerClient({
+    assert.equal(WorkspaceLinkerClient, ComputerLinkerClient);
+
+    const client = new ComputerLinkerClient({
       baseUrl: "http://127.0.0.1:3961/api/v1",
       ownerToken: "client-token",
     });
@@ -61,12 +63,12 @@ try {
     assert.ok(workspaceRegistry.operations.some((operation) => operation.operation === "search_text"));
 
     const connectReadiness = await client.connectReadiness({ registry: { category: "search" } });
-    assert.equal(connectReadiness.kind, "workspace-linker-connect-readiness");
+    assert.equal(connectReadiness.kind, "computer-linker-connect-readiness");
     assert.equal(connectReadiness.ready, true);
     assert.equal(connectReadiness.status, "ready");
     assert.equal(connectReadiness.machine?.machineName, "client-test");
     assert.equal(connectReadiness.recommendedWorkspace?.id, "app");
-    assert.equal(connectReadiness.clientSetup.kind, "workspace-linker-mcp-client-setup");
+    assert.equal(connectReadiness.clientSetup.kind, "computer-linker-mcp-client-setup");
     assert.equal(connectReadiness.clientSetup.localReady, true);
     assert.equal(connectReadiness.clientSetup.remoteReady, false);
     assert.ok(connectReadiness.clientSetup.remoteBlockingReasons.some((reason) => reason.includes("No public MCP URL")));
@@ -76,7 +78,7 @@ try {
     assert.ok(connectReadiness.operationRegistry.operations.some((operation) => operation.op === "code.search_symbols"));
 
     const smoke = await client.smoke({ timeoutMs: 10000 });
-    assert.equal(smoke.kind, "workspace-linker-client-smoke");
+    assert.equal(smoke.kind, "computer-linker-client-smoke");
     assert.equal(smoke.ready, true, JSON.stringify(smoke, null, 2));
     assert.equal(smoke.baseUrl, "http://127.0.0.1:3961/");
     assert.equal(smoke.apiBaseUrl, "http://127.0.0.1:3961/api/v1/");
@@ -201,7 +203,7 @@ async function assertClientContractShape(): Promise<void> {
     if (requestUrl.pathname === "/healthz") {
       return new Response(JSON.stringify({
         ok: true,
-        name: "workspace-linker",
+        name: "computer-linker",
         machineName: "shape-machine",
       }), {
         status: 200,
@@ -212,7 +214,7 @@ async function assertClientContractShape(): Promise<void> {
       return new Response(JSON.stringify({
         ok: true,
         data: {
-          name: "workspace-linker",
+          name: "computer-linker",
           machineName: "shape-machine",
         },
       }), {
@@ -247,7 +249,7 @@ async function assertClientContractShape(): Promise<void> {
           : {};
         const structuredContent = params.name === "get_computer_info"
           ? {
-              kind: "workspace-linker-computer-info",
+              kind: "computer-linker-computer-info",
               machineName: "shape-machine",
               scopes: [
                 {
@@ -294,7 +296,7 @@ async function assertClientContractShape(): Promise<void> {
         result: {
           protocolVersion: "2025-06-18",
           capabilities: { tools: {} },
-          serverInfo: { name: "workspace-linker", version: "0.1.0" },
+          serverInfo: { name: "computer-linker", version: "0.1.0" },
         },
       }), {
         status: 200,
@@ -312,7 +314,7 @@ async function assertClientContractShape(): Promise<void> {
       return new Response(JSON.stringify({
         ok: true,
         data: {
-          kind: "workspace-linker-computer-info",
+          kind: "computer-linker-computer-info",
           machineName: "shape-machine",
           scopes: [
             {
@@ -332,7 +334,7 @@ async function assertClientContractShape(): Promise<void> {
       return new Response(JSON.stringify({
         ok: true,
         data: {
-          kind: "workspace-linker-mcp-client-setup",
+          kind: "computer-linker-mcp-client-setup",
           schemaVersion: 1,
           machineName: "shape-machine",
           localReady: true,
@@ -480,17 +482,17 @@ async function assertClientContractShape(): Promise<void> {
       headers: { "content-type": "application/json" },
     });
   };
-  const client = new WorkspaceLinkerClient({
-    baseUrl: "https://workspace-linker.example.com/api/v1",
+  const client = new ComputerLinkerClient({
+    baseUrl: "https://computer-linker.example.com/api/v1",
     ownerToken: "shape-token",
     fetch: fetchMock,
   });
 
   const computerInfo = await client.getComputerInfo<{ kind: string; machineName: string }>();
-  assert.equal(computerInfo.kind, "workspace-linker-computer-info");
+  assert.equal(computerInfo.kind, "computer-linker-computer-info");
   assert.equal(computerInfo.machineName, "shape-machine");
   const clientSetup = await client.clientSetup<{ kind: string; tools: string[] }>();
-  assert.equal(clientSetup.kind, "workspace-linker-mcp-client-setup");
+  assert.equal(clientSetup.kind, "computer-linker-mcp-client-setup");
   assert.ok(clientSetup.tools.includes("computer_operation"));
   await client.computerOperation({
     scope: "app",
@@ -527,9 +529,9 @@ async function assertClientContractShape(): Promise<void> {
   assert.equal(readiness.recommendedWorkspace?.id, "app");
   const smoke = await client.smoke({ timeoutMs: 1000 });
   assert.equal(smoke.ready, true);
-  assert.equal(smoke.baseUrl, "https://workspace-linker.example.com/");
-  assert.equal(smoke.apiBaseUrl, "https://workspace-linker.example.com/api/v1/");
-  assert.equal(smoke.mcpServerUrl, "https://workspace-linker.example.com/mcp");
+  assert.equal(smoke.baseUrl, "https://computer-linker.example.com/");
+  assert.equal(smoke.apiBaseUrl, "https://computer-linker.example.com/api/v1/");
+  assert.equal(smoke.mcpServerUrl, "https://computer-linker.example.com/mcp");
   assert.deepEqual(smoke.blockingReasons, []);
   assert.ok(smoke.checks.some((check) => check.id === "api-computer-info" && check.status === "pass"));
   assert.ok(smoke.checks.some((check) => check.id === "api-read-only-operation" && check.status === "pass"));
@@ -557,7 +559,7 @@ async function assertClientContractShape(): Promise<void> {
     action: "get_operation_history",
     input: { scope: "app", view: "last", limit: 10 },
   });
-  assert.equal(requests[4].url, "https://workspace-linker.example.com/api/v1/control");
+  assert.equal(requests[4].url, "https://computer-linker.example.com/api/v1/control");
   assert.equal(requests[4].authorization, "Bearer shape-token");
   assert.deepEqual(requests[4].body, {
     action: "chatgpt_setup",
@@ -639,18 +641,18 @@ async function assertClientContractShape(): Promise<void> {
     action: "operation_registry",
     input: { category: "search" },
   });
-  assert.equal(requests[17].url, "https://workspace-linker.example.com/healthz");
+  assert.equal(requests[17].url, "https://computer-linker.example.com/healthz");
   assert.equal(requests[17].method, "GET");
-  assert.equal(requests[18].url, "https://workspace-linker.example.com/api/v1/capabilities");
+  assert.equal(requests[18].url, "https://computer-linker.example.com/api/v1/capabilities");
   assert.equal(requests[18].method, "GET");
   assert.equal(requests[18].authorization, "Bearer shape-token");
-  assert.equal(requests[19].url, "https://workspace-linker.example.com/api/v1/control");
+  assert.equal(requests[19].url, "https://computer-linker.example.com/api/v1/control");
   assert.equal(requests[19].method, "POST");
   assert.equal(requests[19].authorization, "Bearer shape-token");
   assert.deepEqual(requests[19].body, {
     action: "get_computer_info",
   });
-  assert.equal(requests[20].url, "https://workspace-linker.example.com/api/v1/control");
+  assert.equal(requests[20].url, "https://computer-linker.example.com/api/v1/control");
   assert.equal(requests[20].method, "POST");
   assert.equal(requests[20].authorization, "Bearer shape-token");
   assert.deepEqual(requests[20].body, {
@@ -662,11 +664,11 @@ async function assertClientContractShape(): Promise<void> {
     options: { maxEntries: 1 },
   });
   const mcpRequests = requests.slice(21);
-  assert.equal(mcpRequests[0].url, "https://workspace-linker.example.com/mcp");
+  assert.equal(mcpRequests[0].url, "https://computer-linker.example.com/mcp");
   assert.equal(mcpRequests[0].method, "POST");
   assert.equal(mcpRequests[0].authorization, "Bearer shape-token");
   assert.equal(mcpRequests[0].body?.method, "initialize");
-  assert.equal((mcpRequests[0].body?.params as { clientInfo?: { name?: string } }).clientInfo?.name, "workspace-linker-sdk-smoke");
+  assert.equal((mcpRequests[0].body?.params as { clientInfo?: { name?: string } }).clientInfo?.name, "computer-linker-sdk-smoke");
   assert.equal(mcpRequests[1].body?.method, "notifications/initialized");
   assert.equal(mcpRequests[1].mcpSessionId, "shape-smoke-session");
   assert.equal(mcpRequests[2].method, "GET");
@@ -697,7 +699,7 @@ async function assertClientContractShape(): Promise<void> {
     },
   });
   assert.equal(mcpRequests[6].mcpSessionId, "shape-smoke-session");
-  assert.equal(mcpRequests[7].url, "https://workspace-linker.example.com/mcp");
+  assert.equal(mcpRequests[7].url, "https://computer-linker.example.com/mcp");
   assert.equal(mcpRequests[7].method, "DELETE");
   assert.equal(mcpRequests[7].authorization, "Bearer shape-token");
   assert.equal(mcpRequests[7].mcpSessionId, "shape-smoke-session");

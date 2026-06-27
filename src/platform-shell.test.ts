@@ -28,7 +28,7 @@ assert.deepEqual(shellCommand("echo ok", {
   args: ["-lc", "echo ok"],
 });
 
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-platform-shell-"));
+const root = await mkdtemp(join(tmpdir(), "computer-linker-platform-shell-"));
 try {
   const commandPath = join(root, "codex.cmd");
   await writeFile(commandPath, "@echo off\r\n", "utf8");

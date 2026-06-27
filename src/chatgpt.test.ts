@@ -6,12 +6,12 @@ import { chatGptMcpServerUrl, chatGptPublicBaseUrl, chatGptSetupStatus, chatGptU
 import type { LocalPortConfig } from "./permissions.js";
 import type { TunnelProcessSnapshot } from "./tunnels.js";
 
-const originalConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
+const originalConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalLocalPortConfigDir = process.env.LOCALPORT_CONFIG_DIR;
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-chatgpt-test-"));
+const root = await mkdtemp(join(tmpdir(), "computer-linker-chatgpt-test-"));
 
 try {
-process.env.WORKSPACE_LINKER_CONFIG_DIR = root;
+process.env.COMPUTER_LINKER_CONFIG_DIR = root;
 delete process.env.LOCALPORT_CONFIG_DIR;
 
 const stoppedTunnel: TunnelProcessSnapshot = {
@@ -76,13 +76,13 @@ assert.equal(setupStatus.oauthDiscovery.enabled, true);
 assert.equal(setupStatus.oauthDiscovery.issuer, "https://configured.example.com/");
 assert.equal(setupStatus.oauthDiscovery.authorizationServerMetadataUrl, "https://configured.example.com/.well-known/oauth-authorization-server");
 assert.equal(setupStatus.oauthDiscovery.protectedResourceMetadataUrl, "https://configured.example.com/.well-known/oauth-protected-resource/mcp");
-assert.equal(setupStatus.cli.verify, "workspace-linker client chatgpt verify --mode coding");
-assert.equal(setupStatus.connectProfile.appName, "Workspace Linker (test)");
+assert.equal(setupStatus.cli.verify, "computer-linker client chatgpt verify --mode coding");
+assert.equal(setupStatus.connectProfile.appName, "Computer Linker (test)");
 assert.equal(setupStatus.connectProfile.serverUrl, "https://configured.example.com/mcp");
 assert.equal(setupStatus.connectProfile.auth.bearerHeader, "Authorization: Bearer <ownerToken>");
 assert.equal(setupStatus.connectProfile.auth.bearerTokenValue, "<ownerToken>");
 assert.equal(setupStatus.connectProfile.auth.oauthEnabled, true);
-assert.equal(setupStatus.connectProfile.cli.connectorConfig, "workspace-linker client chatgpt connector --mode coding --url https://configured.example.com --show-token");
+assert.equal(setupStatus.connectProfile.cli.connectorConfig, "computer-linker client chatgpt connector --mode coding --url https://configured.example.com --show-token");
 assert.match(setupStatus.connectProfile.firstPrompt, /get_computer_info/);
 assert.equal(setupStatus.wizard.overallStatus, "blocked");
 assert.equal(setupStatus.wizard.currentStepId, "workspace");
@@ -123,10 +123,10 @@ assert.equal(readyDetectedTunnelSetupStatus.wizard.overallStatus, "ready");
 assert.equal(readyDetectedTunnelSetupStatus.wizard.currentStepId, null);
 assert.equal(readyDetectedTunnelSetupStatus.oauthDiscovery.enabled, false);
 assert.equal(readyDetectedTunnelSetupStatus.oauthDiscovery.authorizationServerMetadataUrl, null);
-assert.equal(readyDetectedTunnelSetupStatus.smoke.publicCli, "workspace-linker client chatgpt smoke --url https://running.trycloudflare.com");
+assert.equal(readyDetectedTunnelSetupStatus.smoke.publicCli, "computer-linker client chatgpt smoke --url https://running.trycloudflare.com");
 assert.equal(readyDetectedTunnelSetupStatus.connectProfile.serverUrl, "https://running.trycloudflare.com/mcp");
 assert.equal(readyDetectedTunnelSetupStatus.connectProfile.auth.oauthEnabled, false);
-assert.equal(readyDetectedTunnelSetupStatus.connectProfile.cli.publicSmoke, "workspace-linker client chatgpt smoke --url https://running.trycloudflare.com");
+assert.equal(readyDetectedTunnelSetupStatus.connectProfile.cli.publicSmoke, "computer-linker client chatgpt smoke --url https://running.trycloudflare.com");
 assert.ok(readyDetectedTunnelSetupStatus.wizard.steps.some((step) => step.id === "oauth" && step.status === "pending"));
 
 const overriddenTunnelSetupStatus = chatGptSetupStatus(config, "coding", {
@@ -137,8 +137,8 @@ assert.equal(overriddenTunnelSetupStatus.oauthDiscovery.enabled, false);
 assert.equal(overriddenTunnelSetupStatus.oauthDiscovery.authorizationServerMetadataUrl, null);
 assert.ok(overriddenTunnelSetupStatus.wizard.steps.some((step) => step.id === "oauth" && step.status === "blocked"));
 } finally {
-  if (originalConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-  else process.env.WORKSPACE_LINKER_CONFIG_DIR = originalConfigDir;
+  if (originalConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+  else process.env.COMPUTER_LINKER_CONFIG_DIR = originalConfigDir;
 
   if (originalLocalPortConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalLocalPortConfigDir;

@@ -6,19 +6,19 @@ import { writeConfig } from "./config.js";
 import { getMcpClientSetup } from "./computer-contract.js";
 
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
-const originalWorkspaceConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
-const originalOwnerToken = process.env.WORKSPACE_LINKER_OWNER_TOKEN;
+const originalWorkspaceConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
+const originalOwnerToken = process.env.COMPUTER_LINKER_OWNER_TOKEN;
 const originalLegacyOwnerToken = process.env.LOCALPORT_OWNER_TOKEN;
-const originalPublicBaseUrl = process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL;
+const originalPublicBaseUrl = process.env.COMPUTER_LINKER_PUBLIC_BASE_URL;
 const originalLegacyPublicBaseUrl = process.env.LOCALPORT_PUBLIC_BASE_URL;
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-computer-contract-test-"));
+const root = await mkdtemp(join(tmpdir(), "computer-linker-computer-contract-test-"));
 
 try {
   process.env.LOCALPORT_CONFIG_DIR = join(root, "config");
-  delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-  delete process.env.WORKSPACE_LINKER_OWNER_TOKEN;
+  delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+  delete process.env.COMPUTER_LINKER_OWNER_TOKEN;
   delete process.env.LOCALPORT_OWNER_TOKEN;
-  delete process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL;
+  delete process.env.COMPUTER_LINKER_PUBLIC_BASE_URL;
   delete process.env.LOCALPORT_PUBLIC_BASE_URL;
 
   writeConfig({
@@ -65,7 +65,7 @@ try {
   assert.equal(remoteSetup.ready, true);
   assert.equal(remoteSetup.remoteReady, true);
   assert.equal(remoteSetup.auth.bearerHeader, "Authorization: Bearer <ownerToken>");
-  assert.equal(remoteSetup.auth.alternateBearerHeader, "x-workspace-linker-token: <ownerToken>");
+  assert.equal(remoteSetup.auth.alternateBearerHeader, "x-computer-linker-token: <ownerToken>");
   assert.deepEqual(remoteSetup.blockingReasons, []);
   assert.deepEqual(remoteSetup.remoteBlockingReasons, []);
   assert.ok(remoteSetup.nextActions.some((action) => action.includes("Use the public MCP URL")));
@@ -73,7 +73,7 @@ try {
     auth: { bearerHeader: string | null; alternateBearerHeader: string | null };
   };
   assert.equal(remoteSetupWithSecrets.auth.bearerHeader, "Authorization: Bearer owner-token");
-  assert.equal(remoteSetupWithSecrets.auth.alternateBearerHeader, "x-workspace-linker-token: owner-token");
+  assert.equal(remoteSetupWithSecrets.auth.alternateBearerHeader, "x-computer-linker-token: owner-token");
 
   writeConfig({
     machineName: "client-setup-test",
@@ -140,14 +140,14 @@ try {
 } finally {
   if (originalConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalConfigDir;
-  if (originalWorkspaceConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-  else process.env.WORKSPACE_LINKER_CONFIG_DIR = originalWorkspaceConfigDir;
-  if (originalOwnerToken === undefined) delete process.env.WORKSPACE_LINKER_OWNER_TOKEN;
-  else process.env.WORKSPACE_LINKER_OWNER_TOKEN = originalOwnerToken;
+  if (originalWorkspaceConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+  else process.env.COMPUTER_LINKER_CONFIG_DIR = originalWorkspaceConfigDir;
+  if (originalOwnerToken === undefined) delete process.env.COMPUTER_LINKER_OWNER_TOKEN;
+  else process.env.COMPUTER_LINKER_OWNER_TOKEN = originalOwnerToken;
   if (originalLegacyOwnerToken === undefined) delete process.env.LOCALPORT_OWNER_TOKEN;
   else process.env.LOCALPORT_OWNER_TOKEN = originalLegacyOwnerToken;
-  if (originalPublicBaseUrl === undefined) delete process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL;
-  else process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL = originalPublicBaseUrl;
+  if (originalPublicBaseUrl === undefined) delete process.env.COMPUTER_LINKER_PUBLIC_BASE_URL;
+  else process.env.COMPUTER_LINKER_PUBLIC_BASE_URL = originalPublicBaseUrl;
   if (originalLegacyPublicBaseUrl === undefined) delete process.env.LOCALPORT_PUBLIC_BASE_URL;
   else process.env.LOCALPORT_PUBLIC_BASE_URL = originalLegacyPublicBaseUrl;
   await rm(root, { recursive: true, force: true });

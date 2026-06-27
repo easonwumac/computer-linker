@@ -7,16 +7,16 @@ import { join } from "node:path";
 import { writeConfig } from "./config.js";
 import { serveHttp } from "./server.js";
 
-const originalConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
+const originalConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalLocalPortConfigDir = process.env.LOCALPORT_CONFIG_DIR;
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-public-mcp-test-"));
+const root = await mkdtemp(join(tmpdir(), "computer-linker-public-mcp-test-"));
 const workspaceRoot = join(root, "workspace");
 const configRoot = join(root, "config");
 const port = await getAvailablePort();
 const publicHost = "mcp-only.example.com";
 
 try {
-  process.env.WORKSPACE_LINKER_CONFIG_DIR = configRoot;
+  process.env.COMPUTER_LINKER_CONFIG_DIR = configRoot;
   delete process.env.LOCALPORT_CONFIG_DIR;
   await mkdir(workspaceRoot, { recursive: true });
   writeConfig({
@@ -80,8 +80,8 @@ try {
     server.close();
   }
 } finally {
-  if (originalConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-  else process.env.WORKSPACE_LINKER_CONFIG_DIR = originalConfigDir;
+  if (originalConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+  else process.env.COMPUTER_LINKER_CONFIG_DIR = originalConfigDir;
 
   if (originalLocalPortConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalLocalPortConfigDir;
