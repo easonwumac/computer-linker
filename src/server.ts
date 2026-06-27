@@ -7,7 +7,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { checkResourceAllowed, resourceUrlFromServerUrl } from "@modelcontextprotocol/sdk/shared/auth-utils.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import express from "express";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import * as z from "zod";
 import { registerApiRoutes } from "./api.js";
 import { errorMessage, writeAuditEvent, writeAuthFailureEvent, type AuditEventInput } from "./audit.js";
@@ -569,6 +569,9 @@ export async function serveStdio(): Promise<void> {
   await createLocalPortMcpServer().connect(new StdioServerTransport());
 }
 
+const HTTP_REQUEST_BODY_LIMIT = "10mb";
+const HTTP_REQUEST_BODY_LIMIT_LABEL = "10 MB";
+
 export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; close(): void } {
   const config = loadConfig();
   const host = config.host ?? "127.0.0.1";
@@ -579,8 +582,9 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
   const localMcpUrl = `http://${host}:${port}/mcp`;
   const localApiUrl = `http://${host}:${port}/api/v1`;
   const app = express();
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: false }));
+  app.use(express.json({ limit: HTTP_REQUEST_BODY_LIMIT }));
+  app.use(express.urlencoded({ extended: false, limit: HTTP_REQUEST_BODY_LIMIT }));
+  app.use(requestBodyErrorMiddleware);
   const publicMcpOnlyHost = publicMcpOnlyHostFromConfig(config);
   if (config.publicMcpOnly) {
     app.use((req, res, next) => {
@@ -878,6 +882,83 @@ function initializeClientName(body: unknown): string | undefined {
 
 function isExecError(error: unknown): error is Error & { code: number } {
   return error instanceof Error && "code" in error && typeof (error as { code?: unknown }).code === "number";
+}
+
+type RequestBodyFailure = {
+  status: number;
+  jsonRpcCode: number;
+  message: string;
+  auditError: string;
+};
+
+function requestBodyErrorMiddleware(error: unknown, req: Request, res: Response, next: NextFunction): void {
+  const failure = requestBodyFailure(error);
+  if (!failure) {
+    next(error);
+    return;
+  }
+
+  writeAuditEvent({
+    type: "tool_call",
+    tool: requestBodyFailureSurface(req),
+    success: false,
+    detail: `${req.method} request body rejected`,
+    requestPath: req.originalUrl || req.path,
+    remoteAddress: req.ip,
+    statusCode: failure.status,
+    error: failure.auditError,
+  });
+
+  if (req.path === "/mcp") {
+    sendJsonRpcError(res, failure.status, failure.jsonRpcCode, failure.message);
+    return;
+  }
+
+  res.status(failure.status).json({
+    ok: false,
+    error: failure.message,
+  });
+}
+
+function requestBodyFailure(error: unknown): RequestBodyFailure | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const typedError = error as {
+    type?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+  };
+  const type = typeof typedError.type === "string" ? typedError.type : undefined;
+  const status = typeof typedError.status === "number"
+    ? typedError.status
+    : typeof typedError.statusCode === "number"
+      ? typedError.statusCode
+      : undefined;
+
+  if (type === "entity.too.large" || status === 413) {
+    return {
+      status: 413,
+      jsonRpcCode: -32004,
+      message: `Request body is too large; maximum size is ${HTTP_REQUEST_BODY_LIMIT_LABEL}.`,
+      auditError: "request body too large",
+    };
+  }
+
+  if (type === "entity.parse.failed" || (status === 400 && error instanceof SyntaxError)) {
+    return {
+      status: 400,
+      jsonRpcCode: -32700,
+      message: "Malformed JSON request body.",
+      auditError: "malformed request body",
+    };
+  }
+
+  return undefined;
+}
+
+function requestBodyFailureSurface(req: Request): string {
+  if (req.path === "/mcp") return "mcp";
+  if (req.path.startsWith("/api/v1")) return "api";
+  return "http";
 }
 
 function sendJsonRpcError(

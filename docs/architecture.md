@@ -611,6 +611,12 @@ for clients that send `Authorization: Bearer ...`. OAuth discovery and provider
 state are created when HTTP mode starts; restart the server after token-state
 changes for full OAuth client setup.
 
+HTTP mode parses JSON and URL-encoded request bodies with a 10 MB limit.
+Malformed or oversized request bodies are normalized before route handling:
+`/api/v1` returns `{ ok: false, error }`, `/mcp` returns a JSON-RPC error with
+`id: null`, and the audit log records only the surface, path, status, and fixed
+error reason. Request body contents are not copied into audit events.
+
 ## Audit Log
 
 Computer Linker writes local JSONL audit events to `~/.computer-linker/audit.jsonl`.

@@ -223,6 +223,11 @@ For any MCP client, configure:
   exception: choose Tunnel mode and the `tunnel_...` id; do not paste the
   Computer Linker bearer token into ChatGPT Tunnel mode.
 
+HTTP mode accepts request bodies up to 10 MB. Malformed JSON and oversized
+bodies return JSON errors on `/api/v1` and JSON-RPC errors on `/mcp`; the audit
+log records the failure surface, path, status, and fixed error reason without
+storing request body contents.
+
 Use the generic CLI setup summary when configuring a client:
 
 ```powershell

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { chmod, mkdtemp, mkdir as mkdirPath, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import { writeConfig } from "./config.js";
+import { auditLogPath, writeConfig } from "./config.js";
 import { serveHttp } from "./server.js";
 import { listTunnelProcesses, startTunnelProcess, stopAllTunnelProcesses } from "./tunnels.js";
 
@@ -86,6 +86,51 @@ try {
   const server = serveHttp();
   try {
     await waitForApi();
+
+    const malformedApiMarker = "UNSTORED_BODY_MARKER_API_PARSE";
+    const malformedApi = await postRaw(
+      "/api/v1/control",
+      `{"action":"get_capabilities","marker":"${malformedApiMarker}"`,
+    );
+    assert.equal(malformedApi.status, 400);
+    assert.equal(malformedApi.body.ok, false);
+    assert.match(malformedApi.body.error, /Malformed JSON request body/);
+    assert.doesNotMatch(malformedApi.text, /<!doctype html/i);
+
+    const malformedMcpMarker = "UNSTORED_BODY_MARKER_MCP_PARSE";
+    const malformedMcp = await postRaw(
+      "/mcp",
+      `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"marker":"${malformedMcpMarker}"`,
+    );
+    assert.equal(malformedMcp.status, 400);
+    assert.equal(malformedMcp.body.jsonrpc, "2.0");
+    assert.equal(malformedMcp.body.error.code, -32700);
+    assert.match(malformedMcp.body.error.message, /Malformed JSON request body/);
+    assert.equal(malformedMcp.body.id, null);
+    assert.doesNotMatch(malformedMcp.text, /<!doctype html/i);
+
+    const oversizedApiMarker = "UNSTORED_BODY_MARKER_API_TOO_LARGE";
+    const oversizedApi = await postRaw(
+      "/api/v1/control",
+      JSON.stringify({ action: "get_capabilities", marker: oversizedApiMarker, data: "x".repeat((10 * 1024 * 1024) + 1) }),
+    );
+    assert.equal(oversizedApi.status, 413);
+    assert.equal(oversizedApi.body.ok, false);
+    assert.match(oversizedApi.body.error, /maximum size is 10 MB/);
+    assert.doesNotMatch(oversizedApi.text, /<!doctype html/i);
+
+    const requestBodyFailureAudit = await readFile(auditLogPath(), "utf8");
+    assert.match(requestBodyFailureAudit, /"tool":"api"/);
+    assert.match(requestBodyFailureAudit, /"tool":"mcp"/);
+    assert.match(requestBodyFailureAudit, /"requestPath":"\/api\/v1\/control"/);
+    assert.match(requestBodyFailureAudit, /"requestPath":"\/mcp"/);
+    assert.match(requestBodyFailureAudit, /"statusCode":400/);
+    assert.match(requestBodyFailureAudit, /"statusCode":413/);
+    assert.match(requestBodyFailureAudit, /"error":"malformed request body"/);
+    assert.match(requestBodyFailureAudit, /"error":"request body too large"/);
+    assert.doesNotMatch(requestBodyFailureAudit, new RegExp(malformedApiMarker));
+    assert.doesNotMatch(requestBodyFailureAudit, new RegExp(malformedMcpMarker));
+    assert.doesNotMatch(requestBodyFailureAudit, new RegExp(oversizedApiMarker));
 
     const unauthenticated = await getJson("/api/v1/workspaces", false);
     assert.equal(unauthenticated.status, 401);
@@ -1649,6 +1694,19 @@ async function postJson(path: string, body: unknown, authenticated = true): Prom
     body: JSON.stringify(body),
   });
   return { status: response.status, body: await response.json() };
+}
+
+async function postRaw(path: string, body: string, authenticated = true): Promise<{ status: number; body: any; text: string; headers: Headers }> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: {
+      ...(authenticated ? authHeaders() : {}),
+      "content-type": "application/json",
+    },
+    body,
+  });
+  const text = await response.text();
+  return { status: response.status, body: JSON.parse(text), text, headers: response.headers };
 }
 
 async function workspaceOperation(body: unknown): Promise<{ status: number; body: any }> {

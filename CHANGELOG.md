@@ -35,6 +35,9 @@ called out even when the package version is still `0.x`.
   read-only `current` scope. Normal coding access remains on `here` and
   `start <folder>`, which create explicit workspaces with default execution
   policy.
+- Malformed and oversized HTTP request bodies now return JSON-shaped API errors
+  or JSON-RPC MCP errors instead of Express fallback pages, while audit events
+  record only the failure surface, path, status, and fixed reason.
 
 ## 0.1.11 - 2026-06-27
 
