@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir as mkdirPath, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { writeConfig } from "./config.js";
@@ -16,10 +16,10 @@ const baseUrl = "http://127.0.0.1:3959";
 
 try {
   process.env.LOCALPORT_CONFIG_DIR = configRoot;
-  await mkdir(workspaceRoot, { recursive: true });
-  await mkdir(fakeBinRoot, { recursive: true });
-  await mkdir(join(workspaceRoot, "src"), { recursive: true });
-  await mkdir(join(workspaceRoot, ".codex", "skills", "api-helper"), { recursive: true });
+  await mkdirPath(workspaceRoot, { recursive: true });
+  await mkdirPath(fakeBinRoot, { recursive: true });
+  await mkdirPath(join(workspaceRoot, "src"), { recursive: true });
+  await mkdirPath(join(workspaceRoot, ".codex", "skills", "api-helper"), { recursive: true });
   await writeFile(join(workspaceRoot, "hello.txt"), "hello from LocalPort\n", "utf8");
   await writeFile(join(workspaceRoot, "lines.txt"), "one\ntwo\nthree\nfour\n", "utf8");
   await writeFile(join(workspaceRoot, "context.txt"), "before\nneedle\nAfter\n\nAgain\nneedle\nDone\n", "utf8");
@@ -360,6 +360,41 @@ try {
     assert.equal(computerCreateAgain.body.data.ok, false);
     assert.match(computerCreateAgain.body.data.error.message, /File already exists/);
     assert.equal(await readFile(join(workspaceRoot, "created-through-computer-operation.txt"), "utf8"), "created once\n");
+
+    const computerDeleteRoot = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "writer",
+      op: "file.delete",
+      target: ".",
+      input: { recursive: true },
+    });
+    assert.equal(computerDeleteRoot.status, 200);
+    assert.equal(computerDeleteRoot.body.data.ok, false);
+    assert.equal(computerDeleteRoot.body.data.error.code, "permission_denied");
+    assert.match(computerDeleteRoot.body.data.error.message, /workspace root/);
+
+    const computerMoveRoot = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "writer",
+      op: "file.move",
+      input: { fromPath: ".", toPath: "moved-root" },
+    });
+    assert.equal(computerMoveRoot.status, 200);
+    assert.equal(computerMoveRoot.body.data.ok, false);
+    assert.equal(computerMoveRoot.body.data.error.code, "permission_denied");
+    assert.match(computerMoveRoot.body.data.error.message, /workspace root/);
+
+    await mkdirPath(join(workspaceRoot, "deletable-child"), { recursive: true });
+    await writeFile(join(workspaceRoot, "deletable-child", "note.txt"), "safe child delete\n", "utf8");
+    const computerDeleteChild = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "writer",
+      op: "file.delete",
+      target: "deletable-child",
+      input: { recursive: true },
+    });
+    assert.equal(computerDeleteChild.status, 200);
+    assert.equal(computerDeleteChild.body.data.ok, true);
 
     const screenList = await postJson("/api/v1/control", {
       action: "computer_operation",

@@ -444,7 +444,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
     operation: "move",
     permission: "write",
-    description: "Move or rename a file or directory inside the workspace.",
+    description: "Move or rename a file or directory inside the workspace. The workspace root itself cannot be moved.",
     requiredFields: ["fromPath", "toPath"],
     optionalFields: [],
     example: { operation: "move", fromPath: "old.txt", toPath: "archive/old.txt" },

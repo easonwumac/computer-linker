@@ -401,7 +401,7 @@ function computerOperationErrorCode(error: unknown, message: string): ComputerOp
   if (/operation must be one of|Unknown operation|cannot execute operation|Unsupported Codex workflow/i.test(message)) {
     return "unknown_operation";
   }
-  if (error instanceof PermissionDeniedError || /permission is disabled|permission denied/i.test(message)) {
+  if (error instanceof PermissionDeniedError || /permission is disabled|permission denied|Refusing to .* workspace root/i.test(message)) {
     return "permission_denied";
   }
   if (/os permission|required.*permission|Screen Recording permission/i.test(message)) return "os_permission_required";

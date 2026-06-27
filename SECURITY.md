@@ -26,6 +26,8 @@ Include:
 
 - Read, write, search, patch, and direct Git operations resolve paths inside the
   configured workspace before touching the filesystem.
+- Destructive file operations refuse to delete or move the configured scope root
+  itself. Delete or move a child file/directory instead.
 - Shell, package script, managed process, and Codex operations start with the
   workspace as the current directory, but they are not OS filesystem sandboxes.
 - Do not enable `shell` or `codex` on folders you do not trust.
