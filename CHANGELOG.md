@@ -44,6 +44,11 @@ called out even when the package version is still `0.x`.
 - Operation discovery now filters runtime-unsupported workspace screenshot
   operations and reports scope-level `unavailableOperations` when policy allows
   an operation but the current provider cannot run it.
+- Screenshot registry examples now use bounded base64 output for remote MCP
+  clients, while docs mark `fileRef` as same-computer local automation only.
+- README common operation examples are now covered by a registry validation
+  test so invalid option pairings such as `file.list` with tree-only bounds
+  cannot drift back in silently.
 
 ## 0.1.11 - 2026-06-27
 

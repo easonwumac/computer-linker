@@ -606,7 +606,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
     description: "Capture the primary display or selected display when the platform provider supports it.",
     requiredFields: [],
     optionalFields: ["path", "format", "returnMode", "maxWidth", "maxHeight"],
-    example: { operation: "screen_capture", path: "primary", format: "png", returnMode: "fileRef" },
+    example: { operation: "screen_capture", path: "primary", format: "png", returnMode: "base64", maxWidth: 1280, maxHeight: 720 },
   },
   {
     operation: "screen_capture_window",
@@ -614,7 +614,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
     description: "Capture a specific visible window when the platform provider supports it.",
     requiredFields: ["path"],
     optionalFields: ["format", "returnMode", "maxWidth", "maxHeight"],
-    example: { operation: "screen_capture_window", path: "12345", format: "png", returnMode: "fileRef" },
+    example: { operation: "screen_capture_window", path: "12345", format: "png", returnMode: "base64", maxWidth: 1280, maxHeight: 720 },
   },
   {
     operation: "screen_capture_process",
@@ -622,7 +622,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
     description: "Capture a visible window for a process id or process name when the platform provider supports it.",
     requiredFields: ["path"],
     optionalFields: ["format", "returnMode", "maxWidth", "maxHeight"],
-    example: { operation: "screen_capture_process", path: "Terminal", format: "png", returnMode: "fileRef" },
+    example: { operation: "screen_capture_process", path: "Terminal", format: "png", returnMode: "base64", maxWidth: 1280, maxHeight: 720 },
   },
   {
     operation: "batch",

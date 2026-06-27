@@ -735,7 +735,7 @@ async function assertClientContractShape(): Promise<void> {
     op: "file.list",
     target: ".",
     input: {},
-    options: { maxEntries: 1 },
+    options: {},
   });
   const mcpRequests = requests.slice(21);
   assert.equal(mcpRequests[0].url, "https://computer-linker.example.com/mcp");
@@ -760,7 +760,7 @@ async function assertClientContractShape(): Promise<void> {
       op: "file.list",
       target: ".",
       input: {},
-      options: { maxEntries: 1 },
+      options: {},
     },
   });
   assert.equal(mcpRequests[5].mcpSessionId, "shape-smoke-session");

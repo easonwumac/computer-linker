@@ -384,7 +384,7 @@ async function smokeReadOnlyOperation(
         op: "file.list",
         target: ".",
         input: {},
-        options: { maxEntries: 1 },
+        options: {},
       }),
     }, timeoutMs);
     const text = await response.text();
@@ -558,7 +558,7 @@ async function smokeMcpToolFlow(
           op: "file.list",
           target: ".",
           input: {},
-          options: { maxEntries: 1 },
+          options: {},
         },
       }), timeoutMs, "MCP computer_operation timed out.");
       const operation = mcpToolData(result) as { ok?: unknown; error?: { message?: unknown } } | undefined;

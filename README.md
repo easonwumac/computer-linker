@@ -329,6 +329,12 @@ current runtime provider cannot support it, such as window screenshots on a
 display-only screenshot provider. The stable
 request/result schema is documented in
 [docs/computer-operation-v1.schema.json](docs/computer-operation-v1.schema.json).
+
+For screenshot operations, cloud MCP clients should request
+`options.returnMode: "base64"` with `maxWidth` and `maxHeight` bounds. Use
+`returnMode: "fileRef"` only for local automation that can read the temp file
+path on the same computer.
+
 The compatibility policy for the public MCP surface is documented in
 [docs/api-compatibility.md](docs/api-compatibility.md), and reusable agent
 setup guidance is in [docs/agent-instructions.md](docs/agent-instructions.md).

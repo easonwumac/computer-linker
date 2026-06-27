@@ -22,6 +22,7 @@ const tests = [
   tsx("config", "src/config.test.ts"),
   tsx("platform shell", "src/platform-shell.test.ts"),
   tsx("search", "src/search.test.ts"),
+  tsx("contract examples", "src/contract-examples.test.ts"),
   tsx("workspace operations", "src/workspace-operations.test.ts"),
   tsx("oauth provider", "src/oauth-provider.test.ts"),
   tsx("audit", "src/audit.test.ts"),

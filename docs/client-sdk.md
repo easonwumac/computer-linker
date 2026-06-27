@@ -114,9 +114,13 @@ await client.computer.git.diff("app", { paths: ["src/client.ts"] }, { maxBytes: 
 await client.computer.codex.run("app", "Fix the failing tests", { timeoutSeconds: 1800 });
 await client.computer.history.last("app", { maxResults: 20 });
 await client.screenList("app");
-await client.screenCapture("app", "primary", { returnMode: "fileRef" });
+await client.screenCapture("app", "primary", { returnMode: "base64", maxWidth: 1280, maxHeight: 720 });
 await client.operationRegistry({ category: "search", query: "ripgrep" });
 ```
+
+Use `returnMode: "fileRef"` only when the SDK process runs on the same computer
+and can read the returned temp file path. Remote MCP clients should use bounded
+`base64` results.
 
 Compatibility helpers remain available for older integrations that already use
 workspace operation names:

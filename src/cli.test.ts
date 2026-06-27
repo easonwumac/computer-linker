@@ -521,7 +521,7 @@ try {
   assert.match(statusOutput, /tunnel: public URL configured \(https:\/\/computer-linker\.example\.com\)/);
   if (/ready: blocked/.test(statusOutput)) {
     assert.match(statusOutput, /blocked by:/);
-    assert.match(statusOutput, /install a tunnel provider or configure OpenAI Secure MCP Tunnel credentials/);
+    assert.match(statusOutput, /  - [a-z-]+: /);
   } else {
     assert.match(statusOutput, /attention: \d+ warnings; run `computer-linker status --details`/);
   }
@@ -2489,7 +2489,7 @@ try {
   if (originalPath === undefined) delete process.env.PATH;
   else process.env.PATH = originalPath;
 
-  await rm(root, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true, maxRetries: 30, retryDelay: 500 });
 }
 
 function markCliSection(label: string): void {

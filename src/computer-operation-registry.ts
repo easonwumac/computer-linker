@@ -159,9 +159,9 @@ const computerOperationExamples: Record<string, ComputerOperationEnvelope> = {
   "history.failed_replay": { scope: "app", op: "history.failed_replay", options: { maxResults: 20 } },
   "history.debug_bundle": { scope: "app", op: "history.debug_bundle", options: { maxResults: 100 } },
   "screen.list": { scope: "app", op: "screen.list" },
-  "screen.capture": { scope: "app", op: "screen.capture", target: "primary", options: { returnMode: "fileRef", format: "png" } },
-  "screen.capture_window": { scope: "app", op: "screen.capture_window", target: "window-1", options: { returnMode: "fileRef", format: "png" } },
-  "screen.capture_process": { scope: "app", op: "screen.capture_process", target: "Terminal", options: { returnMode: "fileRef", format: "png" } },
+  "screen.capture": { scope: "app", op: "screen.capture", target: "primary", options: { returnMode: "base64", format: "png", maxWidth: 1280, maxHeight: 720 } },
+  "screen.capture_window": { scope: "app", op: "screen.capture_window", target: "window-1", options: { returnMode: "base64", format: "png", maxWidth: 1280, maxHeight: 720 } },
+  "screen.capture_process": { scope: "app", op: "screen.capture_process", target: "Terminal", options: { returnMode: "base64", format: "png", maxWidth: 1280, maxHeight: 720 } },
 };
 
 export const computerOperationContract: ComputerOperationContract = {

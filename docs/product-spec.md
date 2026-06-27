@@ -576,7 +576,7 @@ Required:
   supported.
 
 Screenshot results should return metadata and either image bytes or a temporary
-file reference, depending on transport limits.
+file reference, depending on client location and transport limits.
 
 Safety requirements:
 
@@ -595,7 +595,11 @@ Contract details:
   captures that process's active visible window when possible.
 - `options.format` supports `png` first. `jpeg` is optional.
 - `options.maxWidth` and `options.maxHeight` can downscale before returning.
-- `options.return` is `bytes`, `base64`, or `fileRef`.
+- `options.returnMode` is `bytes`, `base64`, or `fileRef`.
+- Cloud MCP clients should prefer bounded `base64` or `bytes` results because
+  they cannot read a local temp file path on the user's computer.
+- `fileRef` is for same-computer local automation that can read the returned
+  temp path.
 
 `screen.list` result:
 
