@@ -192,6 +192,7 @@ try {
   await assertClientBaseUrlValidation();
   await assertMinimalMcpClientExample();
   await assertClientContractShape();
+  await assertComputerHelperPayloads();
 } finally {
   if (originalConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalConfigDir;
@@ -776,4 +777,90 @@ async function assertClientContractShape(): Promise<void> {
   assert.equal(mcpRequests[7].method, "DELETE");
   assert.equal(mcpRequests[7].authorization, "Bearer shape-token");
   assert.equal(mcpRequests[7].mcpSessionId, "shape-smoke-session");
+}
+
+async function assertComputerHelperPayloads(): Promise<void> {
+  const requests: Array<Record<string, unknown> | undefined> = [];
+  const fetchMock: typeof fetch = async (_input, init) => {
+    requests.push(init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined);
+    return new Response(JSON.stringify({
+      ok: true,
+      data: {
+        ok: true,
+        operationId: "op_helper",
+        scope: "app",
+        op: "file.read",
+        startedAt: "2026-06-23T00:00:00.000Z",
+        durationMs: 1,
+        data: {},
+        warnings: [],
+      },
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  const client = new ComputerLinkerClient({
+    baseUrl: "https://computer-linker.example.com/api/v1",
+    ownerToken: "helper-token",
+    fetch: fetchMock,
+  });
+
+  await client.computer.file.read("app", "README.md", { maxBytes: 100 });
+  await client.computer.file.search("app", "TODO", { glob: "*.ts" }, { maxResults: 20 }, "src");
+  await client.computer.command.run("app", "npm test", { timeoutSeconds: 120 }, ".");
+  await client.computer.git.diff("app", { paths: ["src/client.ts"], staged: false }, { maxBytes: 1000 }, ".");
+  await client.computer.package.run("app", "test", { scriptArgs: ["--watch=false"] }, { timeoutSeconds: 120 }, ".");
+  await client.computer.codex.run("app", "Fix the failing tests", { timeoutSeconds: 1800 }, ".");
+
+  assert.deepEqual(requests, [
+    {
+      action: "computer_operation",
+      scope: "app",
+      op: "file.read",
+      target: "README.md",
+      input: {},
+      options: { maxBytes: 100 },
+    },
+    {
+      action: "computer_operation",
+      scope: "app",
+      op: "file.search",
+      target: "src",
+      input: { query: "TODO", glob: "*.ts" },
+      options: { maxResults: 20 },
+    },
+    {
+      action: "computer_operation",
+      scope: "app",
+      op: "command.run",
+      target: ".",
+      input: { command: "npm test" },
+      options: { timeoutSeconds: 120 },
+    },
+    {
+      action: "computer_operation",
+      scope: "app",
+      op: "git.diff",
+      target: ".",
+      input: { paths: ["src/client.ts"], staged: false },
+      options: { maxBytes: 1000 },
+    },
+    {
+      action: "computer_operation",
+      scope: "app",
+      op: "package.run",
+      target: ".",
+      input: { script: "test", scriptArgs: ["--watch=false"] },
+      options: { timeoutSeconds: 120 },
+    },
+    {
+      action: "computer_operation",
+      scope: "app",
+      op: "codex.run",
+      target: ".",
+      input: { prompt: "Fix the failing tests" },
+      options: { timeoutSeconds: 1800 },
+    },
+  ]);
 }

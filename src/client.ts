@@ -79,6 +79,127 @@ export interface WorkspaceLinkerComputerOperationRequest {
   options?: Record<string, unknown>;
 }
 
+export type ComputerLinkerOperationName =
+  | "file.stat"
+  | "file.list"
+  | "file.tree"
+  | "file.read"
+  | "file.read_many"
+  | "file.write"
+  | "file.create"
+  | "file.patch"
+  | "file.move"
+  | "file.delete"
+  | "file.find"
+  | "file.search"
+  | "code.context"
+  | "code.search_symbols"
+  | "git.status"
+  | "git.changes"
+  | "git.diff"
+  | "git.log"
+  | "git.show"
+  | "git.stage"
+  | "git.unstage"
+  | "git.commit"
+  | "package.run"
+  | "package.start"
+  | "command.run"
+  | "command.start"
+  | "command.read"
+  | "command.stop"
+  | "command.list"
+  | "process.start"
+  | "process.read"
+  | "process.stop"
+  | "process.list"
+  | "codex.run"
+  | "codex.start"
+  | "codex.read"
+  | "codex.stop"
+  | "codex.list"
+  | "history.last"
+  | "history.timeline"
+  | "history.sessions"
+  | "history.connections"
+  | "history.failed_replay"
+  | "history.debug_bundle"
+  | "screen.list"
+  | "screen.capture"
+  | "screen.capture_window"
+  | "screen.capture_process";
+
+export interface ComputerLinkerOperationRequest {
+  scope: string;
+  op: ComputerLinkerOperationName | (string & {});
+  target?: string;
+  input?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+}
+
+export interface ComputerLinkerComputerHelpers {
+  file: {
+    stat<T = unknown>(scope: string, target: string, options?: Record<string, unknown>): Promise<T>;
+    list<T = unknown>(scope: string, target?: string, options?: Record<string, unknown>): Promise<T>;
+    tree<T = unknown>(scope: string, target?: string, options?: Record<string, unknown>): Promise<T>;
+    read<T = unknown>(scope: string, target: string, options?: Record<string, unknown>): Promise<T>;
+    readMany<T = unknown>(scope: string, paths: string[], options?: Record<string, unknown>): Promise<T>;
+    write<T = unknown>(scope: string, target: string, content: string, options?: Record<string, unknown>): Promise<T>;
+    create<T = unknown>(scope: string, target: string, content: string, options?: Record<string, unknown>): Promise<T>;
+    patch<T = unknown>(scope: string, patch: string, options?: Record<string, unknown>, target?: string): Promise<T>;
+    move<T = unknown>(scope: string, fromPath: string, toPath: string, options?: Record<string, unknown>): Promise<T>;
+    delete<T = unknown>(scope: string, target: string, input?: Record<string, unknown>, options?: Record<string, unknown>): Promise<T>;
+    find<T = unknown>(scope: string, pattern: string, options?: Record<string, unknown>, target?: string): Promise<T>;
+    search<T = unknown>(scope: string, query: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+  };
+  code: {
+    context<T = unknown>(scope: string, target?: string, options?: Record<string, unknown>): Promise<T>;
+    searchSymbols<T = unknown>(scope: string, query: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+  };
+  git: {
+    status<T = unknown>(scope: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+    changes<T = unknown>(scope: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+    diff<T = unknown>(scope: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+    log<T = unknown>(scope: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+    show<T = unknown>(scope: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+    stage<T = unknown>(scope: string, paths: string[], options?: Record<string, unknown>, target?: string): Promise<T>;
+    unstage<T = unknown>(scope: string, paths: string[], options?: Record<string, unknown>, target?: string): Promise<T>;
+    commit<T = unknown>(scope: string, message: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+  };
+  package: {
+    run<T = unknown>(scope: string, script: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+    start<T = unknown>(scope: string, script: string, input?: Record<string, unknown>, options?: Record<string, unknown>, target?: string): Promise<T>;
+  };
+  command: {
+    run<T = unknown>(scope: string, command: string, options?: Record<string, unknown>, target?: string): Promise<T>;
+    start<T = unknown>(scope: string, command: string, options?: Record<string, unknown>, target?: string): Promise<T>;
+    read<T = unknown>(scope: string, processId: string, options?: Record<string, unknown>): Promise<T>;
+    stop<T = unknown>(scope: string, processId: string, options?: Record<string, unknown>): Promise<T>;
+    list<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+  };
+  process: {
+    start<T = unknown>(scope: string, command: string, options?: Record<string, unknown>, target?: string): Promise<T>;
+    read<T = unknown>(scope: string, processId: string, options?: Record<string, unknown>): Promise<T>;
+    stop<T = unknown>(scope: string, processId: string, options?: Record<string, unknown>): Promise<T>;
+    list<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+  };
+  codex: {
+    run<T = unknown>(scope: string, prompt: string, options?: Record<string, unknown>, target?: string): Promise<T>;
+    start<T = unknown>(scope: string, prompt: string, options?: Record<string, unknown>, target?: string): Promise<T>;
+    read<T = unknown>(scope: string, workflowId: string, options?: Record<string, unknown>): Promise<T>;
+    stop<T = unknown>(scope: string, processId: string, options?: Record<string, unknown>): Promise<T>;
+    list<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+  };
+  history: {
+    last<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+    timeline<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+    sessions<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+    connections<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+    failedReplay<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+    debugBundle<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
+  };
+}
+
 export interface WorkspaceLinkerOperationHistoryFilters {
   scope?: string;
   view?: "last" | "timeline" | "sessions" | "connections" | "failed_replay" | "debug_bundle" | "raw" | string;
@@ -198,8 +319,7 @@ export type ComputerLinkerWorkspaces = WorkspaceLinkerWorkspaces;
 export type ComputerLinkerRunOptions = WorkspaceLinkerRunOptions;
 export type ComputerLinkerReplayOptions = WorkspaceLinkerReplayOptions;
 export type ComputerLinkerWorkspaceOperationRequest = WorkspaceLinkerOperationRequest;
-export type ComputerLinkerOperationRequest = WorkspaceLinkerComputerOperationRequest;
-export type ComputerLinkerComputerOperationRequest = WorkspaceLinkerComputerOperationRequest;
+export type ComputerLinkerComputerOperationRequest = ComputerLinkerOperationRequest;
 export type ComputerLinkerOperationHistoryFilters = WorkspaceLinkerOperationHistoryFilters;
 export type ComputerLinkerComputerInfoOptions = WorkspaceLinkerComputerInfoOptions;
 export type ComputerLinkerOperationRegistryFilters = WorkspaceLinkerOperationRegistryFilters;
@@ -221,6 +341,157 @@ export class WorkspaceLinkerClient {
   private readonly baseUrl: URL;
   private readonly fetchImpl: typeof fetch;
   private readonly ownerToken?: string;
+
+  readonly computer: ComputerLinkerComputerHelpers = {
+    file: {
+      stat: <T = unknown>(scope: string, target: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.stat", target, options })
+      ),
+      list: <T = unknown>(scope: string, target = ".", options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.list", target, options })
+      ),
+      tree: <T = unknown>(scope: string, target = ".", options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.tree", target, options })
+      ),
+      read: <T = unknown>(scope: string, target: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.read", target, options })
+      ),
+      readMany: <T = unknown>(scope: string, paths: string[], options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.read_many", input: { paths }, options })
+      ),
+      write: <T = unknown>(scope: string, target: string, content: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.write", target, input: { content }, options })
+      ),
+      create: <T = unknown>(scope: string, target: string, content: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.create", target, input: { content }, options })
+      ),
+      patch: <T = unknown>(scope: string, patch: string, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "file.patch", target, input: { patch }, options })
+      ),
+      move: <T = unknown>(scope: string, fromPath: string, toPath: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.move", target: fromPath, input: { toPath }, options })
+      ),
+      delete: <T = unknown>(scope: string, target: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "file.delete", target, input, options })
+      ),
+      find: <T = unknown>(scope: string, pattern: string, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "file.find", target, input: { pattern }, options })
+      ),
+      search: <T = unknown>(scope: string, query: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "file.search", target, input: { query, ...input }, options })
+      ),
+    },
+    code: {
+      context: <T = unknown>(scope: string, target = ".", options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "code.context", target, options })
+      ),
+      searchSymbols: <T = unknown>(scope: string, query: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "code.search_symbols", target, input: { query, ...input }, options })
+      ),
+    },
+    git: {
+      status: <T = unknown>(scope: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "git.status", target, input, options })
+      ),
+      changes: <T = unknown>(scope: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "git.changes", target, input, options })
+      ),
+      diff: <T = unknown>(scope: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "git.diff", target, input, options })
+      ),
+      log: <T = unknown>(scope: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "git.log", target, input, options })
+      ),
+      show: <T = unknown>(scope: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "git.show", target, input, options })
+      ),
+      stage: <T = unknown>(scope: string, paths: string[], options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "git.stage", target, input: { paths }, options })
+      ),
+      unstage: <T = unknown>(scope: string, paths: string[], options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "git.unstage", target, input: { paths }, options })
+      ),
+      commit: <T = unknown>(scope: string, message: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "git.commit", target, input: { message, ...input }, options })
+      ),
+    },
+    package: {
+      run: <T = unknown>(scope: string, script: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "package.run", target, input: { script, ...input }, options })
+      ),
+      start: <T = unknown>(scope: string, script: string, input: Record<string, unknown> = {}, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "package.start", target, input: { script, ...input }, options })
+      ),
+    },
+    command: {
+      run: <T = unknown>(scope: string, command: string, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "command.run", target, input: { command }, options })
+      ),
+      start: <T = unknown>(scope: string, command: string, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "command.start", target, input: { command }, options })
+      ),
+      read: <T = unknown>(scope: string, processId: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "command.read", target: processId, options })
+      ),
+      stop: <T = unknown>(scope: string, processId: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "command.stop", target: processId, options })
+      ),
+      list: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "command.list", options })
+      ),
+    },
+    process: {
+      start: <T = unknown>(scope: string, command: string, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "process.start", target, input: { command }, options })
+      ),
+      read: <T = unknown>(scope: string, processId: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "process.read", target: processId, options })
+      ),
+      stop: <T = unknown>(scope: string, processId: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "process.stop", target: processId, options })
+      ),
+      list: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "process.list", options })
+      ),
+    },
+    codex: {
+      run: <T = unknown>(scope: string, prompt: string, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "codex.run", target, input: { prompt }, options })
+      ),
+      start: <T = unknown>(scope: string, prompt: string, options: Record<string, unknown> = {}, target = ".") => (
+        this.computerOperation<T>({ scope, op: "codex.start", target, input: { prompt }, options })
+      ),
+      read: <T = unknown>(scope: string, workflowId: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "codex.read", target: workflowId, options })
+      ),
+      stop: <T = unknown>(scope: string, processId: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "codex.stop", target: processId, options })
+      ),
+      list: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "codex.list", options })
+      ),
+    },
+    history: {
+      last: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "history.last", options })
+      ),
+      timeline: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "history.timeline", options })
+      ),
+      sessions: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "history.sessions", options })
+      ),
+      connections: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "history.connections", options })
+      ),
+      failedReplay: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "history.failed_replay", options })
+      ),
+      debugBundle: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
+        this.computerOperation<T>({ scope, op: "history.debug_bundle", options })
+      ),
+    },
+  };
 
   constructor(options: WorkspaceLinkerClientOptions) {
     this.baseUrl = normalizeComputerLinkerApiBaseUrl(options.baseUrl);
@@ -384,6 +655,10 @@ export class WorkspaceLinkerClient {
     return insight.failedReplay ?? [];
   }
 
+  /**
+   * @deprecated Compatibility workspace-operation helper. Prefer
+   * computerOperation() or the computer.* helpers for new SDK code.
+   */
   async workspaceOperation<T = unknown>(
     workspace: string,
     operation: WorkspaceOperationEnvelope,
@@ -394,6 +669,10 @@ export class WorkspaceLinkerClient {
     }) as Promise<T>;
   }
 
+  /**
+   * @deprecated Compatibility JSON action for legacy workspace operation names.
+   * Prefer computerOperation() or the computer.* helpers.
+   */
   async operation<T = unknown>(request: WorkspaceLinkerOperationRequest): Promise<T> {
     return this.control("operation", {
       workspace: request.workspace,
@@ -404,6 +683,10 @@ export class WorkspaceLinkerClient {
     }) as Promise<T>;
   }
 
+  /**
+   * @deprecated Compatibility runner for legacy workspace operation names.
+   * Prefer computerOperation() or the computer.* helpers.
+   */
   async run<T = unknown>(
     workspace: string,
     op: WorkspaceOperationName,
@@ -420,6 +703,10 @@ export class WorkspaceLinkerClient {
     });
   }
 
+  /**
+   * @deprecated Replays a legacy workspace-operation history template. Prefer
+   * computerOperation() for new calls.
+   */
   async replayFailed<T = unknown>(
     item: FailedReplayItem,
     replayOptions: WorkspaceLinkerReplayOptions = {},
@@ -452,6 +739,7 @@ export class WorkspaceLinkerClient {
     });
   }
 
+  /** @deprecated Prefer computer.file.read(). */
   async read(
     workspace: string,
     target: string,
@@ -460,6 +748,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "read", {}, options, target);
   }
 
+  /** @deprecated Prefer computer.file.readMany(). */
   async readMany(
     workspace: string,
     paths: string[],
@@ -468,6 +757,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "read_many", { paths }, options);
   }
 
+  /** @deprecated Prefer computer.file.list(). */
   async listFiles(
     workspace: string,
     target = ".",
@@ -476,6 +766,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "list_details", {}, options, target);
   }
 
+  /** @deprecated Prefer computer.file.tree(). */
   async tree(
     workspace: string,
     target = ".",
@@ -484,6 +775,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "tree", {}, options, target);
   }
 
+  /** @deprecated Prefer computer.file.write(). */
   async write(
     workspace: string,
     target: string,
@@ -493,6 +785,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "write", { content }, options, target);
   }
 
+  /** @deprecated Prefer computer.file.patch(). */
   async patch(
     workspace: string,
     patch: string,
@@ -502,6 +795,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "patch", { patch }, options, target);
   }
 
+  /** @deprecated Prefer computer.file.search(). */
   async search(
     workspace: string,
     query: string,
@@ -511,6 +805,7 @@ export class WorkspaceLinkerClient {
     return this.searchText(workspace, query, options, target);
   }
 
+  /** @deprecated Prefer computer.file.search(). */
   async searchText(
     workspace: string,
     query: string,
@@ -520,6 +815,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "search_text", { query }, options, target);
   }
 
+  /** @deprecated Prefer computer.command.run(). */
   async command(
     workspace: string,
     command: string,
@@ -529,6 +825,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "command", { command }, options, target);
   }
 
+  /** @deprecated Prefer computer.process.start() or computer.command.start(). */
   async processStart(
     workspace: string,
     command: string,
@@ -538,6 +835,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "process_start", { command }, options, target);
   }
 
+  /** @deprecated Prefer computer.process.list() or computer.command.list(). */
   async processList(
     workspace: string,
     options: Record<string, unknown> = {},
@@ -545,6 +843,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "process_list", {}, options);
   }
 
+  /** @deprecated Prefer computer.process.read() or computer.command.read(). */
   async processRead(
     workspace: string,
     processId: string,
@@ -553,6 +852,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "process_read", {}, options, processId);
   }
 
+  /** @deprecated Prefer computer.process.stop() or computer.command.stop(). */
   async processStop(
     workspace: string,
     processId: string,
@@ -591,6 +891,7 @@ export class WorkspaceLinkerClient {
     return this.computerOperation<T>({ scope, op: "screen.capture_process", target: processIdOrName, options });
   }
 
+  /** @deprecated Prefer computer.git.* helpers such as computer.git.diff(). */
   async git<T = unknown>(
     workspace: string,
     op: WorkspaceLinkerGitOperation,
@@ -601,6 +902,7 @@ export class WorkspaceLinkerClient {
     return this.run<T>(workspace, op, input, options, target);
   }
 
+  /** @deprecated Prefer computer.git.status(). */
   async repoStatus(
     workspace: string,
     options: Record<string, unknown> = {},
@@ -609,6 +911,7 @@ export class WorkspaceLinkerClient {
     return this.git(workspace, "repo_status", {}, options, target);
   }
 
+  /** @deprecated Prefer computer.git.diff(). */
   async gitDiff(
     workspace: string,
     paths: string[] = [],
@@ -618,6 +921,7 @@ export class WorkspaceLinkerClient {
     return this.git(workspace, "git_diff", { paths }, options, target);
   }
 
+  /** @deprecated Prefer computer.history.* helpers or getOperationHistory(). */
   async workspaceHistory(
     workspace: string,
     options: Record<string, unknown> = {},
@@ -625,6 +929,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "history", {}, options);
   }
 
+  /** @deprecated Prefer computer.history.* helpers or getOperationHistory(). */
   async workspaceHistoryInsight(
     workspace: string,
     options: Record<string, unknown> = {},
@@ -632,6 +937,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "history_insight", {}, options);
   }
 
+  /** @deprecated Prefer computer.history.last() or getOperationHistory(). */
   async workspaceHistoryLast(
     workspace: string,
     options: Record<string, unknown> = {},
@@ -642,6 +948,7 @@ export class WorkspaceLinkerClient {
     });
   }
 
+  /** @deprecated Prefer computer.history.sessions() or getOperationHistory(). */
   async workspaceHistorySessions(
     workspace: string,
     options: Record<string, unknown> = {},
@@ -652,6 +959,7 @@ export class WorkspaceLinkerClient {
     });
   }
 
+  /** @deprecated Prefer computer.codex.run(). */
   async codex(
     workspace: string,
     prompt: string,
@@ -661,6 +969,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "codex", { prompt, ...options }, {}, target);
   }
 
+  /** @deprecated Prefer computer.codex.run() or computer.codex.start(). */
   async codexPlan(
     workspace: string,
     prompt: string,
@@ -670,6 +979,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "codex_plan", { prompt, ...options }, {}, target);
   }
 
+  /** @deprecated Prefer computer.codex.run() or computer.codex.start(). */
   async codexReview(
     workspace: string,
     prompt?: string,
@@ -679,6 +989,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "codex_review", prompt ? { prompt, ...options } : options, {}, target);
   }
 
+  /** @deprecated Prefer computer.codex.run() or computer.codex.start(). */
   async codexFix(
     workspace: string,
     prompt: string,
@@ -688,6 +999,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "codex_fix", { prompt, ...options }, {}, target);
   }
 
+  /** @deprecated Prefer computer.codex.run() or computer.codex.start(). */
   async codexTest(
     workspace: string,
     options: Record<string, unknown> = {},
@@ -696,6 +1008,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "codex_test", options, {}, target);
   }
 
+  /** @deprecated Prefer computer.codex.run() or computer.codex.start(). */
   async codexContinue(
     workspace: string,
     options: Record<string, unknown> = {},
@@ -704,6 +1017,7 @@ export class WorkspaceLinkerClient {
     return this.run(workspace, "codex_continue", options, {}, target);
   }
 
+  /** @deprecated Prefer computer.codex.list() or computer.codex.read(). */
   async codexRuns(
     workspace: string,
     options: { workflowId?: string; maxResults?: number } = {},

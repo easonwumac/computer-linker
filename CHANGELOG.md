@@ -29,6 +29,9 @@ called out even when the package version is still `0.x`.
   Computer Linker-enforced network sandboxes.
 - SDK entrypoint types now expose `ComputerLinker*` names while preserving
   `WorkspaceLinker*` compatibility aliases.
+- SDK now includes `client.computer.*` helpers that call the primary
+  `computer_operation` JSON action with dotted operation names, while legacy
+  workspace helper methods remain available as deprecated compatibility APIs.
 - Capability discovery now separates primary MCP/JSON API recommendations from
   compatibility workspace tools, actions, endpoints, and registries.
 - README, getting started, architecture, product spec, release checklist, and

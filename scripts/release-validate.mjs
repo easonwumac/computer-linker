@@ -191,6 +191,7 @@ assert(changelog.includes("Quickstart text and JSON now explain that `start` sta
 assert(changelog.includes("Product spec guidance for the CLI management surface now matches"), "CHANGELOG must mention product spec first-run help alignment");
 assert(changelog.includes("Package metadata now positions Computer Linker as a generic MCP/local\n  automation package"), "CHANGELOG must mention generic package metadata positioning");
 assert(changelog.includes("SDK entrypoint types now expose `ComputerLinker*` names"), "CHANGELOG must mention SDK ComputerLinker type exports");
+assert(changelog.includes("SDK now includes `client.computer.*` helpers"), "CHANGELOG must mention computer-operation-first SDK helpers");
 assert(changelog.includes("Capability discovery now separates primary MCP/JSON API recommendations"), "CHANGELOG must mention primary/compatibility discovery split");
 assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.computer-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
 assert(changelog.includes("npm run public:release-ready"), "CHANGELOG must mention the final public release readiness command");
@@ -261,18 +262,26 @@ assert(clientSdkDocs.includes("Passing an MCP URL such as `http://127.0.0.1:3939
 assert(clientSdkDocs.includes("ComputerLinkerClientOptions"), "client SDK docs must demonstrate ComputerLinker type imports");
 assert(clientSdkDocs.includes("WorkspaceLinkerClient") && clientSdkDocs.includes("compatibility aliases"), "client SDK docs must explain WorkspaceLinker compatibility aliases");
 assert(clientSdkDocs.includes("`recommendedWorkspace`, `discovery`"), "client SDK docs must mention connectReadiness discovery output");
+assert(clientSdkDocs.includes("client.computer.file.read"), "client SDK docs must demonstrate computer-operation-first helpers");
+assert(clientSdkDocs.includes("Compatibility helpers remain available"), "client SDK docs must separate legacy helper examples from primary helpers");
+assert(!clientSdkDocs.includes("Common helpers are wrappers around the same envelope"), "client SDK docs must not claim legacy helpers are computer_operation wrappers");
 
 const clientSource = readText("src/client.ts");
 for (const exportedType of [
   "ComputerLinkerClientOptions",
+  "ComputerLinkerComputerHelpers",
+  "ComputerLinkerOperationName",
   "ComputerLinkerOperationRequest",
   "ComputerLinkerMcpClientSetup",
   "ComputerLinkerDiscovery",
   "ComputerLinkerOperationRegistryFilters",
   "ComputerLinkerClientSmokeReport",
 ]) {
-  assert(clientSource.includes(`export type ${exportedType} =`), `SDK source must export ${exportedType}`);
+  assert(new RegExp(`export (?:interface|type) ${exportedType}\\b`).test(clientSource), `SDK source must export ${exportedType}`);
 }
+assert(clientSource.includes("readonly computer: ComputerLinkerComputerHelpers"), "SDK source must expose the namespaced computer helper surface");
+assert(clientSource.includes("@deprecated Prefer computer.file.read()."), "SDK source must mark legacy file helpers as deprecated compatibility methods");
+assert(clientSource.includes("@deprecated Prefer computer.command.run()."), "SDK source must mark legacy command helpers as deprecated compatibility methods");
 
 const discoveryContractSource = readText("src/discovery-contract.ts");
 assert(discoveryContractSource.includes("computerLinkerDiscovery"), "discovery contract source must expose a shared discovery builder");
@@ -282,6 +291,8 @@ assert(discoveryContractSource.includes("compatibilityJsonApiActions"), "discove
 const sdkPackageSmokeScript = readText("scripts/package-smoke.mjs");
 for (const exportedType of [
   "ComputerLinkerClientOptions",
+  "ComputerLinkerComputerHelpers",
+  "ComputerLinkerOperationName",
   "ComputerLinkerOperationRequest",
   "ComputerLinkerMcpClientSetup",
   "ComputerLinkerDiscovery",

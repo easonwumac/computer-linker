@@ -83,6 +83,8 @@ function runInstalledBin(consumerDir, binName, args, options = {}) {
 
 const clientTypeExports = [
   "ComputerLinkerClientOptions",
+  "ComputerLinkerComputerHelpers",
+  "ComputerLinkerOperationName",
   "ComputerLinkerScope",
   "ComputerLinkerOperationRequest",
   "ComputerLinkerComputerOperationRequest",

@@ -92,7 +92,9 @@ The stable request/result bundle is also published as JSON Schema at
 `docs/computer-operation-v1.schema.json` for clients that validate contracts
 outside TypeScript.
 
-Common helpers are wrappers around the same envelope:
+New SDK code can use the namespaced computer helpers. They all call
+`computerOperation()` with dotted operation names and the stable
+`scope/op/target/input/options` envelope:
 
 ```ts
 await client.getComputerInfo();
@@ -102,16 +104,31 @@ await client.computerOperation({ scope: "app", op: "file.read", target: "README.
 await client.getOperationHistory({ scope: "app", view: "last", limit: 20 });
 await client.listWorkspaces();
 await client.connectReadiness({ registry: { category: "search" } });
+await client.computer.code.context("app", ".", { maxDepth: 2, maxEntries: 100 });
+await client.computer.file.read("app", "README.md", { maxBytes: 65536 });
+await client.computer.file.search("app", "runWorkspaceOperation", { glob: "src/**/*.ts" }, { maxResults: 20 });
+await client.computer.file.write("app", "notes/todo.md", "- ship\n");
+await client.computer.command.run("app", "npm test", { timeoutSeconds: 120 });
+await client.computer.package.run("app", "test", {}, { timeoutSeconds: 120 });
+await client.computer.git.diff("app", { paths: ["src/client.ts"] }, { maxBytes: 65536 });
+await client.computer.codex.run("app", "Fix the failing tests", { timeoutSeconds: 1800 });
+await client.computer.history.last("app", { maxResults: 20 });
+await client.screenList("app");
+await client.screenCapture("app", "primary", { returnMode: "fileRef" });
+await client.operationRegistry({ category: "search", query: "ripgrep" });
+```
+
+Compatibility helpers remain available for older integrations that already use
+workspace operation names:
+
+```ts
 await client.chatGptSetup("coding");
 await client.read("app", "README.md", { maxBytes: 65536 });
 await client.search("app", "runWorkspaceOperation", { glob: "src/**/*.ts" });
 await client.write("app", "notes/todo.md", "- ship\n");
 await client.command("app", "npm test", { timeoutSeconds: 120 });
-await client.screenList("app");
-await client.screenCapture("app", "primary", { returnMode: "fileRef" });
 await client.git("app", "git_diff", { paths: ["src/client.ts"] });
 await client.codex("app", "Fix the failing tests");
-await client.operationRegistry({ category: "search", query: "ripgrep" });
 await client.workspaceOperationRegistry({ category: "search", query: "ripgrep" });
 await client.historyLast({ workspaceId: "app", limit: 20 });
 await client.workspaceHistoryInsight("app", { view: "timeline", maxResults: 20 });
@@ -120,7 +137,9 @@ await client.historySessions({ workspaceId: "app", limit: 20 });
 
 `workspaceOperation()` is kept for older integrations that already send the MCP
 style nested envelope. `operation()` is kept for older JSON clients using
-workspace operation names. New JSON clients should use `computerOperation()` or
+workspace operation names. Top-level helpers such as `read()`, `search()`,
+`command()`, `git()`, and `codex()` are also compatibility helpers. New JSON
+clients should use `computerOperation()`, `client.computer.*`, or
 `action: "computer_operation"`.
 
 For generic MCP/client integrations, the recommended flow is:
