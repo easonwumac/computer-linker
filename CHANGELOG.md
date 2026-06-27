@@ -1,0 +1,208 @@
+# Changelog
+
+All notable changes to Workspace Linker will be documented in this file.
+
+This project follows a small pre-1.0 changelog: breaking contract changes are
+called out even when the package version is still `0.x`.
+
+## 0.1.0 - 2026-06-26
+
+### Added
+
+- Local MCP server and JSON API for permissioned workspace operations.
+- `get_computer_info`, `computer_operation`, and `get_operation_history`
+  product-level contracts.
+- One-minute README onboarding now leads with the installed CLI,
+  `workspace-linker start <folder> --coding`, and `client setup` instead of
+  source-checkout development commands.
+- Added MCP client recipes for local clients, OpenAI Secure MCP Tunnel,
+  Tailscale Funnel, Cloudflare, and the minimal SDK client.
+- File content reads and text searches now block common sensitive files by
+  default, including `.env*`, private keys, credential JSON files, and cloud CLI
+  credential folders.
+- Service mode now supports daily `service install --yes`, `start`, `stop`,
+  `logs`, and `uninstall --yes` flows while preserving `--dry-run` previews.
+- `computer_operation` v1 request/result JSON Schema in
+  `docs/computer-operation-v1.schema.json`.
+- Doctor, ChatGPT setup, tunnel diagnostics, service profile, and package
+  smoke workflows.
+- Command policy support for shell, package, process, and Codex operations.
+- Windows primary-display screenshot capture through a PowerShell provider,
+  with automated fake-provider coverage that does not read real screen pixels.
+- `workspace-linker config validate` and `workspace-linker config policy`
+  commands for release readiness and policy maintenance.
+- Cost-capped manual CI product gate on Windows with Node 22.
+- Release metadata validation for version, lockfile, changelog, security
+  policy, schema, and workflow drift.
+- Package smoke now installs the packed `.tgz` into a temporary consumer
+  project and verifies the installed CLI and SDK entrypoints.
+- SDK `connectReadiness()` now aggregates generic MCP client setup, workspace,
+  and operation registry state instead of depending on ChatGPT setup.
+- `client_setup` now separates local readiness from remote/tunnel readiness so
+  loopback clients are not marked blocked by cloud exposure requirements.
+- `workspace add` now accepts a single folder path and derives the scope id and
+  display name from that folder, while keeping the legacy `<id> <path>` form.
+- `workspace-linker --version` and `workspace-linker version` now report the
+  installed package version.
+- MCP server metadata, `get_computer_info`, and capabilities now report the
+  installed package version from the same package metadata source.
+- Package smoke now verifies that an installed tarball can create and read an
+  isolated Workspace Linker config through `setup` and `status`.
+- `workspace-linker self-test` now performs an isolated installed CLI/server/MCP
+  smoke test using a temporary config and workspace.
+- `workspace-linker client setup` now prints generic MCP client connection,
+  auth, readiness, tool, and first-prompt guidance without using ChatGPT
+  profile formats.
+- `workspace-linker client setup` now keeps the default text output to a short
+  MCP connection summary and moves tool lists, first prompt, and full agent
+  instructions behind `--details`.
+- `workspace-linker client smoke` now runs generic MCP client HTTP/MCP
+  reachability checks without ChatGPT-specific output.
+- `workspace-linker diagnose client` now combines MCP client setup readiness,
+  a minimal MCP SDK smoke test, and redacted connection-history inspection into
+  one troubleshooting report.
+- Setup, start, quickstart, and workspace management now accept `--read-only`,
+  `--coding`, and `--full-trust` permission presets while preserving `--dev`
+  as the coding-mode alias.
+- Added a minimal MCP SDK client example at `examples/minimal-mcp-client.mjs`
+  for validating the default three-tool surface outside the CLI.
+- Added API compatibility and reusable agent instruction docs for the stable
+  `get_computer_info`, `computer_operation`, and `get_operation_history`
+  product contract.
+- SDK `smoke()` now runs generic local/trusted-private HTTP API and MCP
+  reachability checks and returns a `workspace-linker-client-smoke` report.
+- Local/trusted-private client smoke now verifies authenticated
+  `get_computer_info` and one read-only `computer_operation` `file.list`
+  instead of only checking reachability.
+- Generic CLI and SDK smoke checks now share a client smoke core instead of
+  routing the generic CLI command through ChatGPT compatibility helpers.
+- ChatGPT smoke checks now wrap the same generic client smoke core while
+  preserving ChatGPT-specific output shape and setup wording.
+- Default MCP tool exposure is now limited to `get_computer_info`,
+  `computer_operation`, and `get_operation_history`; legacy workspace and
+  direct file tools require `WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility`.
+- Generic `computer_operation` registry now includes product-level dotted ops
+  for code context/symbol search, Git, package scripts, managed processes, and
+  Codex stop/read/list flows instead of relying on legacy workspace op names.
+- Public release audit for packed files, secret-shaped values, dependency
+  licenses, and production dependency advisories.
+- Clean public snapshot workflow for publishing from a single-commit public
+  repository without rewriting private dogfooding history.
+- Public snapshots omit the private source commit reference by default, with an
+  explicit `--include-source-ref` option when traceability is desired.
+- Public mirror snapshots now create a `v<package.version>` tag, verify that it
+  points at the generated one-commit mirror, and print `--follow-tags` push
+  guidance for release workflows.
+- Publishable public mirrors now require the matching changelog heading to be
+  dated before creating a release tag; remote dry-runs report whether a real run
+  would be blocked.
+- `public:mirror --remote` now prechecks the publishable release tag/changelog
+  before running long readiness gates, so real publish attempts fail fast and
+  dry-runs show the blocker up front.
+- Alpha evidence smoke defaults now use a generic external MCP client label
+  instead of naming ChatGPT unless the caller passes `--client "ChatGPT web"`.
+- Alpha evidence preflight now describes missing current-HEAD observations as
+  tool calls or tunnel dispatcher traffic after the commit, avoiding ambiguous
+  "fresh tool calls" wording in failure output.
+- `alpha:check --require-evidence` next actions now collapse external evidence
+  recovery into a shorter preflight, smoke-record, and rerun sequence instead of
+  repeating the same guidance in several forms.
+- Added `npm run public:release-ready` as the final local public-alpha preflight,
+  combining alpha readiness, required external MCP evidence, and dated
+  changelog enforcement in one command.
+- Local `alpha:check` readiness report for the source checkout, covering the
+  product gate, public audit, public snapshot dry-run, and cost-capped workflow
+  checks without triggering GitHub Actions.
+- `alpha:evidence` release tooling for generating and validating local external
+  MCP client/tunnel evidence before announcing a public alpha.
+- `alpha:evidence init` now accepts client, exposure, tunnel/URL, and scope
+  options, and `alpha:evidence check` validates concrete target details before
+  accepting external client/tunnel proof.
+- `alpha:evidence record` now marks individual external-alpha evidence checks
+  as passed and can set redaction confirmation without hand-editing JSON.
+- `alpha:evidence record-smoke` now records one external MCP/tunnel smoke pass
+  across all required evidence checks with one redaction-confirmed command.
+- `alpha:evidence smoke` now combines external alpha evidence creation and
+  full smoke-pass recording into one redaction-confirmed command.
+- `alpha:evidence preflight` now inspects local config, audit history, and
+  tunnel runtime state and prints a read-only external-client prompt before
+  recording alpha evidence.
+- `alpha:evidence smoke`, `init`, `record-smoke`, and `record` now reject common
+  secret-shaped values before writing local release evidence.
+- `npm test` now covers `alpha:evidence` init/check success and target
+  rejection cases so external-alpha evidence validation cannot silently regress.
+- `alpha:check` now points missing external-evidence guidance at
+  `alpha:evidence smoke`, with lightweight report coverage in `npm test`.
+- Agent setup guidance now tells connected clients to use generic
+  `computer_operation` dotted ops and avoid compatibility workspace tools
+  unless explicitly exposed.
+- `workspace-linker client setup` now prints copy-pasteable generic agent
+  instructions in text output and includes them in JSON output.
+- Package smoke now verifies the installed `workspace-linker client setup
+  --json` output, including generic tools, redacted auth, first prompt, and
+  agent instructions.
+- Default CLI help, startup readiness, and ChatGPT setup guidance now show
+  tunnel startup as one-command folder setup examples instead of tunnel-only
+  commands.
+- SDK `clientSetup()` typings now expose `firstPrompt` and
+  `agentInstructions`.
+- npm publish guard that requires a clean worktree, matching version tag, dated
+  changelog, and the public release gate before publishing.
+- OpenAI Secure MCP Tunnel support now treats tunnel-id mode as remote-ready
+  without requiring `publicBaseUrl`, auto-downloads the official tunnel client
+  when needed, and keeps bearer-token setup out of ChatGPT Tunnel mode.
+- OpenAI tunnel quickstart, start help, and missing-key errors now surface the
+  `CONTROL_PLANE_API_KEY` / `OPENAI_API_KEY` prerequisite directly in the CLI
+  before users reach tunnel startup.
+- Quickstart text and JSON now explain that `start` stays running and client
+  setup / verification commands should be run from another terminal.
+- Product spec guidance for the CLI management surface now matches the concise
+  first-run help contract and keeps self-test, smoke, repair, history, and
+  compatibility commands in focused help.
+- `alpha:check` preserved-history warnings now include the exact
+  `npm run public:mirror -- --remote <github-owner>/<public-repo>` command in
+  next actions.
+- `workspace-linker tunnel status` now explains that OpenAI Secure MCP Tunnel
+  mode intentionally has no public URL instead of reporting the URL as merely
+  not detected.
+- `alpha:evidence preflight` now shows the current Git HEAD and the exact
+  fresh external smoke evidence missing for that commit.
+- `alpha:check --require-evidence` now summarizes stale external smoke evidence
+  as a current-HEAD freshness issue with the current commit shown in text output.
+- MIT license file included in the package.
+
+### Changed
+
+- Removed legacy ChatGPT profile shortcuts from the generic CLI surface:
+  `connect-profile`, top-level `chatgpt`, and `profile --chatgpt` now point
+  users to `client chatgpt ...` compatibility helpers instead.
+- Daily-use CLI output for `status`, `start`, `setup`, and generic
+  `client setup` now favors concise summaries, with diagnostics and long setup
+  details available through `--details`, `--json`, or focused follow-up
+  commands.
+- Default CLI help now keeps the first-run surface to start, tunnel, status,
+  client setup, and quickstart preview while moving self-test, smoke, repair,
+  service, config, API, and compatibility commands behind focused help topics.
+- Package metadata now positions Workspace Linker as a generic MCP/local
+  automation package instead of using ChatGPT as the product keyword.
+
+### Security
+
+- File, search, patch, and direct Git operations validate workspace paths
+  before execution.
+- Screenshot capture history records are marked non-replayable by default so a
+  failed replay cannot silently capture the current screen again.
+- Debug bundles explicitly redact screenshot image bytes.
+- Default help and local smoke docs now prefer redacted `profile` output and
+  reserve `--show-token` for trusted MCP client setup screens.
+- `init` and HTTP server startup now redact owner-token values by default and
+  point users to `profile --show-token` for trusted local setup screens.
+- Manual smoke docs now pin the `app` scope id where later API and process
+  examples depend on that id.
+- Shell, package, process, and Codex operations are explicitly documented as
+  workspace-cwd local execution, not OS filesystem sandboxes.
+- Release readiness now warns on shell or Codex scopes without an
+  `allowedCommands` policy.
+- Public release audit now blocks tracked or packed
+  `.workspace-linker-alpha-evidence.json`, keeping real dogfooding tunnel and
+  client evidence local while publishing only the example schema.

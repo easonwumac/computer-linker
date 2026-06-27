@@ -1,0 +1,84 @@
+{
+  "name": "workspace-linker",
+  "version": "0.1.0",
+  "description": "One computer, one permissioned MCP linker for local workspaces.",
+  "type": "module",
+  "main": "dist/client.js",
+  "types": "dist/client.d.ts",
+  "files": [
+    "dist",
+    "docs",
+    "examples",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md"
+  ],
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "workspace",
+    "codex",
+    "local-first",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/easonwumac/workspace-linker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/easonwumac/workspace-linker/issues"
+  },
+  "homepage": "https://github.com/easonwumac/workspace-linker#readme",
+  "exports": {
+    ".": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    }
+  },
+  "bin": {
+    "workspace-linker": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "alpha:check": "node scripts/alpha-readiness-report.mjs",
+    "alpha:evidence": "node scripts/alpha-evidence.mjs",
+    "alpha:snapshot-check": "node scripts/alpha-readiness-report.mjs --accept-public-snapshot",
+    "dev": "tsx src/cli.ts",
+    "pack:check": "npm run build && npm run pack:smoke",
+    "pack:smoke": "node scripts/package-smoke.mjs",
+    "prepublishOnly": "npm run publish:guard",
+    "product:check": "npm run release:validate && npm run typecheck && npm test && npm run build && npm run pack:smoke",
+    "publish:guard": "node scripts/publish-guard.mjs",
+    "public:audit": "node scripts/public-release-audit.mjs",
+    "public:check": "npm run product:check && npm run public:audit",
+    "public:mirror": "node scripts/create-public-mirror.mjs",
+    "public:ready": "node scripts/alpha-readiness-report.mjs --accept-public-snapshot",
+    "public:release-ready": "node scripts/alpha-readiness-report.mjs --accept-public-snapshot --require-evidence --require-dated-changelog",
+    "public:repo-ready": "npm run product:check && npm run public:audit -- --strict-history",
+    "public:snapshot": "node scripts/create-public-snapshot.mjs",
+    "release:validate": "node scripts/release-validate.mjs",
+    "start": "node dist/cli.js start",
+    "test": "node scripts/run-tests.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^5.2.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.1",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  },
+  "license": "MIT"
+}

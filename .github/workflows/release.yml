@@ -1,0 +1,44 @@
+name: Release Package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Windows / Node 22
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Release Metadata Check
+        run: node scripts/release-validate.mjs --require-dated-changelog --require-release-tag
+
+      - name: Public Repository Release Check
+        run: npm run public:repo-ready
+
+      - name: Pack
+        run: npm pack --json
+
+      - name: Upload Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-linker-package
+          path: workspace-linker-*.tgz
+          if-no-files-found: error
