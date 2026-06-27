@@ -44,7 +44,7 @@ function readJson(path) {
 
 function readText(path) {
   try {
-    return readFileSync(path, "utf8");
+    return readFileSync(path, "utf8").replace(/\r\n/g, "\n");
   } catch (error) {
     fail(`${path} could not be read: ${error instanceof Error ? error.message : String(error)}`);
   }

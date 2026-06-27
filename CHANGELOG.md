@@ -5,6 +5,15 @@ All notable changes to Computer Linker will be documented in this file.
 This project follows a small pre-1.0 changelog: breaking contract changes are
 called out even when the package version is still `0.x`.
 
+## 0.1.1 - 2026-06-27
+
+### Changed
+
+- Prepared the renamed Computer Linker package for npm publication under
+  `@easonwumac/computer-linker`.
+- Aligned release metadata with the GitHub repository rename to
+  `easonwumac/computer-linker`.
+
 ## 0.1.0 - 2026-06-26
 
 ### Added
