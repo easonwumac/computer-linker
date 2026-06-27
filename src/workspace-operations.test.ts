@@ -22,6 +22,7 @@ const originalPath = process.env.PATH;
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
 const root = await mkdtemp(join(tmpdir(), "localport-operations-test-"));
 const binDir = join(root, "bin");
+const emptyPathDir = join(root, "empty-path");
 const configRoot = join(root, "config");
 const workspaceRoot = join(root, "workspace");
 const missingWorkspaceRoot = join(root, "missing-workspace-root");
@@ -146,6 +147,7 @@ try {
 
   process.env.LOCALPORT_CONFIG_DIR = configRoot;
   await mkdir(binDir, { recursive: true });
+  await mkdir(emptyPathDir, { recursive: true });
   await mkdir(workspaceRoot, { recursive: true });
   await mkdir(join(workspaceRoot, "src"), { recursive: true });
   await mkdir(join(workspaceRoot, ".codex", "skills", "refactor"), { recursive: true });
@@ -695,6 +697,51 @@ try {
     process.processId === startedCodex.process.processId &&
     process.kind === "codex"
   )));
+
+  const pathWithFakeTools = process.env.PATH;
+  process.env.PATH = emptyPathDir;
+  try {
+    const missingCodexStarted = await runWorkspaceOperation(registry, codexOnly, {
+      operation: "codex_start",
+      prompt: "missing codex",
+      timeoutSeconds: 5,
+    }) as { process: { processId: string; kind: string } };
+    assert.match(missingCodexStarted.process.processId, /^proc_/);
+    assert.equal(missingCodexStarted.process.kind, "codex");
+
+    const missingCodexRead = await waitForManagedProcessStatus(
+      registry,
+      codexOnly,
+      missingCodexStarted.process.processId,
+      "exited",
+    );
+    assert.equal(missingCodexRead.process.kind, "codex");
+    assert.equal(missingCodexRead.process.exitCode, null);
+    assert.match(missingCodexRead.process.stderr, /process failed to start/);
+    assert.match(missingCodexRead.process.stderr, /codex|ENOENT|not found/i);
+
+    const missingPackageStarted = await runWorkspaceOperation(registry, codexEnabled, {
+      operation: "package_start",
+      script: "build",
+      timeoutSeconds: 5,
+    }) as { process: { processId: string; kind: string } };
+    assert.match(missingPackageStarted.process.processId, /^proc_/);
+    assert.equal(missingPackageStarted.process.kind, "shell");
+
+    const missingPackageRead = await waitForManagedProcessStatus(
+      registry,
+      codexEnabled,
+      missingPackageStarted.process.processId,
+      "exited",
+    );
+    assert.equal(missingPackageRead.process.kind, "shell");
+    assert.equal(missingPackageRead.process.exitCode, null);
+    assert.match(missingPackageRead.process.stderr, /process failed to start/);
+    assert.match(missingPackageRead.process.stderr, /pnpm|ENOENT|not found/i);
+  } finally {
+    if (pathWithFakeTools === undefined) delete process.env.PATH;
+    else process.env.PATH = pathWithFakeTools;
+  }
 
   const repoStatus = await runWorkspaceOperation(registry, codexEnabled, {
     operation: "repo_status",
@@ -1297,6 +1344,23 @@ try {
   assert.equal(processRead.process.stdout, "process-out");
   assert.equal(processRead.process.stderr, "process-err");
 
+  const missingShellStarted = await runWorkspaceOperation(registry, codexEnabled, {
+    operation: "process_start",
+    command: "computer-linker-missing-command-for-test",
+    timeoutSeconds: 5,
+  }) as { process: { processId: string; status: string; commandPreview: string } };
+  assert.match(missingShellStarted.process.processId, /^proc_/);
+  assert.equal(missingShellStarted.process.status, "running");
+  assert.equal(missingShellStarted.process.commandPreview, "computer-linker-missing-command-for-test");
+  const missingShellRead = await waitForManagedProcessStatus(
+    registry,
+    codexEnabled,
+    missingShellStarted.process.processId,
+    "exited",
+  );
+  assert.notEqual(missingShellRead.process.exitCode, 0);
+  assert.match(`${missingShellRead.process.stdout}\n${missingShellRead.process.stderr}`, /computer-linker-missing-command-for-test|not found|not recognized/i);
+
   const processList = await runWorkspaceOperation(registry, codexEnabled, {
     operation: "process_list",
   }) as { processes: Array<{ processId: string }> };
@@ -1408,6 +1472,23 @@ async function waitForManagedProcessOutput(
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error("process output did not become available");
+}
+
+async function waitForManagedProcessStatus(
+  registry: WorkspaceRegistry,
+  workspace: Awaited<ReturnType<WorkspaceRegistry["openWorkspace"]>>,
+  processId: string,
+  status: string,
+): Promise<{ process: { kind: string; status: string; stdout: string; stderr: string; exitCode: number | null } }> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const result = await runWorkspaceOperation(registry, workspace, {
+      operation: "process_read",
+      processId,
+    }) as { process: { kind: string; status: string; stdout: string; stderr: string; exitCode: number | null } };
+    if (result.process.status === status) return result;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`process status did not become ${status}`);
 }
 
 async function waitForFile(path: string, expected: string): Promise<void> {

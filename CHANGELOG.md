@@ -38,6 +38,9 @@ called out even when the package version is still `0.x`.
 - Malformed and oversized HTTP request bodies now return JSON-shaped API errors
   or JSON-RPC MCP errors instead of Express fallback pages, while audit events
   record only the failure surface, path, status, and fixed reason.
+- Managed command, package, and Codex process startup now handles spawn errors
+  as readable exited process snapshots with bounded stderr messages instead of
+  risking unhandled child-process errors.
 
 ## 0.1.11 - 2026-06-27
 

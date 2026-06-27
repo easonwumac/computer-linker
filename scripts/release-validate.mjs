@@ -204,6 +204,7 @@ assert(changelog.includes("SDK computer helper contract is now split into `src/c
 assert(changelog.includes("CLI help and version output now live in `src/cli-help.ts`"), "CHANGELOG must mention the CLI help module split");
 assert(changelog.includes("Fresh bootstrap config created by direct low-level startup now exposes only a\n  read-only `current` scope"), "CHANGELOG must mention safe bootstrap default config");
 assert(changelog.includes("Malformed and oversized HTTP request bodies now return JSON-shaped API errors"), "CHANGELOG must mention normalized HTTP request body errors");
+assert(changelog.includes("Managed command, package, and Codex process startup now handles spawn errors"), "CHANGELOG must mention managed process spawn error handling");
 assert(changelog.includes("Capability discovery now separates primary MCP/JSON API recommendations"), "CHANGELOG must mention primary/compatibility discovery split");
 assert(changelog.includes("Public MCP-only routing now treats forwarded public requests as public"), "CHANGELOG must mention public MCP-only spoofed host hardening");
 assert(changelog.includes("Owner-token authentication now uses timing-safe comparison"), "CHANGELOG must mention owner-token auth hardening");
@@ -274,6 +275,7 @@ assert(architecture.includes("src/client-computer-helpers.ts"), "architecture do
 assert(architecture.includes("src/cli-help.ts"), "architecture docs must include the CLI help module boundary");
 assert(architecture.includes("bootstrap config exposes the current directory as\nread-only"), "architecture docs must document the safe bootstrap default scope");
 assert(architecture.includes("HTTP mode parses JSON and URL-encoded request bodies with a 10 MB limit"), "architecture docs must document HTTP request body error handling");
+assert(architecture.includes("the managed process is kept as\nan exited snapshot"), "architecture docs must document managed process spawn failures");
 assert(agentInstructionsDoc.includes("Do not treat `network:false` as a network sandbox"), "agent instructions must warn clients about network:false semantics");
 
 const apiCompatibility = readText("docs/api-compatibility.md");
@@ -611,6 +613,8 @@ assert(permissionsSource.includes("write: false") && permissionsSource.includes(
 const configDiagnosticsSource = readText("src/config-diagnostics.ts");
 assert(configDiagnosticsSource.includes("bootstrap-current-read-only"), "config diagnostics must identify safe read-only bootstrap scopes");
 assert(configDiagnosticsSource.includes("bootstrap-current-legacy-unsafe"), "config diagnostics must warn on legacy unsafe bootstrap scopes");
+const processesSource = readText("src/processes.ts");
+assert(processesSource.includes("processStartErrorMessage"), "managed processes must capture spawn errors");
 const httpServerSource = readText("src/server.ts");
 assert(httpServerSource.includes("requestBodyErrorMiddleware"), "server must normalize HTTP request body parser errors");
 assert(httpServerSource.includes("HTTP_REQUEST_BODY_LIMIT"), "server must keep the HTTP request body limit explicit");

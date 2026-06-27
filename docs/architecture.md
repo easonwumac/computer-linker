@@ -280,7 +280,10 @@ workspace-scoped in-memory management for dev servers, watch tests,
 long-running shell tasks, and long-running Codex jobs. Managed processes are
 tagged as `shell` or `codex`;
 workspaces can only read or stop process kinds allowed by their current
-permissions. On Unix-like systems, managed processes are started in a process
+permissions. If an executable cannot be spawned, the managed process is kept as
+an exited snapshot with a bounded stderr failure message so `process_read` can
+report the startup failure without an unhandled child-process error.
+On Unix-like systems, managed processes are started in a process
 group so stop and timeout can terminate child processes started by commands
 such as `npm run dev` or `codex exec`. HTTP server shutdown also stops all
 managed processes to avoid leaving detached tasks behind. If a managed process

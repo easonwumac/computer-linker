@@ -79,6 +79,18 @@ export function startManagedProcess(input: {
   child.stderr.on("data", (chunk: Buffer) => {
     managed.stderr = appendBounded(managed.stderr, chunk.toString("utf8"), managed.maxOutputBytes);
   });
+  child.stdin.on("error", (error) => {
+    if (managed.status !== "running") return;
+    managed.stderr = appendBounded(managed.stderr, `stdin error: ${error.message}\n`, managed.maxOutputBytes);
+  });
+  child.on("error", (error) => {
+    if (managed.timer) clearTimeout(managed.timer);
+    managed.status = "exited";
+    managed.exitCode = null;
+    managed.signal = undefined;
+    managed.endedAt = new Date().toISOString();
+    managed.stderr = appendBounded(managed.stderr, `${processStartErrorMessage(error)}\n`, managed.maxOutputBytes);
+  });
   child.on("exit", (code, signal) => {
     if (managed.timer) clearTimeout(managed.timer);
     managed.status = "exited";
@@ -203,6 +215,11 @@ function appendBounded(current: string, next: string, maxOutputBytes: number): s
     output = output.slice(Math.max(1, output.length - maxOutputBytes));
   }
   return output;
+}
+
+function processStartErrorMessage(error: Error & { code?: unknown }): string {
+  const code = typeof error.code === "string" && error.code ? ` (${error.code})` : "";
+  return `process failed to start${code}: ${error.message}`;
 }
 
 function normalizeSignal(signal: string | undefined): NodeJS.Signals {
