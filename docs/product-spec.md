@@ -160,7 +160,8 @@ The durable config should describe one computer and its scopes:
         "maxRuntimeSeconds": 1800,
         "maxOutputBytes": 200000,
         "allowedCommands": ["npm *", "pnpm *", "yarn *", "bun *", "node *", "npx *", "git *", "codex *"],
-        "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"]
+        "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
+        "allowShellMetacharacters": false
       }
     },
     {
@@ -660,6 +661,12 @@ Examples:
 - `allowedRoots`
 - `allowedCommands`
 - `deniedCommands`
+- `allowShellMetacharacters`
+
+Shell metacharacters and command chaining are blocked by default before
+wildcard allowlists are evaluated. Broad allow patterns such as `npm *` and
+`git *` must not permit `npm test && ...` or `git status; ...` unless the
+operator explicitly enables advanced shell syntax for a trusted scope.
 
 Default policy should be conservative:
 

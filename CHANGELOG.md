@@ -5,6 +5,24 @@ All notable changes to Computer Linker will be documented in this file.
 This project follows a small pre-1.0 changelog: breaking contract changes are
 called out even when the package version is still `0.x`.
 
+## Unreleased
+
+### Added
+
+- Added a practical usage guide and command policy guide so daily startup,
+  MCP client setup, agent operation flow, troubleshooting, and command safety
+  have dedicated teaching documents.
+
+### Changed
+
+- Command policy logic now lives in `src/command-policy.ts`, keeping wildcard
+  matching, shell-metacharacter checks, runtime limits, and output limits out
+  of the workspace operation dispatcher.
+- Shell metacharacters and command chaining are blocked by default before
+  command allowlist matching, so broad policies such as `npm *` and `git *`
+  do not permit chained raw shell commands unless explicitly enabled for a
+  trusted scope.
+
 ## 0.1.11 - 2026-06-27
 
 ### Added

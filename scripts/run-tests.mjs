@@ -18,6 +18,7 @@ function node(label, path) {
 
 const tests = [
   tsx("permissions", "src/permissions.test.ts"),
+  tsx("command policy", "src/command-policy.test.ts"),
   tsx("config", "src/config.test.ts"),
   tsx("platform shell", "src/platform-shell.test.ts"),
   tsx("search", "src/search.test.ts"),

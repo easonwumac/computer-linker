@@ -76,10 +76,12 @@ or tunnel brands:
   - Shared CLI command formatting, option parsing, permission presets, and
     default execution policy live outside the main command dispatcher so new
     command modules can reuse them without growing `src/cli.ts`.
-- Config and scope model: `src/config.ts`, `src/config-diagnostics.ts`,
-  `src/workspaces.ts`, `src/permissions.ts`, `src/capability-policy.ts`
+- Config, scope, and command policy model: `src/config.ts`,
+  `src/config-diagnostics.ts`, `src/workspaces.ts`, `src/permissions.ts`,
+  `src/capability-policy.ts`, `src/command-policy.ts`
   - Own config load/write, machine identity, folder scopes, permission
-    presets, command policy defaults, and diagnostics.
+    presets, command policy normalization, command allow/deny matching,
+    shell-metacharacter policy, runtime/output limits, and diagnostics.
 - MCP and HTTP transport: `src/server.ts`, `src/mcp-surface.ts`,
   `src/api.ts`, `src/oauth-provider.ts`, `src/http-auth.ts`
   - Own protocol adapters, authentication, public MCP-only behavior, OAuth
@@ -281,8 +283,10 @@ does not exit after the requested stop signal, Computer Linker follows up with
 
 Workspace config can add an optional `policy` block per scope. Command,
 package, managed process, and Codex execution check `allowedCommands` and
-`deniedCommands` wildcard patterns before launch, cap runtime with
-`maxRuntimeSeconds`, and bound command stdout/stderr with `maxOutputBytes`.
+`deniedCommands` wildcard patterns before launch, reject shell metacharacters
+and command chaining unless `allowShellMetacharacters` is explicitly enabled,
+cap runtime with `maxRuntimeSeconds`, and bound command stdout/stderr with
+`maxOutputBytes`.
 `computer-linker here`, `computer-linker start <folder>`, and
 `computer-linker setup <folder>` attach a default execution policy when
 `--shell` or `--codex` is enabled. Manual `workspace add/update` flows keep
@@ -291,6 +295,10 @@ behavior.
 Config diagnostics and security diagnostics warn when shell or Codex execution
 is enabled without an `allowedCommands` policy, because those operations remain
 cwd-bound local execution rather than a filesystem sandbox.
+Broad allow patterns such as `npm *` and `git *` do not permit command
+chaining by default; `npm test && ...`, `git status; ...`, pipes, redirects,
+command substitution, and Windows `cmd` escapes are rejected before wildcard
+matching. Advanced raw shell syntax is an explicit per-scope trust decision.
 
 These operations are intentionally flagged by security diagnostics. Computer Linker
 sets the working directory to the workspace, but a normal OS shell or Codex

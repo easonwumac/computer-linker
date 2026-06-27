@@ -196,6 +196,10 @@ Common fixes:
   and reconnect the client.
 - If a command is denied, inspect policy with
   `computer-linker config policy <workspace-id> --json`.
+- If a broad allow pattern such as `npm *` still blocks a command, check
+  whether the command contains shell chaining, pipes, redirects, command
+  substitution, or Windows `cmd` escapes. See
+  [Command Policy](command-policy.md).
 - If OpenAI tunnel returns an organization-context 401, verify the API key
   organization, Tunnels Read + Use permission, and client workspace
   association.

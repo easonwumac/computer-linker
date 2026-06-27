@@ -1724,12 +1724,18 @@ try {
   });
   const policyText = (await runCliOutput("config", "policy", "app")).stdout;
   assert.match(policyText, /allowedCommands: npm \*, git \*/);
-  const updatedPolicy = JSON.parse((await runCliOutput("config", "policy", "app", "--clear-allowed", "--json")).stdout) as {
-    policy: { allowedCommands?: string[]; deniedCommands?: string[]; maxRuntimeSeconds?: number };
+  assert.match(policyText, /allowShellMetacharacters: false/);
+  const advancedPolicy = JSON.parse((await runCliOutput("config", "policy", "app", "--allow-shell-metacharacters", "--json")).stdout) as {
+    policy: { allowShellMetacharacters?: boolean };
+  };
+  assert.equal(advancedPolicy.policy.allowShellMetacharacters, true);
+  const updatedPolicy = JSON.parse((await runCliOutput("config", "policy", "app", "--clear-allowed", "--block-shell-metacharacters", "--json")).stdout) as {
+    policy: { allowedCommands?: string[]; deniedCommands?: string[]; maxRuntimeSeconds?: number; allowShellMetacharacters?: boolean };
   };
   assert.equal(updatedPolicy.policy.allowedCommands, undefined);
   assert.deepEqual(updatedPolicy.policy.deniedCommands, ["rm -rf *"]);
   assert.equal(updatedPolicy.policy.maxRuntimeSeconds, 600);
+  assert.equal(updatedPolicy.policy.allowShellMetacharacters, false);
   await assert.rejects(
     () => runCliOutput("config", "policy", "missing"),
     /Unknown workspace: missing/,
@@ -1737,6 +1743,10 @@ try {
   await assert.rejects(
     () => runCliOutput("config", "policy", "app", "--allow"),
     /config policy --allow requires a value/,
+  );
+  await assert.rejects(
+    () => runCliOutput("config", "policy", "app", "--allow-shell-metacharacters", "--block-shell-metacharacters"),
+    /cannot combine --allow-shell-metacharacters and --block-shell-metacharacters/,
   );
   await runCli("config", "clear-public-url");
   assert.equal(loadConfig().publicBaseUrl, undefined);

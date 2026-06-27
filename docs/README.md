@@ -4,12 +4,16 @@ Start with the smallest document that matches the job:
 
 - [Getting Started](getting-started.md): install, expose one folder, connect an
   MCP client, and choose a tunnel.
+- [Usage Guide](usage-guide.md): daily startup, permission modes, client setup,
+  cloud access, first agent calls, checks, and troubleshooting.
 - [CLI Quick Reference](cli-reference.md): copyable daily CLI commands for
   install checks, startup, tunnels, status, token rotation, and advanced help.
 - [Tutorials](tutorials.md): scenario-based walkthroughs for local coding,
   read-only review, OpenAI tunnel, public HTTPS tunnels, and first agent calls.
 - [User Manual](user-manual.md): daily CLI usage, permission choices, tunnel
   setup, agent operation flow, safety boundaries, and troubleshooting.
+- [Command Policy](command-policy.md): shell allowlists, denied patterns,
+  runtime/output limits, and shell metacharacter handling.
 - [Agent Instructions](agent-instructions.md): pasteable guidance for MCP
   clients and coding agents.
 - [Agent Playbook](agent-playbook.md): operation recipes, safety rules, and
@@ -34,9 +38,11 @@ Start with the smallest document that matches the job:
   tag workflow.
 - [Product Spec](product-spec.md): product boundary and milestone definition.
 
-For normal setup, use [Getting Started](getting-started.md). For copyable
-commands, use [CLI Quick Reference](cli-reference.md). For scenario
-walkthroughs, use [Tutorials](tutorials.md). For a fuller user guide, use
+For normal setup, use [Getting Started](getting-started.md). For daily
+operation, use [Usage Guide](usage-guide.md). For copyable commands, use
+[CLI Quick Reference](cli-reference.md). For scenario walkthroughs, use
+[Tutorials](tutorials.md). For command execution safety, use
+[Command Policy](command-policy.md). For a fuller user guide, use
 [User Manual](user-manual.md). For agents, start with
 [Agent Playbook](agent-playbook.md). For SDK integrations, start with
 [SDK Quickstart](sdk-quickstart.md). For development, read

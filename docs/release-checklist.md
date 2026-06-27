@@ -236,6 +236,8 @@ For each shell or Codex-enabled scope, verify:
 - `allowedCommands` is narrow enough for expected workflows.
 - `deniedCommands` blocks known destructive local patterns for that team.
 - `maxRuntimeSeconds` and `maxOutputBytes` are finite.
+- `allowShellMetacharacters` is left disabled unless a trusted scope genuinely
+  needs raw shell syntax.
 - The user understands that shell and Codex are cwd-bound execution, not an OS
   filesystem sandbox.
 

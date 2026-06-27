@@ -76,6 +76,7 @@ export function defaultExecutionPolicyForPermissions(
     maxOutputBytes: 200000,
     allowedCommands,
     deniedCommands: ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
+    allowShellMetacharacters: false,
   };
 }
 
@@ -92,6 +93,7 @@ export function repairedExecutionPolicy(
     maxOutputBytes: policy.maxOutputBytes ?? defaults.maxOutputBytes,
     allowedCommands: policy.allowedCommands?.length ? policy.allowedCommands : defaults.allowedCommands,
     deniedCommands: mergePolicyList(policy.deniedCommands, defaults.deniedCommands ?? []),
+    allowShellMetacharacters: policy.allowShellMetacharacters ?? defaults.allowShellMetacharacters,
   };
 }
 

@@ -244,9 +244,18 @@ try {
     "process.exitCode = 3;",
     "",
   ]);
+  await writeFakeTool(binDir, "npm", [
+    "const args = process.argv.slice(2).join(' ');",
+    "process.stdout.write(`npm-args=${args}\\n`);",
+    "process.stdout.write(`npm-cwd=${process.cwd()}\\n`);",
+    "",
+  ]);
   await writeFakeTool(binDir, "git", [
     "const args = process.argv.slice(2).join(' ');",
     "switch (args) {",
+    "  case 'status':",
+    "    process.stdout.write('on branch main\\n');",
+    "    break;",
     "  case 'worktree list --porcelain':",
     "    process.stdout.write('worktree /repo/main\\nHEAD abc123\\nbranch refs/heads/main\\n\\nworktree /repo/feature\\nHEAD def456\\nbranch refs/heads/feature-a\\n');",
     "    break;",
@@ -355,7 +364,7 @@ try {
         path: workspaceRoot,
         permissions: { read: true, write: false, shell: true, codex: false },
         policy: {
-          allowedCommands: ["node *"],
+          allowedCommands: ["node *", "npm *", "git *"],
           deniedCommands: ["node blocked*"],
           maxRuntimeSeconds: 1,
           maxOutputBytes: 5,
@@ -602,6 +611,24 @@ try {
   assert.equal(policyCommand.stdoutTruncated, true);
   assert.equal(policyCommand.stderrTruncated, true);
 
+  const policyNpmCommand = await runWorkspaceOperation(registry, policyLimited, {
+    operation: "command",
+    command: "npm test",
+    maxOutputBytes: 50,
+  }) as ProcessResult;
+  assert.equal(policyNpmCommand.exitCode, 0);
+  assert.equal(policyNpmCommand.stdout, "npm-a");
+  assert.equal(policyNpmCommand.stdoutTruncated, true);
+
+  const policyGitCommand = await runWorkspaceOperation(registry, policyLimited, {
+    operation: "command",
+    command: "git status",
+    maxOutputBytes: 50,
+  }) as ProcessResult;
+  assert.equal(policyGitCommand.exitCode, 0);
+  assert.equal(policyGitCommand.stdout, "on br");
+  assert.equal(policyGitCommand.stdoutTruncated, true);
+
   await assert.rejects(
     () => runWorkspaceOperation(registry, policyLimited, {
       operation: "command",
@@ -613,9 +640,25 @@ try {
   await assert.rejects(
     () => runWorkspaceOperation(registry, policyLimited, {
       operation: "command",
-      command: "npm test",
+      command: "python -V",
     }),
-    /Command permission denied by workspace policy: npm test/,
+    /Command permission denied by workspace policy: python -V/,
+  );
+
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, policyLimited, {
+      operation: "command",
+      command: "npm test && echo unsafe",
+    }),
+    /shell metacharacters are disabled/,
+  );
+
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, policyLimited, {
+      operation: "command",
+      command: "git status; echo unsafe",
+    }),
+    /shell metacharacters are disabled/,
   );
 
   const startedCodex = await runWorkspaceOperation(registry, codexOnly, {

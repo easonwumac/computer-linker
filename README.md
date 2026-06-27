@@ -91,9 +91,11 @@ that already consumed the previous JSON field.
 
 For more guided setup paths, see [docs/tutorials.md](docs/tutorials.md). It
 covers local coding, read-only review, OpenAI Secure MCP Tunnel, public HTTPS
-tunnels, and the first operations an agent should call. For copyable daily CLI
-commands, use [docs/cli-reference.md](docs/cli-reference.md). For agent
-operation recipes, use [docs/agent-playbook.md](docs/agent-playbook.md).
+tunnels, and the first operations an agent should call. For daily operation,
+use [docs/usage-guide.md](docs/usage-guide.md). For copyable daily CLI
+commands, use [docs/cli-reference.md](docs/cli-reference.md). For command
+execution safety, use [docs/command-policy.md](docs/command-policy.md). For
+agent operation recipes, use [docs/agent-playbook.md](docs/agent-playbook.md).
 
 There is no web dashboard in the product path. Human setup and management are
 CLI-first; MCP and the JSON API are only protocol surfaces for clients,
@@ -380,7 +382,8 @@ policy:
     "maxRuntimeSeconds": 600,
     "maxOutputBytes": 200000,
     "allowedCommands": ["npm *", "pnpm *", "yarn *", "bun *", "node *", "npx *", "git *"],
-    "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"]
+    "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
+    "allowShellMetacharacters": false
   }
 }
 ```
@@ -389,8 +392,15 @@ The same policy can be maintained without editing JSON by hand:
 
 ```bash
 computer-linker config policy app --allow "npm *" --allow "git *" --deny "rm -rf *" --max-runtime-seconds 600 --max-output-bytes 200000
+computer-linker config policy app --block-shell-metacharacters
 computer-linker config policy app --json
 ```
+
+By default, shell metacharacters and command chaining such as `&&`, `;`, pipes,
+redirects, command substitution, and Windows `cmd` escapes are blocked before
+the wildcard allowlist is evaluated. This keeps patterns such as `npm *` and
+`git *` from allowing `npm test && ...` or `git status; ...`. See
+[docs/command-policy.md](docs/command-policy.md) for advanced policy guidance.
 
 Owner-token maintenance is also CLI-managed. Status output redacts the token;
 use `--show-token` only on a trusted local setup screen when updating an MCP
@@ -588,8 +598,10 @@ app. It is a local MCP program that exposes approved computer abilities.
 
 See [docs/README.md](docs/README.md) for the full documentation map,
 [docs/getting-started.md](docs/getting-started.md) for the short setup path,
+[docs/usage-guide.md](docs/usage-guide.md) for daily operation,
 [docs/cli-reference.md](docs/cli-reference.md) for copyable CLI commands,
 [docs/tutorials.md](docs/tutorials.md) for scenario walkthroughs,
+[docs/command-policy.md](docs/command-policy.md) for command execution safety,
 [docs/agent-playbook.md](docs/agent-playbook.md) for MCP agent operation
 recipes, [docs/sdk-quickstart.md](docs/sdk-quickstart.md) for the short SDK
 integration path,

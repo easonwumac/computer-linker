@@ -3010,7 +3010,7 @@ function validateConfig(args: string[]): void {
 function configPolicy(args: string[]): void {
   const [workspaceId] = args;
   if (!workspaceId || workspaceId.startsWith("--")) {
-    throw new Error("Usage: computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--clear|--clear-allowed|--clear-denied]");
+    throw new Error("Usage: computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--allow-shell-metacharacters|--block-shell-metacharacters] [--clear|--clear-allowed|--clear-denied]");
   }
   assertKnownConfigPolicyOptions(args.slice(1));
   const config = loadConfig();
@@ -3050,7 +3050,7 @@ function configPolicy(args: string[]): void {
 
 function assertKnownConfigPolicyOptions(args: string[]): void {
   const valueOptions = new Set(["--allow", "--deny", "--max-runtime-seconds", "--max-output-bytes"]);
-  const flagOptions = new Set(["--json", "--clear", "--clear-allowed", "--clear-denied"]);
+  const flagOptions = new Set(["--json", "--clear", "--clear-allowed", "--clear-denied", "--allow-shell-metacharacters", "--block-shell-metacharacters"]);
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (!arg.startsWith("--")) throw new Error(`Unknown config policy argument: ${arg}`);
@@ -3072,7 +3072,11 @@ function configPolicyUpdates(args: string[]): {
   deniedCommands: string[];
   maxRuntimeSeconds?: number;
   maxOutputBytes?: number;
+  allowShellMetacharacters?: boolean;
 } {
+  if (args.includes("--allow-shell-metacharacters") && args.includes("--block-shell-metacharacters")) {
+    throw new Error("config policy cannot combine --allow-shell-metacharacters and --block-shell-metacharacters");
+  }
   return {
     clear: args.includes("--clear"),
     clearAllowed: args.includes("--clear-allowed"),
@@ -3081,6 +3085,11 @@ function configPolicyUpdates(args: string[]): {
     deniedCommands: readRepeatedOptions(args, "--deny", "config policy --deny"),
     maxRuntimeSeconds: readOptionalIntegerOption(args, "--max-runtime-seconds", "config policy --max-runtime-seconds"),
     maxOutputBytes: readOptionalIntegerOption(args, "--max-output-bytes", "config policy --max-output-bytes"),
+    allowShellMetacharacters: args.includes("--allow-shell-metacharacters")
+      ? true
+      : args.includes("--block-shell-metacharacters")
+        ? false
+        : undefined,
   };
 }
 
@@ -3092,7 +3101,8 @@ function policyHasUpdates(updates: ReturnType<typeof configPolicyUpdates>): bool
     updates.allowedCommands.length > 0 ||
     updates.deniedCommands.length > 0 ||
     updates.maxRuntimeSeconds !== undefined ||
-    updates.maxOutputBytes !== undefined
+    updates.maxOutputBytes !== undefined ||
+    updates.allowShellMetacharacters !== undefined
   );
 }
 
@@ -3105,6 +3115,7 @@ function applyPolicyUpdates(
   if (updates.clearDenied) delete next.deniedCommands;
   if (updates.maxRuntimeSeconds !== undefined) next.maxRuntimeSeconds = updates.maxRuntimeSeconds;
   if (updates.maxOutputBytes !== undefined) next.maxOutputBytes = updates.maxOutputBytes;
+  if (updates.allowShellMetacharacters !== undefined) next.allowShellMetacharacters = updates.allowShellMetacharacters;
   if (updates.allowedCommands.length > 0) {
     next.allowedCommands = mergePolicyList(next.allowedCommands, updates.allowedCommands);
   }
@@ -3133,6 +3144,7 @@ function printPolicyLines(policy: WorkspacePolicy | undefined): void {
   console.log(`maxOutputBytes: ${policy?.maxOutputBytes ?? "not set"}`);
   console.log(`allowedCommands: ${policy?.allowedCommands?.join(", ") || "not set"}`);
   console.log(`deniedCommands: ${policy?.deniedCommands?.join(", ") || "not set"}`);
+  console.log(`allowShellMetacharacters: ${policy?.allowShellMetacharacters === true ? "true" : "false"}`);
 }
 
 function addWorkspace(args: string[]): void {
@@ -4790,7 +4802,7 @@ function printConfigHelp(): void {
       "  computer-linker config show [--show-token]",
       "  computer-linker config validate [--json]",
       "  computer-linker config token [rotate] [--show-token] [--json]",
-      "  computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern]",
+      "  computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--allow-shell-metacharacters|--block-shell-metacharacters]",
       "  computer-linker config set-public-url <https-url>",
       "  computer-linker config clear-public-url",
       "",
@@ -4856,9 +4868,11 @@ function printConfigPolicyHelp(): void {
       "Usage:",
       "  computer-linker config policy <workspace-id> [--json]",
       "  computer-linker config policy <workspace-id> [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n]",
+      "  computer-linker config policy <workspace-id> [--allow-shell-metacharacters|--block-shell-metacharacters]",
       "",
       "What it does:",
       "  Reads or updates command policy for shell/Codex-enabled workspaces.",
+      "  Shell metacharacters are blocked unless explicitly allowed for a trusted scope.",
     ].join("\n"),
   );
 }
@@ -5199,7 +5213,7 @@ function printAdvancedHelp(): void {
       "  computer-linker config validate [--json]",
       "  computer-linker config token [rotate] [--show-token] [--json]",
       "  computer-linker config policy <workspace-id> [--json]",
-      "  computer-linker config policy <workspace-id> [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n]",
+      "  computer-linker config policy <workspace-id> [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--allow-shell-metacharacters|--block-shell-metacharacters]",
       "  computer-linker config set-public-url <https-url>",
       "  computer-linker config clear-public-url",
       "  computer-linker workspace list",

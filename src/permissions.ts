@@ -15,6 +15,7 @@ export interface WorkspacePolicy {
   maxOutputBytes?: number;
   allowedCommands?: string[];
   deniedCommands?: string[];
+  allowShellMetacharacters?: boolean;
 }
 
 export interface ExposedPathConfig {
@@ -123,6 +124,9 @@ function normalizeWorkspacePolicy(policy: WorkspacePolicy | undefined): Workspac
   if (maxOutputBytes !== undefined) normalized.maxOutputBytes = maxOutputBytes;
   if (allowedCommands.length > 0) normalized.allowedCommands = allowedCommands;
   if (deniedCommands.length > 0) normalized.deniedCommands = deniedCommands;
+  if (typeof policy.allowShellMetacharacters === "boolean") {
+    normalized.allowShellMetacharacters = policy.allowShellMetacharacters;
+  }
 
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 }

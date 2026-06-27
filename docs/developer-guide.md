@@ -12,6 +12,8 @@ individual MCP clients. Use this guide when adding or moving code.
   permission presets plus default execution policy.
 - Config and workspace scope rules live in `src/config.ts`,
   `src/permissions.ts`, `src/workspaces.ts`, and `src/workspace-roots.ts`.
+  Command allow/deny matching, shell metacharacter checks, and command
+  runtime/output limit calculations live in `src/command-policy.ts`.
 - Protocol shape lives in `src/computer-contract.ts`,
   `src/computer-operation-registry.ts`, `src/mcp-surface.ts`, and
   `src/server.ts`.
@@ -21,10 +23,10 @@ individual MCP clients. Use this guide when adding or moving code.
   namespaced `client.computer.*` helper types and helper-to-envelope mapping in
   `src/client-computer-helpers.ts`.
 - Local operation providers live in focused modules such as `src/search.ts`,
-  `src/processes.ts`, `src/codex-runs.ts`, `src/screenshot.ts`, and
-  `src/sensitive-files.ts`. Keep output filtering in provider helpers such as
-  `src/git-output.ts` instead of embedding parsing/redaction logic in the
-  workspace operation dispatcher.
+  `src/processes.ts`, `src/codex-runs.ts`, `src/screenshot.ts`,
+  `src/command-policy.ts`, and `src/sensitive-files.ts`. Keep output
+  filtering in provider helpers such as `src/git-output.ts` instead of
+  embedding parsing/redaction logic in the workspace operation dispatcher.
 - Public exposure belongs in `src/tunnels.ts`, OAuth/auth modules, and public
   MCP-only tests.
 - Release and package checks belong in `scripts/*.mjs`.
@@ -45,9 +47,9 @@ methods.
 
 `src/workspace-operations.ts` should stay responsible for permission checks,
 path resolution, and dispatch. When an operation needs protocol-independent
-parsing, redaction, process management, search behavior, screenshot handling, or
-tool installation, put that behavior in a focused provider module and call it
-from the dispatcher.
+parsing, redaction, process management, command policy, search behavior,
+screenshot handling, or tool installation, put that behavior in a focused
+provider module and call it from the dispatcher.
 
 Tests should cover the public operation boundary and the extracted provider
 logic when the provider has non-trivial parsing or safety behavior.

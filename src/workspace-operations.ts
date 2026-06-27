@@ -5,8 +5,9 @@ import { basename, dirname, extname, join, relative, resolve, sep } from "node:p
 import { errorMessage, previewCommand, readAuditEvents, writeAuditEvent, type AuditEvent, type AuditEventInput, type AuditReplayTemplate } from "./audit.js";
 import { readCodexRunRecords, writeCodexRunRecord } from "./codex-runs.js";
 import { operationCapabilityPolicy, workspaceCapabilityPolicy, type CapabilityName, type CapabilityPolicy, type NetworkAccessPolicy } from "./capability-policy.js";
+import { commandPolicyLimits, managedCommandPolicyLimits } from "./command-policy.js";
 import { historyInsightFromEvents } from "./history-insights.js";
-import { assertPermission, type PathPermissions, type WorkspacePolicy } from "./permissions.js";
+import { assertPermission, type PathPermissions } from "./permissions.js";
 import { executableCommand, shellCommand } from "./platform-shell.js";
 import { listManagedProcesses, readManagedProcess, startManagedProcess, stopManagedProcess, type ManagedProcessSnapshot } from "./processes.js";
 import { captureScreenshot, listScreenshotTargets, screenshotCapability, type ScreenshotCaptureOptions } from "./screenshot.js";
@@ -189,9 +190,6 @@ export interface ProcessResult {
   stdoutTruncated?: boolean;
   stderrTruncated?: boolean;
 }
-
-const DEFAULT_COMMAND_OUTPUT_BYTES = 200000;
-const MAX_COMMAND_OUTPUT_BYTES = 10 * 1024 * 1024;
 
 export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
@@ -1436,7 +1434,7 @@ async function runCodexOperation(
       assertPermission(workspace.exposedPath, "codex");
       const cwd = await registry.resolveExistingPath(workspace, input.workingDirectory ?? ".");
       const prompt = required(input.prompt, "prompt");
-      const limits = managedCommandPolicyLimits(workspace, "codex exec -", input);
+      const limits = managedCommandPolicyLimits(workspace.exposedPath.policy, "codex exec -", input);
       return {
         process: startManagedProcess({
           kind: "codex",
@@ -1455,7 +1453,7 @@ async function runCodexOperation(
     case "codex": {
       assertPermission(workspace.exposedPath, "codex");
       const cwd = await registry.resolveExistingPath(workspace, input.workingDirectory ?? ".");
-      const limits = commandPolicyLimits(workspace, "codex exec -", input, 1800);
+      const limits = commandPolicyLimits(workspace.exposedPath.policy, "codex exec -", input, 1800);
       return runProcess("codex", ["exec", "-"], cwd, limits.timeoutMs, required(input.prompt, "prompt"), limits.maxOutputBytes);
     }
     case "codex_plan":
@@ -1695,7 +1693,7 @@ async function dispatchWorkspaceOperation(
       assertPermission(workspace.exposedPath, "shell");
       const cwd = await registry.resolveExistingPath(workspace, input.workingDirectory ?? ".");
       const command = required(input.command, "command");
-      const limits = commandPolicyLimits(workspace, command, input, 120);
+      const limits = commandPolicyLimits(workspace.exposedPath.policy, command, input, 120);
       const shell = shellCommand(command);
       return runProcess(shell.command, shell.args, cwd, limits.timeoutMs, undefined, limits.maxOutputBytes);
     }
@@ -1703,7 +1701,7 @@ async function dispatchWorkspaceOperation(
       assertPermission(workspace.exposedPath, "shell");
       const cwd = await registry.resolveExistingPath(workspace, input.workingDirectory ?? ".");
       const command = required(input.command, "command");
-      const limits = managedCommandPolicyLimits(workspace, command, input);
+      const limits = managedCommandPolicyLimits(workspace.exposedPath.policy, command, input);
       return {
         process: startManagedProcess({
           kind: "shell",
@@ -2240,80 +2238,6 @@ function normalizeTimeoutMs(value: number | undefined, defaultSeconds: number): 
   return seconds * 1000;
 }
 
-function commandPolicyLimits(
-  workspace: Workspace,
-  command: string,
-  input: Pick<WorkspaceOperationInput, "timeoutSeconds" | "maxOutputBytes">,
-  defaultTimeoutSeconds: number,
-): { timeoutMs: number; maxOutputBytes: number } {
-  assertCommandAllowedByPolicy(workspace.exposedPath.policy, command);
-  return {
-    timeoutMs: normalizeTimeoutMs(commandPolicyTimeoutSeconds(workspace.exposedPath.policy, input.timeoutSeconds, defaultTimeoutSeconds), defaultTimeoutSeconds),
-    maxOutputBytes: commandPolicyOutputBytes(workspace.exposedPath.policy, input.maxOutputBytes),
-  };
-}
-
-function managedCommandPolicyLimits(
-  workspace: Workspace,
-  command: string,
-  input: Pick<WorkspaceOperationInput, "timeoutSeconds" | "maxOutputBytes">,
-): { timeoutMs?: number; maxOutputBytes: number } {
-  assertCommandAllowedByPolicy(workspace.exposedPath.policy, command);
-  return {
-    timeoutMs: managedCommandPolicyTimeoutMs(workspace.exposedPath.policy, input.timeoutSeconds),
-    maxOutputBytes: commandPolicyOutputBytes(workspace.exposedPath.policy, input.maxOutputBytes),
-  };
-}
-
-function commandPolicyTimeoutSeconds(
-  policy: WorkspacePolicy | undefined,
-  requestedSeconds: number | undefined,
-  defaultSeconds: number,
-): number {
-  const requested = requestedSeconds ?? defaultSeconds;
-  return policy?.maxRuntimeSeconds ? Math.min(requested, policy.maxRuntimeSeconds) : requested;
-}
-
-function managedCommandPolicyTimeoutMs(policy: WorkspacePolicy | undefined, requestedSeconds: number | undefined): number | undefined {
-  if (requestedSeconds === undefined && !policy?.maxRuntimeSeconds) return undefined;
-  const seconds = policy?.maxRuntimeSeconds
-    ? Math.min(requestedSeconds ?? policy.maxRuntimeSeconds, policy.maxRuntimeSeconds)
-    : requestedSeconds;
-  return normalizeTimeoutMs(seconds, 3600);
-}
-
-function commandPolicyOutputBytes(policy: WorkspacePolicy | undefined, requestedBytes: number | undefined): number {
-  const policyMax = normalizeBoundedPositiveInteger(policy?.maxOutputBytes, DEFAULT_COMMAND_OUTPUT_BYTES, MAX_COMMAND_OUTPUT_BYTES);
-  const capped = requestedBytes === undefined ? policyMax : Math.min(requestedBytes, policyMax);
-  return normalizeBoundedPositiveInteger(capped, policyMax, policyMax);
-}
-
-function assertCommandAllowedByPolicy(policy: WorkspacePolicy | undefined, command: string): void {
-  if (!policy) return;
-  const deniedPattern = policy.deniedCommands?.find((pattern) => commandPolicyPatternMatches(pattern, command));
-  if (deniedPattern) {
-    throw new Error(`Command permission denied by workspace policy (${deniedPattern}): ${previewCommand(command)}`);
-  }
-  if (policy.allowedCommands?.length && !policy.allowedCommands.some((pattern) => commandPolicyPatternMatches(pattern, command))) {
-    throw new Error(`Command permission denied by workspace policy: ${previewCommand(command)}`);
-  }
-}
-
-function commandPolicyPatternMatches(pattern: string, command: string): boolean {
-  const normalizedPattern = normalizeCommandPolicyText(pattern);
-  if (!normalizedPattern) return false;
-  const normalizedCommand = normalizeCommandPolicyText(command);
-  const source = normalizedPattern
-    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*/g, ".*")
-    .replace(/\?/g, ".");
-  return new RegExp(`^${source}$`, process.platform === "win32" ? "i" : "").test(normalizedCommand);
-}
-
-function normalizeCommandPolicyText(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
-}
-
 function workspaceHistory(
   workspace: Workspace,
   options: { maxResults?: number; query?: string },
@@ -2378,7 +2302,7 @@ async function codexWorkflow(
     preRunChangeSummary,
     history,
   });
-  const limits = commandPolicyLimits(workspace, "codex exec -", input, 1800);
+  const limits = commandPolicyLimits(workspace.exposedPath.policy, "codex exec -", input, 1800);
   const result = await runProcess("codex", ["exec", "-"], cwd, limits.timeoutMs, workflowPrompt, limits.maxOutputBytes);
   const postRunChangeSummary = await changeSummary(cwd, { maxBytes });
   const workflow = {
@@ -2673,7 +2597,7 @@ async function packageRun(
 ): Promise<unknown> {
   const resolved = await resolvePackageScript(registry, workspace, cwd, options);
   const commandText = `${resolved.packageManager} ${resolved.args.join(" ")}`;
-  const limits = commandPolicyLimits(workspace, commandText, options, 120);
+  const limits = commandPolicyLimits(workspace.exposedPath.policy, commandText, options, 120);
   const process = await runProcess(resolved.packageManager, resolved.args, resolved.packageRootAbsolute, limits.timeoutMs, undefined, limits.maxOutputBytes);
   return {
     packageRoot: resolved.packageRoot,
@@ -2692,7 +2616,7 @@ async function packageStart(
 ): Promise<unknown> {
   const resolved = await resolvePackageScript(registry, workspace, cwd, options);
   const commandText = `${resolved.packageManager} ${resolved.args.join(" ")}`;
-  const limits = managedCommandPolicyLimits(workspace, commandText, options);
+  const limits = managedCommandPolicyLimits(workspace.exposedPath.policy, commandText, options);
   return {
     packageRoot: resolved.packageRoot,
     packageManager: resolved.packageManager,

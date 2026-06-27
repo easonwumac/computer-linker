@@ -36,6 +36,10 @@ Include:
 - Use workspace `policy.allowedCommands`, `policy.deniedCommands`,
   `policy.maxRuntimeSeconds`, and `policy.maxOutputBytes` for shell-enabled
   scopes.
+- Shell metacharacters and command chaining are blocked by default before
+  wildcard command allowlists are evaluated. Leave
+  `policy.allowShellMetacharacters` disabled unless a fully trusted scope
+  genuinely needs raw shell syntax.
 - Do not expose HTTP mode outside loopback without an owner token and an
   appropriate tunnel or network access-control layer.
 - Direct owner-token authentication uses timing-safe comparison for bearer and

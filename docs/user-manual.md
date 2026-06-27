@@ -189,6 +189,9 @@ Codex operations.
 - Delete and move operations refuse to target the scope root itself.
 - Shell, package, managed process, and Codex operations start inside the scope
   but are not OS-level sandboxes.
+- Shell metacharacters and command chaining are blocked by default by command
+  policy, so broad patterns such as `npm *` and `git *` do not permit
+  `npm test && ...` or `git status; ...`.
 - Public HTTP exposure should always use an owner token plus a tunnel or
   network access-control layer.
 
@@ -208,6 +211,8 @@ If a command is denied, inspect the scope and policy:
 computer-linker workspace list
 computer-linker config policy <workspace-id> --json
 ```
+
+For command policy tuning, see [Command Policy](command-policy.md).
 
 If OpenAI tunnel mode returns an organization-context 401, check the API key's
 Platform organization, Tunnels Read + Use permission, and ChatGPT workspace

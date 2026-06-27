@@ -44,6 +44,7 @@ try {
           maxOutputBytes: 999999999,
           allowedCommands: [" node * ", "node *", ""],
           deniedCommands: [" rm -rf / "],
+          allowShellMetacharacters: true,
         },
       },
     ],
@@ -53,6 +54,7 @@ try {
     maxOutputBytes: 10 * 1024 * 1024,
     allowedCommands: ["node *"],
     deniedCommands: ["rm -rf /"],
+    allowShellMetacharacters: true,
   });
 
   assert.throws(

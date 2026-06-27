@@ -106,6 +106,17 @@ computer-linker config token rotate --show-token
 
 Show raw tokens only on a trusted local screen.
 
+## Command Policy
+
+```powershell
+computer-linker config policy <workspace-id> --json
+computer-linker config policy <workspace-id> --allow "npm *" --allow "git *" --max-runtime-seconds 600 --max-output-bytes 200000
+computer-linker config policy <workspace-id> --block-shell-metacharacters
+```
+
+Shell metacharacters and command chaining are blocked by default. Use
+[Command Policy](command-policy.md) before enabling advanced shell syntax.
+
 ## Advanced Commands
 
 ```powershell
