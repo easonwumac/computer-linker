@@ -323,7 +323,10 @@ Every operation uses the same request envelope:
 }
 ```
 
-The full operation registry is returned by `get_computer_info`. The stable
+The available operation registry is returned by `get_computer_info`. Each scope
+also reports `unavailableOperations` when policy allows an operation but the
+current runtime provider cannot support it, such as window screenshots on a
+display-only screenshot provider. The stable
 request/result schema is documented in
 [docs/computer-operation-v1.schema.json](docs/computer-operation-v1.schema.json).
 The compatibility policy for the public MCP surface is documented in

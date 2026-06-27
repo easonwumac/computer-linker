@@ -18,6 +18,7 @@ import {
   normalizeWorkspaceOperationInput,
   publicWorkspaceOperationRegistry,
   runWorkspaceOperation,
+  unavailableWorkspaceOperations,
   workspaceOperationContract,
   workspaceOperationRegistry,
   workspaceOperationAuditFields,
@@ -180,6 +181,7 @@ function workspacesData(): unknown {
       ...workspace,
       capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
       allowedOperations: allowedWorkspaceOperations(workspace.permissions),
+      unavailableOperations: unavailableWorkspaceOperations(workspace.permissions),
     })),
   };
 }

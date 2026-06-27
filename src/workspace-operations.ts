@@ -673,6 +673,18 @@ export type PublicWorkspaceOperationRegistryEntry = Omit<WorkspaceOperationRegis
   run: PublicWorkspaceOperationRunRegistration;
 };
 
+export interface UnavailableWorkspaceOperation {
+  operation: WorkspaceOperationName;
+  allowedByPolicy: true;
+  availableNow: false;
+  reason: "provider_unavailable" | "runtime_mode_unavailable";
+  detail: string;
+  provider?: string;
+  requiredMode?: string;
+  availableModes?: string[];
+  action: string;
+}
+
 export interface WorkspaceOperationContract {
   version: 1;
   mcp: {
@@ -776,7 +788,7 @@ export const workspaceOperationRegistry: WorkspaceOperationRegistryEntry[] = bui
 export function publicWorkspaceOperationRegistry(
   registry: readonly WorkspaceOperationRegistryEntry[] = workspaceOperationRegistry,
 ): PublicWorkspaceOperationRegistryEntry[] {
-  return registry.map(({ run, ...entry }) => ({
+  return registry.filter((entry) => operationSupportedByCurrentRuntime(entry.operation)).map(({ run, ...entry }) => ({
     ...entry,
     run: {
       type: run.type,
@@ -943,12 +955,57 @@ export function allowedWorkspaceOperations(permissions: PathPermissions): Worksp
     .map((entry) => entry.operation);
 }
 
+export function unavailableWorkspaceOperations(permissions: PathPermissions): UnavailableWorkspaceOperation[] {
+  const policy = workspaceCapabilityPolicy(permissions);
+  return workspaceOperationRegistry
+    .filter((entry) => (
+      operationAllowedByLegacyPermission(entry, permissions) &&
+      operationAllowedByCapabilityPolicy(entry, policy)
+    ))
+    .map((entry) => unavailableOperationForCurrentRuntime(entry.operation))
+    .filter((entry): entry is UnavailableWorkspaceOperation => Boolean(entry));
+}
+
 function operationSupportedByCurrentRuntime(operation: WorkspaceOperationName): boolean {
   if (operation === "screen_list") return true;
   const screenMode = screenCaptureModeForOperation(operation);
   if (!screenMode) return true;
   const capability = screenshotCapability();
   return capability.supported && capability.modes.includes(screenMode);
+}
+
+function unavailableOperationForCurrentRuntime(operation: WorkspaceOperationName): UnavailableWorkspaceOperation | undefined {
+  const screenMode = screenCaptureModeForOperation(operation);
+  if (!screenMode) return undefined;
+
+  const capability = screenshotCapability();
+  if (!capability.supported) {
+    return {
+      operation,
+      allowedByPolicy: true,
+      availableNow: false,
+      reason: "provider_unavailable",
+      detail: capability.permission.detail ?? `Screenshot provider ${capability.provider} is unavailable.`,
+      provider: capability.provider,
+      requiredMode: screenMode,
+      availableModes: capability.modes,
+      action: "Install or enable a screenshot provider for this platform, then retry discovery.",
+    };
+  }
+  if (!capability.modes.includes(screenMode)) {
+    return {
+      operation,
+      allowedByPolicy: true,
+      availableNow: false,
+      reason: "runtime_mode_unavailable",
+      detail: `Screenshot provider ${capability.provider} does not support ${screenMode} capture.`,
+      provider: capability.provider,
+      requiredMode: screenMode,
+      availableModes: capability.modes,
+      action: `Use one of the available screenshot modes (${capability.modes.join(", ") || "none"}) or install a provider that supports ${screenMode} capture.`,
+    };
+  }
+  return undefined;
 }
 
 function screenCaptureModeForOperation(operation: WorkspaceOperationName): ScreenshotCaptureOptions["source"] | undefined {

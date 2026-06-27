@@ -240,14 +240,16 @@ Output:
     "rg": { "available": true, "path": "/opt/homebrew/bin/rg" },
     "git": { "available": true },
     "codex": { "available": true },
-    "screenshot": { "available": true, "modes": ["display", "window"] }
+    "screenshot": { "supported": true, "modes": ["display", "window"] }
   },
   "scopes": [
     {
       "id": "app",
       "name": "Main app",
       "type": "folder",
-      "capabilities": ["fs:read", "fs:write", "command:run"]
+      "capabilityPolicy": { "capabilities": ["fs:read", "fs:write", "shell:run"] },
+      "allowedOperations": ["read", "search_text", "command"],
+      "unavailableOperations": []
     }
   ],
   "status": {

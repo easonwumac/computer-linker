@@ -9,6 +9,8 @@ Computer Linker. For a shorter pasteable prompt, use
 1. Call `get_computer_info`.
 2. Choose one returned `scope` by id or name.
 3. Read `computerOperationRegistry` before choosing operation names.
+   Use scope `unavailableOperations` to explain provider/runtime gaps instead
+   of retrying hidden operations.
 4. Call `computer_operation` with `{ scope, op, target, input, options }`.
 5. Call `get_operation_history` when debugging recent actions or connection
    behavior.
@@ -24,6 +26,7 @@ First call get_computer_info and choose one reported scope.
 Use computer_operation with dotted operation names from computerOperationRegistry.
 Prefer code.context, file.tree, file.search, file.read, git.status, and git.diff before edits.
 Use write, command, package, Codex, or screen operations only when the selected scope reports the required permission.
+If a policy-allowed operation is listed in scope unavailableOperations, report the provider/runtime reason and choose an available operation.
 Use get_operation_history when connection or operation behavior is unclear.
 Do not call compatibility tools unless the server explicitly exposes them.
 ```
@@ -138,6 +141,11 @@ Inspect history:
 
 When an operation is denied, inspect the reported permissions and registry
 metadata instead of retrying with broader operations.
+
+When an operation is missing from the registry but appears in
+`unavailableOperations`, treat that as a runtime/provider limitation. For
+example, a scope may allow screen capture while the current screenshot provider
+only supports display capture, not window or process capture.
 
 When connection behavior is unclear:
 

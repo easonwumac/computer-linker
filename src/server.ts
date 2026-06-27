@@ -33,6 +33,7 @@ import {
   allowedWorkspaceOperations,
   normalizeWorkspaceOperationInput,
   runWorkspaceOperation,
+  unavailableWorkspaceOperations,
   workspaceOperationAuditFields,
   workspaceOperationNames,
   type WorkspaceOperationInput,
@@ -87,6 +88,7 @@ const workspaceOutputSchema = z.object({
   permissions: permissionOutputSchema,
   capabilityPolicy: capabilityPolicyOutputSchema,
   allowedOperations: z.array(z.string()),
+  unavailableOperations: z.array(looseObjectOutputSchema).optional(),
 }).passthrough();
 
 const computerInfoOutputSchema = z.object({
@@ -114,6 +116,7 @@ const computerInfoOutputSchema = z.object({
     permissions: permissionOutputSchema,
     capabilityPolicy: capabilityPolicyOutputSchema,
     allowedOperations: z.array(z.string()),
+    unavailableOperations: z.array(looseObjectOutputSchema).optional(),
   }).passthrough()),
   tools: looseObjectOutputSchema,
   operationContract: looseObjectOutputSchema,
@@ -185,6 +188,7 @@ const openWorkspaceOutputSchema = z.object({
   permissions: permissionOutputSchema,
   capabilityPolicy: capabilityPolicyOutputSchema,
   allowedOperations: z.array(z.string()),
+  unavailableOperations: z.array(looseObjectOutputSchema).optional(),
 }).passthrough();
 
 export function createLocalPortMcpServer(): McpServer {
@@ -295,6 +299,7 @@ export function createLocalPortMcpServer(): McpServer {
         ...workspace,
         capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
         allowedOperations: allowedWorkspaceOperations(workspace.permissions),
+        unavailableOperations: unavailableWorkspaceOperations(workspace.permissions),
       }));
       return toolResponse({ machineId: config.machineId, machineName: config.machineName, workspaces: definedWorkspaces });
     }),
@@ -328,6 +333,7 @@ export function createLocalPortMcpServer(): McpServer {
         permissions: workspace.exposedPath.permissions,
         capabilityPolicy: workspaceCapabilityPolicy(workspace.exposedPath.permissions),
         allowedOperations: allowedWorkspaceOperations(workspace.exposedPath.permissions),
+        unavailableOperations: unavailableWorkspaceOperations(workspace.exposedPath.permissions),
       });
     }),
   );

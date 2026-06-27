@@ -32,7 +32,7 @@ try {
         id: "app",
         name: "MCP app",
         path: workspaceRoot,
-        permissions: { read: true, write: true, shell: false, codex: false },
+        permissions: { read: true, write: true, shell: false, codex: false, screen: true },
       },
     ],
   });
@@ -222,7 +222,8 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
     kind: string;
     machineName: string;
     service: { version: string };
-    scopes: Array<{ id: string; type: string; displayPath: string; roots?: string[]; pathPrivacy: { rootsRedacted: boolean }; allowedOperations: string[] }>;
+    scopes: Array<{ id: string; type: string; displayPath: string; roots?: string[]; pathPrivacy: { rootsRedacted: boolean }; allowedOperations: string[]; unavailableOperations: Array<{ operation: string }> }>;
+    tools: { screenshot: { modes: string[] } };
     operationContract: { mcp: { tool: string } };
     operationRegistry: Array<{ op: string; backendOperation: string }>;
     compatibility: { genericTools: string[]; workspaceTools: string[] };
@@ -236,7 +237,15 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   assert.equal(computerInfo.scopes[0].pathPrivacy.rootsRedacted, true);
   assert.equal(computerInfo.scopes[0].roots, undefined);
   assert.equal(JSON.stringify(computerInfo).includes(workspaceRoot), false);
+  const screenModes = new Set(computerInfo.tools.screenshot.modes);
   assert.ok(computerInfo.scopes[0].allowedOperations.includes("read"));
+  assert.equal(computerInfo.scopes[0].allowedOperations.includes("screen_capture"), screenModes.has("display"));
+  assert.equal(computerInfo.scopes[0].allowedOperations.includes("screen_capture_window"), screenModes.has("window"));
+  assert.equal(computerInfo.scopes[0].allowedOperations.includes("screen_capture_process"), screenModes.has("process"));
+  const unavailableScopeOps = new Set(computerInfo.scopes[0].unavailableOperations.map((entry) => entry.operation));
+  assert.equal(unavailableScopeOps.has("screen_capture"), !screenModes.has("display"));
+  assert.equal(unavailableScopeOps.has("screen_capture_window"), !screenModes.has("window"));
+  assert.equal(unavailableScopeOps.has("screen_capture_process"), !screenModes.has("process"));
   assert.equal(computerInfo.operationContract.mcp.tool, "computer_operation");
   assert.ok(computerInfo.operationRegistry.some((entry) => entry.op === "file.read" && entry.backendOperation === "read"));
   assert.ok(computerInfo.operationRegistry.some((entry) => entry.op === "file.create" && entry.backendOperation === "create_file"));
@@ -318,7 +327,7 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   const listed = toolJson(await client.callTool({ name: "list_workspaces", arguments: {} })) as {
     machineId?: string;
     machineName: string;
-    workspaces: Array<{ id: string; permissions: { read: boolean; write: boolean }; capabilityPolicy: { capabilities: string[] }; allowedOperations: string[] }>;
+    workspaces: Array<{ id: string; permissions: { read: boolean; write: boolean }; capabilityPolicy: { capabilities: string[] }; allowedOperations: string[]; unavailableOperations: Array<{ operation: string }> }>;
   };
   assert.match(listed.machineId ?? "", /^machine_/);
   assert.equal(listed.machineName, "mcp-test");
@@ -327,15 +336,19 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   assert.ok(listed.workspaces[0].capabilityPolicy.capabilities.includes("fs:write"));
   assert.ok(listed.workspaces[0].allowedOperations.includes("read"));
   assert.ok(listed.workspaces[0].allowedOperations.includes("write"));
+  assert.equal(listed.workspaces[0].allowedOperations.includes("screen_capture_window"), screenModes.has("window"));
+  assert.equal(listed.workspaces[0].unavailableOperations.some((entry) => entry.operation === "screen_capture_window"), !screenModes.has("window"));
 
   const opened = toolJson(await client.callTool({
     name: "open_workspace",
     arguments: { workspaceRef: "app" },
-  })) as { workspaceId: string; configuredWorkspaceId: string; capabilityPolicy: { capabilities: string[] }; allowedOperations: string[] };
+  })) as { workspaceId: string; configuredWorkspaceId: string; capabilityPolicy: { capabilities: string[] }; allowedOperations: string[]; unavailableOperations: Array<{ operation: string }> };
   assert.equal(opened.configuredWorkspaceId, "app");
   assert.match(opened.workspaceId, /^ws_/);
   assert.ok(opened.capabilityPolicy.capabilities.includes("git:write"));
   assert.ok(opened.allowedOperations.includes("write_if_unchanged"));
+  assert.equal(opened.allowedOperations.includes("screen_capture_window"), screenModes.has("window"));
+  assert.equal(opened.unavailableOperations.some((entry) => entry.operation === "screen_capture_window"), !screenModes.has("window"));
 
   const directRead = toolJson(await client.callTool({
     name: "read",

@@ -16,7 +16,7 @@ import { listTunnelProcesses, tunnelDiagnostics } from "./tunnels.js";
 import { WorkspaceRegistry } from "./workspaces.js";
 import { exposedMcpTools, mcpToolSurface } from "./mcp-surface.js";
 import { compatibilityJsonApiActions, compatibilityJsonApiEndpoints, computerLinkerDiscovery, primaryJsonApiActions, primaryJsonApiEndpoints } from "./discovery-contract.js";
-import { allowedWorkspaceOperations, publicWorkspaceOperationRegistry, workspaceOperationCatalog, workspaceOperationContract, workspaceOperationNames, workspaceOperationSafety } from "./workspace-operations.js";
+import { allowedWorkspaceOperations, publicWorkspaceOperationRegistry, unavailableWorkspaceOperations, workspaceOperationCatalog, workspaceOperationContract, workspaceOperationNames, workspaceOperationSafety } from "./workspace-operations.js";
 
 export interface CommandCapability {
   name: string;
@@ -164,6 +164,7 @@ export function getLocalPortCapabilities(): unknown {
       policy: workspace.policy ?? {},
       capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
       allowedOperations: allowedWorkspaceOperations(workspace.permissions),
+      unavailableOperations: unavailableWorkspaceOperations(workspace.permissions),
     })),
     mcpToolSurface: {
       active: activeMcpToolSurface,

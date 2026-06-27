@@ -25,6 +25,7 @@ import {
   allowedWorkspaceOperations,
   normalizeWorkspaceOperationInput,
   runWorkspaceOperation,
+  unavailableWorkspaceOperations,
   workspaceOperationAuditFields,
   type WorkspaceOperationInput,
 } from "./workspace-operations.js";
@@ -139,6 +140,7 @@ export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
         policy: workspace.policy ?? {},
         capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
         allowedOperations: allowedWorkspaceOperations(workspace.permissions),
+        unavailableOperations: unavailableWorkspaceOperations(workspace.permissions),
       };
       return includeRoots ? { ...scope, roots: [workspace.path] } : scope;
     }),

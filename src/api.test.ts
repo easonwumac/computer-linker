@@ -180,7 +180,12 @@ try {
     assert.equal(workspaces.body.data.workspaces[0].capabilityPolicy.networkAccess.hostNetworkMayBeUsed, false);
     assert.equal(workspaces.body.data.workspaces[0].capabilityPolicy.networkAccess.networkBlockedByComputerLinker, false);
     assert.equal(workspaces.body.data.workspaces[0].allowedOperations.includes("command"), false);
-    assert.ok(workspaces.body.data.workspaces.find((workspace: { id: string }) => workspace.id === "runner").allowedOperations.includes("package_run"));
+    const listedRunnerWorkspace = workspaces.body.data.workspaces.find((workspace: { id: string }) => workspace.id === "runner") as {
+      allowedOperations: string[];
+      unavailableOperations: Array<{ operation: string; allowedByPolicy: boolean; availableNow: boolean; reason: string; action: string }>;
+    };
+    assert.ok(listedRunnerWorkspace.allowedOperations.includes("package_run"));
+    assert.ok(Array.isArray(listedRunnerWorkspace.unavailableOperations));
 
     const capabilities = await getJson("/api/v1/capabilities");
     assert.equal(capabilities.status, 200);
@@ -212,6 +217,7 @@ try {
         };
       };
       allowedOperations: string[];
+      unavailableOperations: Array<{ operation: string; allowedByPolicy: boolean; availableNow: boolean; reason: string; provider?: string; action: string }>;
     };
     assert.ok(runnerCapabilities.capabilityPolicy.capabilities.includes("screen:capture"));
     assert.equal(runnerCapabilities.capabilityPolicy.networkAccess.mode, "host-process-may-use-network");
@@ -319,15 +325,31 @@ try {
     const genericScreenOps = new Set(capabilities.body.data.computerOperationRegistry
       .filter((entry: { category: string }) => entry.category === "screen")
       .map((entry: { op: string }) => entry.op));
+    const workspaceScreenOps = new Set(capabilities.body.data.operationRegistry
+      .filter((entry: { category: string }) => entry.category === "screen")
+      .map((entry: { operation: string }) => entry.operation));
     const runnerAllowedOps = new Set(runnerCapabilities.allowedOperations);
+    const runnerUnavailableOps = new Map(runnerCapabilities.unavailableOperations.map((entry) => [entry.operation, entry] as const));
     assert.ok(genericScreenOps.has("screen.list"));
+    assert.ok(workspaceScreenOps.has("screen_list"));
     assert.ok(runnerAllowedOps.has("screen_list"));
     assert.equal(genericScreenOps.has("screen.capture"), screenModes.has("display"));
     assert.equal(genericScreenOps.has("screen.capture_window"), screenModes.has("window"));
     assert.equal(genericScreenOps.has("screen.capture_process"), screenModes.has("process"));
+    assert.equal(workspaceScreenOps.has("screen_capture"), screenModes.has("display"));
+    assert.equal(workspaceScreenOps.has("screen_capture_window"), screenModes.has("window"));
+    assert.equal(workspaceScreenOps.has("screen_capture_process"), screenModes.has("process"));
     assert.equal(runnerAllowedOps.has("screen_capture"), screenModes.has("display"));
     assert.equal(runnerAllowedOps.has("screen_capture_window"), screenModes.has("window"));
     assert.equal(runnerAllowedOps.has("screen_capture_process"), screenModes.has("process"));
+    assert.equal(runnerUnavailableOps.has("screen_capture"), !screenModes.has("display"));
+    assert.equal(runnerUnavailableOps.has("screen_capture_window"), !screenModes.has("window"));
+    assert.equal(runnerUnavailableOps.has("screen_capture_process"), !screenModes.has("process"));
+    const unsupportedScreenOperation = [...runnerUnavailableOps.values()][0];
+    assert.equal(unsupportedScreenOperation?.allowedByPolicy, true);
+    assert.equal(unsupportedScreenOperation?.availableNow, false);
+    assert.match(unsupportedScreenOperation?.reason ?? "", /provider_unavailable|runtime_mode_unavailable/);
+    assert.match(unsupportedScreenOperation?.action ?? "", /provider|screenshot|capture/i);
     assert.equal(capabilities.body.data.operationContract.mcp.tool, "workspace_operation");
     assert.deepEqual(capabilities.body.data.operationContract.mcp.requiredFields, ["workspaceId", "op"]);
     assert.equal(capabilities.body.data.operationContract.jsonApi.action, "operation");
@@ -708,7 +730,22 @@ try {
     assert.ok(capabilities.body.data.workspaceOperations.includes("codex_runs"));
     assert.ok(capabilities.body.data.workspaceOperations.includes("batch"));
     assert.equal(capabilities.body.data.operationSafety.length, capabilities.body.data.workspaceOperations.length);
-    assert.equal(capabilities.body.data.operationRegistry.length, capabilities.body.data.workspaceOperations.length);
+    const availableWorkspaceOperationNames = new Set(capabilities.body.data.operationRegistry.map((operation: { operation: string }) => operation.operation));
+    const capabilityScreenModes = new Set(capabilities.body.data.screenshot.modes as string[]);
+    assert.equal(availableWorkspaceOperationNames.has("screen_capture"), capabilityScreenModes.has("display"));
+    assert.equal(availableWorkspaceOperationNames.has("screen_capture_window"), capabilityScreenModes.has("window"));
+    assert.equal(availableWorkspaceOperationNames.has("screen_capture_process"), capabilityScreenModes.has("process"));
+    assert.equal(capabilities.body.data.operationRegistry.length, availableWorkspaceOperationNames.size);
+    assert.equal(
+      capabilities.body.data.operationRegistry.length,
+      capabilities.body.data.workspaceOperations.filter((operation: string) => (
+        operation !== "screen_capture" || capabilityScreenModes.has("display")
+      )).filter((operation: string) => (
+        operation !== "screen_capture_window" || capabilityScreenModes.has("window")
+      )).filter((operation: string) => (
+        operation !== "screen_capture_process" || capabilityScreenModes.has("process")
+      )).length,
+    );
     assert.ok(capabilities.body.data.operationRegistry.some((operation: { operation: string; category: string; boundary: string; permission: string }) => (
       operation.operation === "search_text" &&
       operation.category === "search" &&

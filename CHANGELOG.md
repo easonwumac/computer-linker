@@ -41,6 +41,9 @@ called out even when the package version is still `0.x`.
 - Managed command, package, and Codex process startup now handles spawn errors
   as readable exited process snapshots with bounded stderr messages instead of
   risking unhandled child-process errors.
+- Operation discovery now filters runtime-unsupported workspace screenshot
+  operations and reports scope-level `unavailableOperations` when policy allows
+  an operation but the current provider cannot run it.
 
 ## 0.1.11 - 2026-06-27
 

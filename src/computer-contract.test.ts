@@ -31,7 +31,7 @@ try {
         id: "app",
         name: "Contract app",
         path: join(root, "workspace"),
-        permissions: { read: true, write: false, shell: false, codex: false, screen: false },
+        permissions: { read: true, write: false, shell: false, codex: false, screen: true },
       },
     ],
   });
@@ -48,7 +48,12 @@ try {
           networkBlockedByComputerLinker: boolean;
         };
       };
+      allowedOperations: string[];
+      unavailableOperations: Array<{ operation: string; allowedByPolicy: boolean; availableNow: boolean; reason: string; action: string }>;
     }>;
+    tools: {
+      screenshot: { modes: string[] };
+    };
     operationRegistry: Array<{
       op: string;
       capabilities: string[];
@@ -73,6 +78,18 @@ try {
   assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.mode, "not-required");
   assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.hostNetworkMayBeUsed, false);
   assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.networkBlockedByComputerLinker, false);
+  const screenModes = new Set(defaultComputerInfo.tools.screenshot.modes);
+  const scopeUnavailableOps = new Map(defaultComputerInfo.scopes[0].unavailableOperations.map((entry) => [entry.operation, entry] as const));
+  assert.equal(defaultComputerInfo.scopes[0].allowedOperations.includes("screen_capture"), screenModes.has("display"));
+  assert.equal(defaultComputerInfo.scopes[0].allowedOperations.includes("screen_capture_window"), screenModes.has("window"));
+  assert.equal(defaultComputerInfo.scopes[0].allowedOperations.includes("screen_capture_process"), screenModes.has("process"));
+  assert.equal(scopeUnavailableOps.has("screen_capture"), !screenModes.has("display"));
+  assert.equal(scopeUnavailableOps.has("screen_capture_window"), !screenModes.has("window"));
+  assert.equal(scopeUnavailableOps.has("screen_capture_process"), !screenModes.has("process"));
+  const unavailableScreenOperation = [...scopeUnavailableOps.values()][0];
+  assert.equal(unavailableScreenOperation?.allowedByPolicy, true);
+  assert.equal(unavailableScreenOperation?.availableNow, false);
+  assert.match(unavailableScreenOperation?.reason ?? "", /provider_unavailable|runtime_mode_unavailable/);
   assert.equal(defaultComputerInfo.scopes[0].roots, undefined);
   assert.deepEqual(defaultComputerInfo.discovery.primary.mcpTools, [
     "get_computer_info",
