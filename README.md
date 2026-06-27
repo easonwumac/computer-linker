@@ -89,13 +89,15 @@ read-only `computer_operation`, then removes the temporary files.
 check. `commands.selfTest` remains as a compatibility alias for older agents
 that already consumed the previous JSON field.
 
-For more guided setup paths, see [docs/tutorials.md](docs/tutorials.md). It
-covers local coding, read-only review, OpenAI Secure MCP Tunnel, public HTTPS
-tunnels, and the first operations an agent should call. For daily operation,
-use [docs/usage-guide.md](docs/usage-guide.md). For copyable daily CLI
-commands, use [docs/cli-reference.md](docs/cli-reference.md). For command
-execution safety, use [docs/command-policy.md](docs/command-policy.md). For
-agent operation recipes, use [docs/agent-playbook.md](docs/agent-playbook.md).
+If you are unsure where to begin, use
+[docs/learning-paths.md](docs/learning-paths.md). For more guided setup paths,
+see [docs/tutorials.md](docs/tutorials.md). It covers local coding, read-only
+review, OpenAI Secure MCP Tunnel, public HTTPS tunnels, and the first
+operations an agent should call. For daily operation, use
+[docs/usage-guide.md](docs/usage-guide.md). For copyable daily CLI commands,
+use [docs/cli-reference.md](docs/cli-reference.md). For command execution
+safety, use [docs/command-policy.md](docs/command-policy.md). For agent
+operation recipes, use [docs/agent-playbook.md](docs/agent-playbook.md).
 
 There is no web dashboard in the product path. Human setup and management are
 CLI-first; MCP and the JSON API are only protocol surfaces for clients,
@@ -597,6 +599,8 @@ Computer Linker is not a remote desktop, a cloud service, or a ChatGPT-specific
 app. It is a local MCP program that exposes approved computer abilities.
 
 See [docs/README.md](docs/README.md) for the full documentation map,
+[docs/learning-paths.md](docs/learning-paths.md) when choosing the right setup
+or development path,
 [docs/getting-started.md](docs/getting-started.md) for the short setup path,
 [docs/usage-guide.md](docs/usage-guide.md) for daily operation,
 [docs/cli-reference.md](docs/cli-reference.md) for copyable CLI commands,

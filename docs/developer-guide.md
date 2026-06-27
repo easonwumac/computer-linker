@@ -5,8 +5,12 @@ individual MCP clients. Use this guide when adding or moving code.
 
 ## Module Boundaries
 
-- CLI commands live in `src/cli.ts`. Keep command dispatch and human output
-  there, but move reusable behavior into focused modules.
+- CLI command dispatch and command flows live in `src/cli.ts`. Keep protocol,
+  filesystem, tunnel, provider, and reusable formatting behavior out of this
+  file.
+- CLI help and version text live in `src/cli-help.ts`. Keep long help copy,
+  help-topic routing, and dev-runner help rewriting there instead of adding
+  more presentation-only functions to `src/cli.ts`.
 - CLI support modules are `src/cli-format.ts` for command display,
   `src/cli-options.ts` for flag parsing, and `src/cli-permissions.ts` for
   permission presets plus default execution policy.
@@ -37,6 +41,8 @@ module instead of putting the behavior in `src/cli.ts`.
 When a CLI-only helper starts being reused by multiple commands, move it to one
 of the existing `src/cli-*.ts` support modules or create a similarly focused
 module. Avoid adding more cross-cutting helpers to the bottom of `src/cli.ts`.
+When the helper only prints help text or routes help topics, put it in
+`src/cli-help.ts`.
 
 When an SDK helper is only a convenience wrapper around `computer_operation`,
 put the helper and its public type in `src/client-computer-helpers.ts`. Keep
@@ -87,6 +93,8 @@ Update docs in the same change as behavior:
 - `docs/client-recipes.md` for MCP client setup changes.
 - `docs/cli-reference.md`, `docs/agent-playbook.md`, or
   `docs/sdk-quickstart.md` when command, agent, or SDK usage changes.
+- `docs/learning-paths.md` when a new user, agent, SDK, tunnel, or maintainer
+  workflow changes which guide people should read first.
 - `docs/architecture.md` or this guide for module or boundary changes.
 - `docs/release-checklist.md` and `CHANGELOG.md` for release gate changes.
 

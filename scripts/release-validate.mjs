@@ -102,6 +102,7 @@ for (const path of [
   "LICENSE",
   "SECURITY.md",
   "docs/README.md",
+  "docs/learning-paths.md",
   "docs/getting-started.md",
   "docs/usage-guide.md",
   "docs/cli-reference.md",
@@ -198,7 +199,9 @@ assert(changelog.includes("Package metadata now positions Computer Linker as a g
 assert(changelog.includes("SDK entrypoint types now expose `ComputerLinker*` names"), "CHANGELOG must mention SDK ComputerLinker type exports");
 assert(changelog.includes("SDK now includes `client.computer.*` helpers"), "CHANGELOG must mention computer-operation-first SDK helpers");
 assert(changelog.includes("CLI quick reference, agent playbook, and SDK quickstart"), "CHANGELOG must mention the expanded teaching docs");
+assert(changelog.includes("learning-paths guide"), "CHANGELOG must mention the learning paths guide");
 assert(changelog.includes("SDK computer helper contract is now split into `src/client-computer-helpers.ts`"), "CHANGELOG must mention the SDK helper module split");
+assert(changelog.includes("CLI help and version output now live in `src/cli-help.ts`"), "CHANGELOG must mention the CLI help module split");
 assert(changelog.includes("Capability discovery now separates primary MCP/JSON API recommendations"), "CHANGELOG must mention primary/compatibility discovery split");
 assert(changelog.includes("Public MCP-only routing now treats forwarded public requests as public"), "CHANGELOG must mention public MCP-only spoofed host hardening");
 assert(changelog.includes("Owner-token authentication now uses timing-safe comparison"), "CHANGELOG must mention owner-token auth hardening");
@@ -214,6 +217,7 @@ const readme = readText("README.md");
 assert(readme.includes("Leave that terminal running. In another terminal"), "README Quick Start must explain that start keeps running and follow-up commands use another terminal");
 assert(readme.includes("computer-linker here"), "README Quick Start must document the current-folder startup shortcut");
 assert(readme.includes("docs/README.md"), "README must link the documentation map");
+assert(readme.includes("docs/learning-paths.md"), "README must link the learning paths guide");
 assert(readme.includes("docs/getting-started.md"), "README must link the step-by-step tutorial");
 assert(readme.includes("docs/cli-reference.md"), "README must link the CLI quick reference");
 assert(readme.includes("docs/agent-playbook.md"), "README must link the agent playbook");
@@ -245,6 +249,7 @@ assert(readme.includes("pushes to `main`\nand pull requests targeting `main`"), 
 
 const docsIndex = readText("docs/README.md");
 assert(docsIndex.includes("Getting Started") && docsIndex.includes("Developer Guide"), "docs index must route users and developers to the right guides");
+assert(docsIndex.includes("Learning Paths"), "docs index must route unsure readers to the learning paths guide");
 assert(docsIndex.includes("Client SDK"), "docs index must route SDK consumers to the client SDK guide");
 assert(docsIndex.includes("CLI Quick Reference"), "docs index must route CLI users to the quick reference");
 assert(docsIndex.includes("Agent Playbook"), "docs index must route agents to the playbook");
@@ -254,6 +259,7 @@ const developerGuide = readText("docs/developer-guide.md");
 assert(developerGuide.includes("ensureWorkspaceRootDirectory"), "developer guide must explain shared workspace root helpers");
 assert(developerGuide.includes("Adding An Operation"), "developer guide must document the operation extension workflow");
 assert(developerGuide.includes("src/client-computer-helpers.ts"), "developer guide must document the SDK helper module boundary");
+assert(developerGuide.includes("src/cli-help.ts"), "developer guide must document the CLI help module boundary");
 
 const architecture = readText("docs/architecture.md");
 const agentInstructionsDoc = readText("docs/agent-instructions.md");
@@ -261,6 +267,7 @@ assert(architecture.includes("`network:false` is a legacy non-grant marker"), "a
 assert(architecture.includes("registry `networkAccess`"), "architecture docs must mention registry networkAccess semantics");
 assert(architecture.includes("`discovery.primary` and `discovery.compatibility`"), "architecture docs must explain primary/compatibility discovery split");
 assert(architecture.includes("src/client-computer-helpers.ts"), "architecture docs must include the SDK helper module boundary");
+assert(architecture.includes("src/cli-help.ts"), "architecture docs must include the CLI help module boundary");
 assert(agentInstructionsDoc.includes("Do not treat `network:false` as a network sandbox"), "agent instructions must warn clients about network:false semantics");
 
 const apiCompatibility = readText("docs/api-compatibility.md");
@@ -592,7 +599,9 @@ assert(capabilityPolicySource.includes("networkAccess: operationNetworkAccessPol
 assert(capabilityPolicySource.includes("networkBlockedByComputerLinker: false"), "networkAccess must avoid implying Computer Linker blocks host network access");
 assert(capabilityPolicySource.includes("network:false is a legacy non-grant marker"), "capability policy notes must clarify network:false semantics");
 const cliSource = readText("src/cli.ts");
+const cliHelpSource = readText("src/cli-help.ts");
 assert(cliSource.includes("agent instructions:"), "client setup text output must print copy-pasteable agent instructions");
+assert(cliSource.includes('from "./cli-help.js"') && cliHelpSource.includes("export function printHelp"), "CLI help must live in the focused cli-help module");
 assert(!cliSource.includes('case "connect-profile"'), "CLI must not keep connect-profile as a top-level ChatGPT shortcut");
 assert(!cliSource.includes('case "chatgpt"'), "CLI must not keep chatgpt as a top-level command");
 assert(!cliSource.includes("computer-linker profile --chatgpt ["), "profile help must not advertise ChatGPT-specific shortcuts");

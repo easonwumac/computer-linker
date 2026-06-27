@@ -2,6 +2,9 @@
 
 Start with the smallest document that matches the job:
 
+- [Learning Paths](learning-paths.md): choose the right path for first run,
+  local coding, OpenAI tunnel, public HTTPS tunnel, agent integration, SDK
+  automation, or maintainer work.
 - [Getting Started](getting-started.md): install, expose one folder, connect an
   MCP client, and choose a tunnel.
 - [Usage Guide](usage-guide.md): daily startup, permission modes, client setup,
@@ -38,6 +41,7 @@ Start with the smallest document that matches the job:
   tag workflow.
 - [Product Spec](product-spec.md): product boundary and milestone definition.
 
+If you are unsure where to begin, use [Learning Paths](learning-paths.md).
 For normal setup, use [Getting Started](getting-started.md). For daily
 operation, use [Usage Guide](usage-guide.md). For copyable commands, use
 [CLI Quick Reference](cli-reference.md). For scenario walkthroughs, use

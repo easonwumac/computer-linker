@@ -12,12 +12,17 @@ called out even when the package version is still `0.x`.
 - Added a practical usage guide and command policy guide so daily startup,
   MCP client setup, agent operation flow, troubleshooting, and command safety
   have dedicated teaching documents.
+- Added a learning-paths guide that routes new users, tunnel users, agent
+  authors, SDK consumers, and maintainers to the right setup and architecture
+  documents.
 
 ### Changed
 
 - Command policy logic now lives in `src/command-policy.ts`, keeping wildcard
   matching, shell-metacharacter checks, runtime limits, and output limits out
   of the workspace operation dispatcher.
+- CLI help and version output now live in `src/cli-help.ts`, keeping long help
+  copy and help-topic routing out of the main CLI command dispatcher.
 - Shell metacharacters and command chaining are blocked by default before
   command allowlist matching, so broad policies such as `npm *` and `git *`
   do not permit chained raw shell commands unless explicitly enabled for a
