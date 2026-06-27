@@ -39,6 +39,9 @@ called out even when the package version is still `0.x`.
   compatibility behavior.
 - Capability discovery now separates primary MCP/JSON API recommendations from
   compatibility workspace tools, actions, endpoints, and registries.
+- Public MCP-only routing now treats forwarded public requests as public even
+  when a proxy supplies a local-looking `Host` header, while preserving true
+  loopback diagnostics.
 - README, getting started, architecture, product spec, release checklist, and
   readiness checks now describe the same CI and documentation structure.
 

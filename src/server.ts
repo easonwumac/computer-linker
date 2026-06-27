@@ -753,15 +753,38 @@ function publicMcpOnlyHostFromConfig(config: { publicMcpOnly?: boolean; publicBa
 }
 
 function isPublicMcpOnlyRequest(req: Request, publicHost: string | undefined, localHost: string): boolean {
-  const hosts = [
-    req.header("host"),
-    req.header("x-forwarded-host"),
-  ].flatMap((host) => {
-    const normalized = normalizeRequestHost(host);
-    return normalized ? [normalized] : [];
+  return !isLocalDiagnosticsRequest(req, publicHost, localHost);
+}
+
+function isLocalDiagnosticsRequest(req: Request, publicHost: string | undefined, localHost: string): boolean {
+  const host = normalizeRequestHost(req.header("host"));
+  if (!host || host === publicHost || !isLocalRequestHost(host, localHost)) return false;
+  if (!isLoopbackRemoteAddress(req.socket.remoteAddress ?? req.ip)) return false;
+  return !hasForwardingHeaders(req);
+}
+
+function hasForwardingHeaders(req: Request): boolean {
+  return [
+    "forwarded",
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-real-ip",
+    "cf-connecting-ip",
+    "true-client-ip",
+  ].some((header) => {
+    const value = req.header(header);
+    return typeof value === "string" && value.trim().length > 0;
   });
-  if (hosts.length === 0) return false;
-  return hosts.some((host) => host === publicHost || !isLocalRequestHost(host, localHost));
+}
+
+function isLoopbackRemoteAddress(address: string | undefined): boolean {
+  if (!address) return false;
+  const normalized = address.toLowerCase();
+  if (normalized === "::1" || normalized === "localhost") return true;
+  if (normalized.startsWith("127.")) return true;
+  if (normalized.startsWith("::ffff:127.")) return true;
+  return false;
 }
 
 function normalizeRequestHost(host: string | undefined): string | undefined {

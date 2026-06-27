@@ -198,6 +198,7 @@ assert(changelog.includes("SDK now includes `client.computer.*` helpers"), "CHAN
 assert(changelog.includes("CLI quick reference, agent playbook, and SDK quickstart"), "CHANGELOG must mention the expanded teaching docs");
 assert(changelog.includes("SDK computer helper contract is now split into `src/client-computer-helpers.ts`"), "CHANGELOG must mention the SDK helper module split");
 assert(changelog.includes("Capability discovery now separates primary MCP/JSON API recommendations"), "CHANGELOG must mention primary/compatibility discovery split");
+assert(changelog.includes("Public MCP-only routing now treats forwarded public requests as public"), "CHANGELOG must mention public MCP-only spoofed host hardening");
 assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.computer-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
 assert(changelog.includes("npm run public:release-ready"), "CHANGELOG must mention the final public release readiness command");
 assert(changelog.includes("Local npm release wrapper commands"), "CHANGELOG must mention local npm release automation");
@@ -371,6 +372,9 @@ assert(!releaseChecklist.includes("git remote add origin <public-repo-url>"), "r
 
 const serviceMode = readText("docs/service-mode.md");
 assert(serviceMode.includes("Installed Service Smoke Checklist"), "service mode docs must include installed service smoke checklist");
+
+const securityPolicy = readText("SECURITY.md");
+assert(securityPolicy.includes("A local-looking `Host` header alone is not trusted"), "security policy must document public MCP-only host-header trust boundaries");
 
 assert(schemaJson.title === "Computer Linker computer_operation v1", "computer_operation schema title changed unexpectedly");
 assert(schemaJson.$defs?.ComputerOperationRequest, "computer_operation schema must define ComputerOperationRequest");

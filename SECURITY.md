@@ -38,6 +38,11 @@ Include:
   scopes.
 - Do not expose HTTP mode outside loopback without an owner token and an
   appropriate tunnel or network access-control layer.
+- Public tunnel startup enables MCP-only exposure by default. Public-host or
+  forwarded requests can reach `/mcp`; local management routes such as
+  `/api/v1` and `/healthz` are only treated as local diagnostics when the TCP
+  peer is loopback, the `Host` header is local, and forwarding headers are
+  absent. A local-looking `Host` header alone is not trusted.
 - Tokens, file contents, write payloads, and screenshot image bytes are not
   intentionally written to the audit log, but command output can contain
   sensitive data if a command prints it.

@@ -64,6 +64,21 @@ try {
     });
     assert.equal(publicHealth.status, 404);
 
+    const spoofedLocalApi = await get("/api/v1/capabilities", {
+      ...authHeaders(),
+      host: "127.0.0.1",
+      "x-forwarded-host": publicHost,
+    });
+    assert.equal(spoofedLocalApi.status, 404);
+    assert.match(spoofedLocalApi.bodyText, /public MCP-only mode exposes \/mcp only/);
+
+    const spoofedLocalHealth = await get("/healthz", {
+      host: "localhost",
+      "x-forwarded-for": "203.0.113.10",
+    });
+    assert.equal(spoofedLocalHealth.status, 404);
+    assert.match(spoofedLocalHealth.bodyText, /public MCP-only mode exposes \/mcp only/);
+
     const quickTunnelLegacyDashboard = await get("/dashboard", {
       ...authHeaders(),
       host: "temporary.trycloudflare.com",
