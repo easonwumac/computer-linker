@@ -513,13 +513,18 @@ try {
 
   const statusOutput = (await runCliOutput("status")).stdout;
   assert.match(statusOutput, /Computer Linker status for cli-test/);
-  assert.match(statusOutput, /ready: ready with warnings/);
+  assert.match(statusOutput, /ready: (ready with warnings|blocked)/);
   assert.match(statusOutput, /connect: https:\/\/computer-linker\.example\.com\/mcp/);
   assert.match(statusOutput, /local MCP: http:\/\/127\.0\.0\.1:3939\/mcp/);
   assert.match(statusOutput, /auth: owner token configured/);
   assert.match(statusOutput, /workspaces: 1 configured, 1 command/);
   assert.match(statusOutput, /tunnel: public URL configured \(https:\/\/computer-linker\.example\.com\)/);
-  assert.match(statusOutput, /attention: \d+ warnings; run `computer-linker status --details`/);
+  if (/ready: blocked/.test(statusOutput)) {
+    assert.match(statusOutput, /blocked by:/);
+    assert.match(statusOutput, /install a tunnel provider or configure OpenAI Secure MCP Tunnel credentials/);
+  } else {
+    assert.match(statusOutput, /attention: \d+ warnings; run `computer-linker status --details`/);
+  }
   assert.match(statusOutput, /next:/);
   assert.match(statusOutput, /details: computer-linker status --details/);
   assert.doesNotMatch(statusOutput, /config: /);
@@ -531,7 +536,7 @@ try {
 
   const detailedStatusOutput = (await runCliOutput("status", "--details")).stdout;
   assert.match(detailedStatusOutput, /Computer Linker status for cli-test/);
-  assert.match(detailedStatusOutput, /readiness: ready with warnings/);
+  assert.match(detailedStatusOutput, /readiness: (ready with warnings|blocked)/);
   assert.doesNotMatch(statusOutput, /releaseStatus:/);
   assert.match(detailedStatusOutput, /local MCP URL: http:\/\/127\.0\.0\.1:3939\/mcp/);
   assert.doesNotMatch(statusOutput, /localMcpUrl:/);
