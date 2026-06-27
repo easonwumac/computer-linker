@@ -81,6 +81,30 @@ function runInstalledBin(consumerDir, binName, args, options = {}) {
   return runNpm(["exec", "--", binName, ...args], { cwd: consumerDir, env: options.env, forceRealRun: true });
 }
 
+const clientTypeExports = [
+  "ComputerLinkerClientOptions",
+  "ComputerLinkerScope",
+  "ComputerLinkerOperationRequest",
+  "ComputerLinkerComputerOperationRequest",
+  "ComputerLinkerMcpClientSetup",
+  "ComputerLinkerOperationRegistryFilters",
+  "ComputerLinkerOperationRegistry",
+  "ComputerLinkerClientSmokeReport",
+  "WorkspaceLinkerClientOptions",
+  "WorkspaceLinkerComputerOperationRequest",
+  "WorkspaceLinkerMcpClientSetup",
+];
+
+function assertClientDtsExports(clientDtsPath, label) {
+  const clientDts = readFileSync(clientDtsPath, "utf8");
+  for (const name of clientTypeExports) {
+    assert(
+      new RegExp(`export (?:interface|type) ${name}\\b`).test(clientDts),
+      `${label} client.d.ts is missing ${name}`,
+    );
+  }
+}
+
 const packOutput = runNpm(["pack", "--dry-run", "--json"]);
 const [pack] = parsePackJson(packOutput);
 assert(pack, "npm pack did not report package metadata");
@@ -97,6 +121,7 @@ const requiredFiles = [
   "docs/chatgpt-setup.md",
   "docs/agent-instructions.md",
   "docs/api-compatibility.md",
+  "docs/client-sdk.md",
   "docs/client-recipes.md",
   "docs/computer-operation-v1.schema.json",
   "docs/release-checklist.md",
@@ -222,6 +247,7 @@ assert(sourceInitOutput.includes("dist"), "source init token guidance must point
 rmSync(sourceInitConfigDir, { recursive: true, force: true });
 
 const clientModule = await import(pathToFileURL(resolve("dist/client.js")).href);
+assertClientDtsExports("dist/client.d.ts", "source");
 assert(
   typeof clientModule.ComputerLinkerClient === "function",
   "SDK entrypoint did not export ComputerLinkerClient",
@@ -345,6 +371,7 @@ try {
   const installedPackageDir = installedPackageRoot(consumerDir);
   const installedPackageJson = JSON.parse(readFileSync(join(installedPackageDir, "package.json"), "utf8"));
   assert(installedPackageJson.version === packageJson.version, "installed package version does not match source package.json");
+  assertClientDtsExports(join(installedPackageDir, "dist", "client.d.ts"), "installed");
   const installedClientModule = await import(pathToFileURL(join(installedPackageDir, "dist", "client.js")).href);
   assert(
     typeof installedClientModule.ComputerLinkerClient === "function",

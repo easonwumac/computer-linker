@@ -5,7 +5,13 @@ import type { ComputerOperationContract, ComputerOperationRegistryEntry } from "
 import type { FailedReplayItem, HistoryInsight } from "./history-insights.js";
 import type { ChatGptSetupStatus, ChatGptVerifyMode } from "./chatgpt.js";
 import { runWorkspaceLinkerSdkClientSmoke } from "./client-smoke.js";
-import type { WorkspaceLinkerClientSmokeOptions, WorkspaceLinkerClientSmokeReport } from "./client-smoke.js";
+import type {
+  WorkspaceLinkerClientSmokeCheck,
+  WorkspaceLinkerClientSmokeCheckId,
+  WorkspaceLinkerClientSmokeOptions,
+  WorkspaceLinkerClientSmokeReport,
+  WorkspaceLinkerClientSmokeStatus,
+} from "./client-smoke.js";
 
 export type {
   WorkspaceLinkerClientSmokeCheck,
@@ -178,6 +184,32 @@ export type WorkspaceLinkerGitOperation =
   | "git_commit"
   | "git_worktree_list"
   | "git_worktree_create";
+
+export type ComputerLinkerClientOptions = WorkspaceLinkerClientOptions;
+export type ComputerLinkerScope = WorkspaceLinkerWorkspace;
+export type ComputerLinkerWorkspace = WorkspaceLinkerWorkspace;
+export type ComputerLinkerScopes = WorkspaceLinkerWorkspaces;
+export type ComputerLinkerWorkspaces = WorkspaceLinkerWorkspaces;
+export type ComputerLinkerRunOptions = WorkspaceLinkerRunOptions;
+export type ComputerLinkerReplayOptions = WorkspaceLinkerReplayOptions;
+export type ComputerLinkerWorkspaceOperationRequest = WorkspaceLinkerOperationRequest;
+export type ComputerLinkerOperationRequest = WorkspaceLinkerComputerOperationRequest;
+export type ComputerLinkerComputerOperationRequest = WorkspaceLinkerComputerOperationRequest;
+export type ComputerLinkerOperationHistoryFilters = WorkspaceLinkerOperationHistoryFilters;
+export type ComputerLinkerComputerInfoOptions = WorkspaceLinkerComputerInfoOptions;
+export type ComputerLinkerOperationRegistryFilters = WorkspaceLinkerOperationRegistryFilters;
+export type ComputerLinkerComputerOperationRegistry = WorkspaceLinkerComputerOperationRegistry;
+export type ComputerLinkerWorkspaceOperationRegistry = WorkspaceLinkerWorkspaceOperationRegistry;
+export type ComputerLinkerOperationRegistry = WorkspaceLinkerOperationRegistry;
+export type ComputerLinkerMcpClientSetup = WorkspaceLinkerMcpClientSetup;
+export type ComputerLinkerConnectReadinessOptions = WorkspaceLinkerConnectReadinessOptions;
+export type ComputerLinkerConnectReadiness = WorkspaceLinkerConnectReadiness;
+export type ComputerLinkerGitOperation = WorkspaceLinkerGitOperation;
+export type ComputerLinkerClientSmokeCheck = WorkspaceLinkerClientSmokeCheck;
+export type ComputerLinkerClientSmokeCheckId = WorkspaceLinkerClientSmokeCheckId;
+export type ComputerLinkerClientSmokeOptions = WorkspaceLinkerClientSmokeOptions;
+export type ComputerLinkerClientSmokeReport = WorkspaceLinkerClientSmokeReport;
+export type ComputerLinkerClientSmokeStatus = WorkspaceLinkerClientSmokeStatus;
 
 export class WorkspaceLinkerClient {
   private readonly baseUrl: URL;

@@ -6,24 +6,37 @@ computer contract for new integrations:
 
 ```ts
 import { ComputerLinkerClient } from "@easonwumac/computer-linker";
+import type {
+  ComputerLinkerClientOptions,
+  ComputerLinkerMcpClientSetup,
+  ComputerLinkerOperationRequest,
+} from "@easonwumac/computer-linker";
 
-const client = new ComputerLinkerClient({
+const options: ComputerLinkerClientOptions = {
   baseUrl: "http://127.0.0.1:3939/api/v1",
   ownerToken: process.env.COMPUTER_LINKER_TOKEN,
-});
+};
+
+const client = new ComputerLinkerClient(options);
 
 await client.getComputerInfo();
-await client.clientSetup();
+const setup = await client.clientSetup<ComputerLinkerMcpClientSetup>();
 await client.smoke();
-const result = await client.computerOperation<{ ok: boolean; data?: unknown }>({
+const request: ComputerLinkerOperationRequest = {
   scope: "app",
   op: "file.search",
   target: "src",
   input: { query: "TODO" },
   options: { maxResults: 20 },
-});
+};
+const result = await client.computerOperation<{ ok: boolean; data?: unknown }>(request);
+console.log(setup.ready);
 if (result.ok) console.log(result.data);
 ```
+
+Use `ComputerLinker*` names in new code. `WorkspaceLinkerClient` and the
+`WorkspaceLinker*` type names remain exported as compatibility aliases so older
+integrations can upgrade without a rename-only break.
 
 The SDK talks to the JSON API under `/api/v1`. You may pass the origin only,
 such as `http://127.0.0.1:3939`, and the SDK normalizes it to `/api/v1`.

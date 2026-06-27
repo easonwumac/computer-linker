@@ -27,6 +27,8 @@ called out even when the package version is still `0.x`.
 - Capability discovery now exposes explicit `networkAccess` semantics so
   shell, package, process, and Codex operations are not mistaken for
   Computer Linker-enforced network sandboxes.
+- SDK entrypoint types now expose `ComputerLinker*` names while preserving
+  `WorkspaceLinker*` compatibility aliases.
 - README, getting started, architecture, product spec, release checklist, and
   readiness checks now describe the same CI and documentation structure.
 

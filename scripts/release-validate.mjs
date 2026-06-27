@@ -112,6 +112,7 @@ for (const path of [
   "docs/alpha-evidence.example.json",
   "docs/agent-instructions.md",
   "docs/api-compatibility.md",
+  "docs/client-sdk.md",
   "docs/client-recipes.md",
   "docs/computer-operation-v1.schema.json",
   "examples/minimal-mcp-client.mjs",
@@ -189,6 +190,7 @@ assert(changelog.includes("OpenAI tunnel quickstart, start help, and missing-key
 assert(changelog.includes("Quickstart text and JSON now explain that `start` stays running"), "CHANGELOG must mention quickstart terminal handoff guidance");
 assert(changelog.includes("Product spec guidance for the CLI management surface now matches"), "CHANGELOG must mention product spec first-run help alignment");
 assert(changelog.includes("Package metadata now positions Computer Linker as a generic MCP/local\n  automation package"), "CHANGELOG must mention generic package metadata positioning");
+assert(changelog.includes("SDK entrypoint types now expose `ComputerLinker*` names"), "CHANGELOG must mention SDK ComputerLinker type exports");
 assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.computer-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
 assert(changelog.includes("npm run public:release-ready"), "CHANGELOG must mention the final public release readiness command");
 assert(changelog.includes("Local npm release wrapper commands"), "CHANGELOG must mention local npm release automation");
@@ -228,6 +230,7 @@ assert(readme.includes("pushes to `main`\nand pull requests targeting `main`"), 
 
 const docsIndex = readText("docs/README.md");
 assert(docsIndex.includes("Getting Started") && docsIndex.includes("Developer Guide"), "docs index must route users and developers to the right guides");
+assert(docsIndex.includes("Client SDK"), "docs index must route SDK consumers to the client SDK guide");
 
 const developerGuide = readText("docs/developer-guide.md");
 assert(developerGuide.includes("ensureWorkspaceRootDirectory"), "developer guide must explain shared workspace root helpers");
@@ -248,6 +251,29 @@ assert(minimalMcpClient.includes("scope,\n      view: \"last\""), "minimal MCP c
 
 const clientSdkDocs = readText("docs/client-sdk.md");
 assert(clientSdkDocs.includes("Passing an MCP URL such as `http://127.0.0.1:3939/mcp` fails immediately"), "client SDK docs must clarify MCP URL fail-fast behavior");
+assert(clientSdkDocs.includes("ComputerLinkerClientOptions"), "client SDK docs must demonstrate ComputerLinker type imports");
+assert(clientSdkDocs.includes("WorkspaceLinkerClient") && clientSdkDocs.includes("compatibility aliases"), "client SDK docs must explain WorkspaceLinker compatibility aliases");
+
+const clientSource = readText("src/client.ts");
+for (const exportedType of [
+  "ComputerLinkerClientOptions",
+  "ComputerLinkerOperationRequest",
+  "ComputerLinkerMcpClientSetup",
+  "ComputerLinkerOperationRegistryFilters",
+  "ComputerLinkerClientSmokeReport",
+]) {
+  assert(clientSource.includes(`export type ${exportedType} =`), `SDK source must export ${exportedType}`);
+}
+
+const sdkPackageSmokeScript = readText("scripts/package-smoke.mjs");
+for (const exportedType of [
+  "ComputerLinkerClientOptions",
+  "ComputerLinkerOperationRequest",
+  "ComputerLinkerMcpClientSetup",
+  "WorkspaceLinkerClientOptions",
+]) {
+  assert(sdkPackageSmokeScript.includes(exportedType), `package smoke must validate ${exportedType}`);
+}
 
 const productSpec = readText("docs/product-spec.md");
 assert(productSpec.includes("focused on first-run `here`,\nexplicit-path start, tunnel selection, client setup, status, and quickstart\npreview"), "product spec must match the concise default help contract");

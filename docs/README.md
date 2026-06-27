@@ -12,6 +12,8 @@ Start with the smallest document that matches the job:
   clients and coding agents.
 - [Client Recipes](client-recipes.md): local HTTP, tunnel, minimal client, and
   troubleshooting recipes.
+- [Client SDK](client-sdk.md): TypeScript SDK imports, request envelope types,
+  and compatibility names.
 - [API Compatibility](api-compatibility.md): public MCP contract and
   compatibility expectations.
 - [Architecture](architecture.md): product model, runtime boundaries, and
