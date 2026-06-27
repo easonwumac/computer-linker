@@ -33,6 +33,7 @@ import {
 import { serveHttp, serveStdio } from "./server.js";
 import { screenshotCapability } from "./screenshot.js";
 import { configuredOpenAiTunnelId, ensureOpenAiTunnelClientInstalled, exposeWithTunnel, listTunnelProcesses, refreshTunnelPublicUrl, startTunnelProcess, tunnelDiagnostics, type TailscaleMode, type TunnelProviderName, type TunnelProcessSnapshot } from "./tunnels.js";
+import { ensureWorkspaceRootDirectory } from "./workspace-roots.js";
 
 type Command = "init" | "serve" | "start" | "here" | "quickstart" | "status" | "check" | "self-test" | "expose" | "tunnel" | "service" | "workspace" | "process" | "screen" | "doctor" | "diagnose" | "history" | "profile" | "client" | "config" | "setup" | "help" | "version";
 
@@ -2592,6 +2593,7 @@ function setupMcpOnly(args: string[], commandLabel = "setup", outputMode: SetupO
 
   if (options.workspaceId && options.workspacePath) {
     const workspacePath = expandHomePath(options.workspacePath);
+    ensureWorkspaceRootDirectory(workspacePath);
     let index = nextConfig.workspaces.findIndex((workspace) => workspace.id === options.workspaceId);
     if (index === -1 && !options.workspaceIdExplicit && options.reuseExistingPath) {
       const pathKey = normalizedWorkspacePathKey(workspacePath);
@@ -3249,6 +3251,8 @@ function formatPermissions(permissions: LocalPortConfig["workspaces"][number]["p
 
 function addWorkspace(args: string[]): void {
   const options = parseWorkspaceAddOptions(args);
+  const workspacePath = expandHomePath(options.path);
+  ensureWorkspaceRootDirectory(workspacePath);
 
   const config = loadConfig();
   if (config.workspaces.some((entry) => entry.id === options.id)) {
@@ -3258,7 +3262,7 @@ function addWorkspace(args: string[]): void {
   config.workspaces.push({
     id: options.id,
     name: options.name,
-    path: expandHomePath(options.path),
+    path: workspacePath,
     permissions: {
       read: true,
       write: options.write,
@@ -3269,7 +3273,7 @@ function addWorkspace(args: string[]): void {
   });
 
   const writtenPath = writeConfig(config);
-  console.log(`Added workspace ${options.id} (${options.name}) -> ${resolve(expandHomePath(options.path))} to ${writtenPath}`);
+  console.log(`Added workspace ${options.id} (${options.name}) -> ${resolve(workspacePath)} to ${writtenPath}`);
 }
 
 function parseWorkspaceAddOptions(args: string[]): {

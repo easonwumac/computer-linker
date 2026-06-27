@@ -13,11 +13,13 @@ The product is named **Computer Linker**.
 
 One computer runs one Computer Linker MCP server.
 The runtime target is Node.js on macOS, Linux, and Windows. The default GitHub
-Actions product gate is manual and runs on `windows-latest` with Node 22 to
-keep routine Actions usage bounded. Broader OS or Node coverage should be run
-manually before a wider release. The local and CI release gate is
-`npm run product:check`, which runs release metadata validation, typecheck,
-the progress-reporting test runner, build, and package smoke.
+Actions CI product gate runs automatically on pushes to `main` and pull
+requests targeting `main`, stays on `windows-latest` with Node 22, and also
+supports manual `workflow_dispatch` reruns. Broader OS or Node coverage should
+be run manually before a wider release. Release packaging remains a separate
+manual workflow. The local and CI release gate is `npm run product:check`,
+which runs release metadata validation, typecheck, the progress-reporting test
+runner, build, and package smoke.
 The package smoke uses `npm pack --dry-run` to verify packed files, CLI bins,
 SDK exports, release docs, security policy, and the published
 `computer_operation` schema, then creates a real `.tgz`, installs it into a

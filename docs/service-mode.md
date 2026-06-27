@@ -97,3 +97,67 @@ Platform notes:
 
 Keep the HTTP service loopback-only unless it is protected by Tailscale,
 Cloudflare Access, or equivalent network controls.
+
+## Installed Service Smoke Checklist
+
+Use this checklist on each target OS when validating service mode manually. CI
+should keep using dry-run service tests; do not add privileged service installs
+to GitHub Actions.
+
+Before installing, configure at least one folder scope:
+
+```bash
+computer-linker start ~/projects/my-app
+```
+
+Stop that foreground process after it prints `server: running`, then install
+the service.
+
+Windows PowerShell, from an elevated prompt:
+
+```powershell
+computer-linker service install --yes --platform windows
+computer-linker service start --platform windows
+computer-linker service status --platform windows
+computer-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp
+computer-linker diagnose client --local
+computer-linker service logs --platform windows
+computer-linker service stop --platform windows
+computer-linker service uninstall --yes --platform windows
+```
+
+macOS:
+
+```bash
+computer-linker service install --yes --platform macos
+computer-linker service start --platform macos
+computer-linker service status --platform macos
+computer-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp
+computer-linker diagnose client --local
+computer-linker service logs --platform macos
+computer-linker service stop --platform macos
+computer-linker service uninstall --yes --platform macos
+```
+
+Linux:
+
+```bash
+computer-linker service install --yes --platform linux
+computer-linker service start --platform linux
+computer-linker service status --platform linux
+computer-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp
+computer-linker diagnose client --local
+computer-linker service logs --platform linux
+computer-linker service stop --platform linux
+computer-linker service uninstall --yes --platform linux
+```
+
+Expected smoke proof:
+
+- `service status` reports the installed service state without config errors.
+- `client smoke` verifies MCP initialize, tools/list, `get_computer_info`, and
+  one read-only `computer_operation`.
+- `diagnose client --local` reports the local MCP URL as reachable.
+- `service logs` provides stdout/stderr paths or recent log output for
+  troubleshooting.
+- `service stop` and `service uninstall --yes` clean up the installed service.

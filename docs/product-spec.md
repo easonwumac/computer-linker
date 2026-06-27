@@ -904,9 +904,10 @@ The first productized milestone is complete only when these are true:
    exposes release readiness, config diagnostics, and security diagnostics that
    can block an alpha release before packaging or exposure, and `doctor --fix`
    can apply deterministic local config repairs.
-10. The default CI gate is manual and cost-capped: it runs the product gate on
-    Windows with the primary supported Node line. Broader OS or Node coverage is
-    a wider-release check, not the routine push gate.
+10. The default CI gate is cost-capped but automatic: it runs the product gate
+    on Windows with the primary supported Node line for `main` pushes and pull
+    requests. Broader OS or Node coverage is a wider-release check, not the
+    routine gate. Release packaging remains a manually dispatched workflow.
 
 Anything outside this list should be treated as supporting work, not the center
 of the product.

@@ -5,6 +5,26 @@ All notable changes to Computer Linker will be documented in this file.
 This project follows a small pre-1.0 changelog: breaking contract changes are
 called out even when the package version is still `0.x`.
 
+## 0.1.11 - 2026-06-27
+
+### Added
+
+- Added a docs documentation map and developer guide so setup, client usage,
+  service mode, release checks, architecture, and extension workflow have clear
+  entrypoints.
+- Added an installed service smoke checklist for Windows, macOS, and Linux.
+
+### Changed
+
+- GitHub Actions CI now runs the product gate on `main` pushes and pull
+  requests while staying bounded to Windows and Node 22; release packaging
+  remains manually dispatched.
+- Workspace root handling is now split into a shared helper module: CLI setup
+  commands create explicit roots, while MCP workspace open validates configured
+  roots without creating missing directories.
+- README, getting started, architecture, product spec, release checklist, and
+  readiness checks now describe the same CI and documentation structure.
+
 ## 0.1.10 - 2026-06-27
 
 ### Added

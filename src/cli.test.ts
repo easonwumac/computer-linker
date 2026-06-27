@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -32,6 +32,7 @@ const hereRoot = join(root, "here-project");
 const freshRoot = join(root, "fresh-project");
 const codexRoot = join(root, "codex-project");
 const pathOnlyAddRoot = join(root, "path-only-add");
+const createdAddRoot = join(root, "created-add");
 const devAddRoot = join(root, "dev-add");
 const fullTrustAddRoot = join(root, "full-trust-add");
 const explicitAddRoot = join(root, "explicit-add");
@@ -207,6 +208,9 @@ try {
     });
     const pathOnlyAddText = (await runCliOutput("workspace", "add", pathOnlyAddRoot, "--write")).stdout;
     assert.match(pathOnlyAddText, /Added workspace path-only-add \(path-only-add\)/);
+    const createdAddText = (await runCliOutput("workspace", "add", createdAddRoot, "--id", "created-add", "--write")).stdout;
+    assert.match(createdAddText, /Added workspace created-add \(created-add\)/);
+    assert.equal((await stat(createdAddRoot)).isDirectory(), true);
     let addConfig = loadConfig();
     assert.deepEqual(addConfig.workspaces.find((workspace) => workspace.id === "path-only-add"), {
       id: "path-only-add",
@@ -215,6 +219,7 @@ try {
       permissions: { read: true, write: true, shell: false, codex: false, screen: false },
       policy: undefined,
     });
+    assert.equal(addConfig.workspaces.find((workspace) => workspace.id === "created-add")?.path, createdAddRoot);
 
     await runCli("workspace", "add", devAddRoot, "--dev");
     addConfig = loadConfig();

@@ -521,7 +521,7 @@ function releaseChangelogCheck(version) {
   };
 }
 
-function workflowBudgetCheck(path, label) {
+function workflowBudgetCheck(path, label, options = {}) {
   if (!existsSync(path)) {
     return {
       id: `${label}-workflow-budget`,
@@ -531,8 +531,17 @@ function workflowBudgetCheck(path, label) {
   }
   const text = readFileSync(path, "utf8");
   const failures = [];
-  if (!text.includes("workflow_dispatch")) failures.push("not manual workflow_dispatch");
-  for (const trigger of ["push:", "pull_request:", "schedule:", "workflow_run:", "tags:"]) {
+  if (!text.includes("workflow_dispatch")) failures.push("missing workflow_dispatch rerun support");
+  if (options.autoRunMainPr) {
+    if (!text.includes("push:")) failures.push("missing push trigger");
+    if (!text.includes("pull_request:")) failures.push("missing pull_request trigger");
+    if (!text.includes("branches:") || !text.includes("- main")) failures.push("auto triggers are not visibly limited to main");
+  } else {
+    for (const trigger of ["push:", "pull_request:"]) {
+      if (text.includes(trigger)) failures.push(`contains ${trigger}`);
+    }
+  }
+  for (const trigger of ["schedule:", "workflow_run:", "tags:"]) {
     if (text.includes(trigger)) failures.push(`contains ${trigger}`);
   }
   if (/\bstrategy:/i.test(text) || /\bmatrix:/i.test(text)) failures.push("contains a strategy matrix");
@@ -548,7 +557,9 @@ function workflowBudgetCheck(path, label) {
     status: failures.length > 0 ? "fail" : "pass",
     message: failures.length > 0
       ? `${label} workflow is not cost-capped for the current Actions budget.`
-      : `${label} workflow is manual, Windows-only, and Node 22 only.`,
+      : options.autoRunMainPr
+        ? `${label} workflow runs on main push/PR, and stays Windows-only and Node 22 only.`
+        : `${label} workflow is manual, Windows-only, and Node 22 only.`,
     detail: failures.join("; ") || undefined,
   };
 }
@@ -586,7 +597,7 @@ if (packageJson.scripts?.["alpha:check"] !== "node scripts/alpha-readiness-repor
   });
 }
 
-addCheck(workflowBudgetCheck(".github/workflows/ci.yml", "ci"));
+addCheck(workflowBudgetCheck(".github/workflows/ci.yml", "ci", { autoRunMainPr: true }));
 addCheck(workflowBudgetCheck(".github/workflows/release.yml", "release"));
 if (requireDatedChangelog) {
   addCheck(releaseChangelogCheck(packageJson.version));
@@ -706,7 +717,7 @@ if (checks.some((check) => check.id === "preserved-history-audit" && check.statu
   nextActions.push("Create or update the public mirror with `npm run public:mirror -- --remote <github-owner>/<public-repo>`.");
 }
 if (failures.length === 0 && !warnings.some((check) => check.status === "skipped")) {
-  nextActions.push("Run the manual Windows/Node 22 GitHub workflow from the public snapshot repo only when Actions budget is available.");
+  nextActions.push("Confirm the Windows/Node 22 GitHub CI workflow passed on the public snapshot or release branch; release packaging remains manually dispatched.");
   if (!checks.some((check) => check.id === "external-alpha-evidence" && check.status === "pass")) {
     nextActions.push("Run the manual external MCP client/tunnel test plan with `npm run alpha:evidence -- preflight`, complete any printed external-client action, run its `recordCommand` (`npm run alpha:evidence -- smoke --redaction-confirmed`), then rerun `npm run alpha:check -- --require-evidence` before announcing a public alpha.");
   }

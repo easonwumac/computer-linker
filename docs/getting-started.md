@@ -17,10 +17,19 @@ before exposing real folders.
 
 ## 2. Start In A Project Folder
 
-Open a terminal in the folder you want the client to access:
+Open a terminal in the folder you want the client to access.
+
+Windows PowerShell:
 
 ```powershell
 cd C:\Projects\my-app
+computer-linker here
+```
+
+macOS/Linux shell:
+
+```bash
+cd ~/projects/my-app
 computer-linker here
 ```
 
@@ -32,6 +41,10 @@ From another folder, use the explicit path form:
 
 ```powershell
 computer-linker start C:\Projects\my-app
+```
+
+```bash
+computer-linker start ~/projects/my-app
 ```
 
 Use read-only mode when the client should inspect without editing:
@@ -81,9 +94,19 @@ need cloud access.
 
 OpenAI Secure MCP Tunnel:
 
+Windows PowerShell:
+
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
 cd C:\Projects\my-app
+computer-linker here --tunnel openai --tunnel-id tunnel_...
+```
+
+macOS/Linux shell:
+
+```bash
+export CONTROL_PLANE_API_KEY="sk-..."
+cd ~/projects/my-app
 computer-linker here --tunnel openai --tunnel-id tunnel_...
 ```
 
@@ -185,3 +208,11 @@ computer-linker serve --transport http
 
 For normal use, prefer `computer-linker here` or
 `computer-linker start <workspace-path>`.
+
+## Next Documents
+
+- [Client recipes](client-recipes.md) for MCP client setup variants.
+- [Agent instructions](agent-instructions.md) for pasteable client guidance.
+- [Service mode](service-mode.md) for installed background services.
+- [Developer guide](developer-guide.md) for module boundaries and extension
+  workflow.

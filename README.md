@@ -23,6 +23,15 @@ cd C:\Projects\my-app
 computer-linker here
 ```
 
+macOS/Linux:
+
+```bash
+npm install -g @easonwumac/computer-linker
+computer-linker check
+cd ~/projects/my-app
+computer-linker here
+```
+
 Leave that terminal running. In another terminal, copy the MCP client settings
 and verify the connection:
 
@@ -96,9 +105,19 @@ OpenAI Secure MCP Tunnel does not create a public URL. Create a tunnel in the
 OpenAI Platform tunnel settings, set an API key with Tunnels Read+Use
 permission, then run:
 
+PowerShell:
+
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
 cd C:\Projects\my-app
+computer-linker here --tunnel openai --tunnel-id tunnel_...
+```
+
+macOS/Linux shell:
+
+```bash
+export CONTROL_PLANE_API_KEY="sk-..."
+cd ~/projects/my-app
 computer-linker here --tunnel openai --tunnel-id tunnel_...
 ```
 
@@ -463,12 +482,13 @@ npm run alpha:check
 `node scripts/run-tests.mjs --list` to see the test labels, or pass a label/path
 fragment such as `node scripts/run-tests.mjs cli` for a focused local run.
 
-The default GitHub Actions gate is manual and cost-capped: it runs
-`npm run product:check` on `windows-latest` with Node 22. Run it from
-`workflow_dispatch` when Actions budget is available. Run broader OS or Node
-coverage manually only when preparing a wider release. `npm run release:validate`
-rejects automatic triggers, matrix jobs, non-Windows runners, and extra Node
-versions in the default workflows.
+The default GitHub Actions CI gate is cost-capped but automatic: it runs
+`npm run product:check` on `windows-latest` with Node 22 for pushes to `main`
+and pull requests targeting `main`, and it also supports `workflow_dispatch`
+reruns. Run broader OS or Node coverage manually only when preparing a wider
+release. The release packaging workflow remains manual. `npm run
+release:validate` rejects matrix jobs, non-Windows runners, extra Node
+versions, background triggers, and accidental automatic release packaging.
 
 ## Productization Gate
 
@@ -546,9 +566,11 @@ The stricter release and publish rules live in
 Computer Linker is not a remote desktop, a cloud service, or a ChatGPT-specific
 app. It is a local MCP program that exposes approved computer abilities.
 
-See [docs/getting-started.md](docs/getting-started.md) for the step-by-step
+See [docs/README.md](docs/README.md) for the full documentation map,
+[docs/getting-started.md](docs/getting-started.md) for the step-by-step
 tutorial, [docs/product-spec.md](docs/product-spec.md) for the product spec,
-and [docs/architecture.md](docs/architecture.md) for implementation notes. See
+[docs/architecture.md](docs/architecture.md) for implementation notes, and
+[docs/developer-guide.md](docs/developer-guide.md) for module boundaries. See
 [docs/release-checklist.md](docs/release-checklist.md) for the alpha release
 checklist, [docs/manual-test-plan.md](docs/manual-test-plan.md) for dogfooding,
 and [SECURITY.md](SECURITY.md) for the current security model. Public

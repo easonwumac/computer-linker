@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, opendir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, opendir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import {
   assertPermission,
@@ -9,6 +9,7 @@ import {
   type ResolvedExposedPath,
 } from "./permissions.js";
 import { assertNonSensitiveWorkspacePath } from "./sensitive-files.js";
+import { assertConfiguredWorkspaceRootDirectory } from "./workspace-roots.js";
 
 export interface Workspace {
   id: string;
@@ -76,11 +77,8 @@ export class WorkspaceRegistry {
   async openWorkspace(workspaceRef: string): Promise<Workspace> {
     const exposedPath = this.findWorkspaceByRef(workspaceRef);
     assertPermission(exposedPath, "read");
-    await mkdir(exposedPath.path, { recursive: true });
 
-    if (!(await isDirectory(exposedPath.path))) {
-      throw new Error(`Workspace root must be a directory: ${exposedPath.path}`);
-    }
+    await assertConfiguredWorkspaceRootDirectory(exposedPath.path);
     const realRoot = await realpath(exposedPath.path);
 
     const workspace: Workspace = {
@@ -325,14 +323,6 @@ export class WorkspaceRegistry {
     assertNotWorkspaceRoot(workspace, absoluteFromPath, "move");
     await mkdir(dirname(absoluteToPath), { recursive: true });
     await rename(absoluteFromPath, absoluteToPath);
-  }
-}
-
-async function isDirectory(path: string): Promise<boolean> {
-  try {
-    return (await stat(path)).isDirectory();
-  } catch {
-    return false;
   }
 }
 

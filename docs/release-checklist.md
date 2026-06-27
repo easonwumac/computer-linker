@@ -195,8 +195,8 @@ is blocked.
 
 ## Required Before Tagging
 
-- `npm run product:check` passes locally, and the manual Windows/Node 22 CI gate
-  passes when Actions budget is available.
+- `npm run product:check` passes locally, and the automatic Windows/Node 22 CI
+  gate passes for the target `main` push or pull request.
 - `npm run alpha:check` passes locally before sharing an alpha build or public
   snapshot; a `preserved-history-audit` warning is acceptable only when the
   release will use `public:mirror` instead of preserving private repo history.
@@ -283,10 +283,10 @@ inspection. It must be launched manually from the `v<package.version>` tag in a
 repo whose preserved history is safe for public packaging, such as the
 `--remote` public snapshot. The workflow also rejects an `Unreleased` changelog
 heading before spending time on the full public gate.
-The default CI workflow is also manual and cost-capped: run it from
-`workflow_dispatch` only when Actions budget is available. It should stay on
-`windows-latest` with Node 22 and run `npm run product:check`; run broader OS or
-Node coverage manually only for a wider release. `npm run release:validate`
-rejects automatic triggers, matrix jobs, non-Windows runners, and extra Node
-versions in the default workflows.
+The default CI workflow is cost-capped but automatic: it runs `npm run
+product:check` on `windows-latest` with Node 22 for pushes to `main` and pull
+requests targeting `main`, with `workflow_dispatch` available for reruns. Run
+broader OS or Node coverage manually only for a wider release. `npm run
+release:validate` rejects matrix jobs, non-Windows runners, extra Node
+versions, background triggers, and accidental automatic release packaging.
 Use [manual-test-plan.md](manual-test-plan.md) for the local dogfooding pass.

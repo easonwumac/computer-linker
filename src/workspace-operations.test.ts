@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
@@ -23,6 +24,7 @@ const root = await mkdtemp(join(tmpdir(), "localport-operations-test-"));
 const binDir = join(root, "bin");
 const configRoot = join(root, "config");
 const workspaceRoot = join(root, "workspace");
+const missingWorkspaceRoot = join(root, "missing-workspace-root");
 
 try {
   assert.deepEqual(
@@ -356,9 +358,20 @@ try {
           maxOutputBytes: 5,
         },
       },
+      {
+        id: "missing-root",
+        name: "Missing root",
+        path: missingWorkspaceRoot,
+        permissions: { read: true, write: false, shell: false, codex: false },
+      },
     ],
   });
   const registry = new WorkspaceRegistry(config);
+  await assert.rejects(
+    () => registry.openWorkspace("missing-root"),
+    /Configured workspace root does not exist or is not a directory/,
+  );
+  assert.equal(existsSync(missingWorkspaceRoot), false);
   const codexEnabled = await registry.openWorkspace("codex-enabled");
   const codexOnly = await registry.openWorkspace("codex-only");
   const worktreeEnabled = await registry.openWorkspace("worktree-enabled");

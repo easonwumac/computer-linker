@@ -17,13 +17,7 @@ function countMatches(text, regex) {
   return Array.from(text.matchAll(regex)).length;
 }
 
-function assertCostCappedActionsWorkflow(workflowText, label) {
-  assert(workflowText.includes("workflow_dispatch"), `${label} workflow must be manually dispatched while Actions budget is constrained`);
-  assert(!workflowText.includes("push:"), `${label} workflow must not auto-run on push while Actions budget is manual`);
-  assert(!workflowText.includes("pull_request:"), `${label} workflow must not auto-run on pull_request while Actions budget is manual`);
-  assert(!workflowText.includes("schedule:"), `${label} workflow must not auto-run on a schedule while Actions budget is manual`);
-  assert(!workflowText.includes("workflow_run:"), `${label} workflow must not auto-run from another workflow while Actions budget is manual`);
-  assert(!workflowText.includes("tags:"), `${label} workflow must not auto-run on tag push while Actions budget is manual`);
+function assertSingleWindowsNodeGate(workflowText, label) {
   assert(!/\bstrategy:/i.test(workflowText), `${label} workflow must not use a strategy matrix while Actions budget is constrained`);
   assert(!/\bmatrix:/i.test(workflowText), `${label} workflow must not use a matrix while Actions budget is constrained`);
   assert(!/\bubuntu-[a-z0-9.-]+/i.test(workflowText), `${label} workflow must not include Linux runners in the default Actions gate`);
@@ -32,6 +26,29 @@ function assertCostCappedActionsWorkflow(workflowText, label) {
   assert(countMatches(workflowText, /\bnode-version:/g) === 1, `${label} workflow must keep a single Node version while Actions budget is constrained`);
   assert(workflowText.includes("runs-on: windows-latest"), `${label} workflow must stay on windows-latest for the primary product gate`);
   assert(workflowText.includes('node-version: "22.x"'), `${label} workflow must stay on the primary Node 22 line`);
+}
+
+function assertNoBackgroundActionsTriggers(workflowText, label) {
+  assert(!workflowText.includes("schedule:"), `${label} workflow must not auto-run on a schedule while Actions budget is constrained`);
+  assert(!workflowText.includes("workflow_run:"), `${label} workflow must not auto-run from another workflow while Actions budget is constrained`);
+  assert(!workflowText.includes("tags:"), `${label} workflow must not auto-run on tag push while Actions budget is constrained`);
+}
+
+function assertBoundedCiActionsWorkflow(workflowText, label) {
+  assert(workflowText.includes("workflow_dispatch"), `${label} workflow must support manual dispatch for reruns`);
+  assert(workflowText.includes("push:"), `${label} workflow must run on pushes to main`);
+  assert(workflowText.includes("pull_request:"), `${label} workflow must run on pull requests to main`);
+  assert(workflowText.includes("branches:") && workflowText.includes("- main"), `${label} workflow auto triggers must be limited to the main branch`);
+  assertNoBackgroundActionsTriggers(workflowText, label);
+  assertSingleWindowsNodeGate(workflowText, label);
+}
+
+function assertManualReleaseActionsWorkflow(workflowText, label) {
+  assert(workflowText.includes("workflow_dispatch"), `${label} workflow must be manually dispatched while Actions budget is constrained`);
+  assert(!workflowText.includes("push:"), `${label} workflow must not auto-run on push while release packaging is manual`);
+  assert(!workflowText.includes("pull_request:"), `${label} workflow must not auto-run on pull_request while release packaging is manual`);
+  assertNoBackgroundActionsTriggers(workflowText, label);
+  assertSingleWindowsNodeGate(workflowText, label);
 }
 
 function readJson(path) {
@@ -82,8 +99,13 @@ for (const path of [
   "CONTRIBUTING.md",
   "LICENSE",
   "SECURITY.md",
+  "docs/README.md",
   "docs/getting-started.md",
+  "docs/developer-guide.md",
+  "docs/architecture.md",
+  "docs/product-spec.md",
   "docs/release-checklist.md",
+  "docs/service-mode.md",
   "docs/alpha-evidence.example.json",
   "docs/agent-instructions.md",
   "docs/api-compatibility.md",
@@ -170,10 +192,14 @@ assert(changelog.includes("Local npm release wrapper commands"), "CHANGELOG must
 assert(changelog.includes("Added `computer-linker here` as the short daily startup command"), "CHANGELOG must mention the current-folder startup shortcut");
 assert(changelog.includes("step-by-step getting started tutorial"), "CHANGELOG must mention the getting started tutorial");
 assert(changelog.includes("implementation module map"), "CHANGELOG must mention the architecture module map");
+assert(changelog.includes("documentation map"), "CHANGELOG must mention the documentation map");
+assert(changelog.includes("Workspace root handling"), "CHANGELOG must mention workspace root handling");
 const readme = readText("README.md");
 assert(readme.includes("Leave that terminal running. In another terminal"), "README Quick Start must explain that start keeps running and follow-up commands use another terminal");
 assert(readme.includes("computer-linker here"), "README Quick Start must document the current-folder startup shortcut");
+assert(readme.includes("docs/README.md"), "README must link the documentation map");
 assert(readme.includes("docs/getting-started.md"), "README must link the step-by-step tutorial");
+assert(readme.includes("docs/developer-guide.md"), "README must link the developer guide");
 assert(readme.includes("computer-linker check"), "README Quick Start must document the productized install check");
 assert(readme.includes("`quickstart --json` exposes `commands.check`"), "README must document the quickstart JSON check command contract");
 assert(readme.includes("Call computer_operation with dotted ops from computerOperationRegistry"), "README agent instructions must direct agents to the generic computer_operation registry");
@@ -194,6 +220,14 @@ assert(readme.includes("current shell has not picked it up yet"), "README must d
 assert(readme.includes("npm run release:verify"), "README must document the local npm release verification wrapper");
 assert(readme.includes("push -u origin main --follow-tags"), "README public mirror push command must include the release tag");
 assert(!readme.includes("public:snapshot -- --output ../computer-linker-public --remote <github-owner>/<public-repo>"), "README public snapshot quick path must rely on the default output directory");
+assert(readme.includes("pushes to `main`\nand pull requests targeting `main`"), "README must document the automatic bounded CI gate");
+
+const docsIndex = readText("docs/README.md");
+assert(docsIndex.includes("Getting Started") && docsIndex.includes("Developer Guide"), "docs index must route users and developers to the right guides");
+
+const developerGuide = readText("docs/developer-guide.md");
+assert(developerGuide.includes("ensureWorkspaceRootDirectory"), "developer guide must explain shared workspace root helpers");
+assert(developerGuide.includes("Adding An Operation"), "developer guide must document the operation extension workflow");
 
 const productSpec = readText("docs/product-spec.md");
 assert(productSpec.includes("focused on first-run `here`,\nexplicit-path start, tunnel selection, client setup, status, and quickstart\npreview"), "product spec must match the concise default help contract");
@@ -211,6 +245,7 @@ const architecture = readText("docs/architecture.md");
 assert(architecture.includes("Implementation Module Map"), "architecture docs must include the implementation module map");
 assert(architecture.includes("Daily setup entrypoints are `computer-linker here`"), "architecture docs must document the here/start CLI boundary");
 assert(architecture.includes("Operation contract and dispatch"), "architecture docs must describe operation contract module boundaries");
+assert(architecture.includes("pushes to `main` and pull\nrequests targeting `main`"), "architecture docs must document the bounded automatic CI gate");
 
 const releaseChecklist = readText("docs/release-checklist.md");
 assert(releaseChecklist.includes("public:mirror -- --remote <github-owner>/<public-repo>"), "release checklist public mirror command must use the one-command --remote path");
@@ -227,7 +262,11 @@ assert(releaseChecklist.includes("The default output directory is `../computer-l
 assert(releaseChecklist.includes("public:snapshot` replaces it automatically"), "release checklist must document automatic replacement of clean generated default snapshots");
 assert(releaseChecklist.includes("a `v<package.version>` tag pointing at that commit"), "release checklist must document public mirror release tag creation");
 assert(releaseChecklist.includes("matching changelog heading to"), "release checklist must document publishable mirror changelog dating");
+assert(releaseChecklist.includes("automatic Windows/Node 22 CI"), "release checklist must document automatic bounded CI");
 assert(!releaseChecklist.includes("git remote add origin <public-repo-url>"), "release checklist must not recommend adding the public snapshot remote after metadata rewriting has already been skipped");
+
+const serviceMode = readText("docs/service-mode.md");
+assert(serviceMode.includes("Installed Service Smoke Checklist"), "service mode docs must include installed service smoke checklist");
 
 assert(schemaJson.title === "Computer Linker computer_operation v1", "computer_operation schema title changed unexpectedly");
 assert(schemaJson.$defs?.ComputerOperationRequest, "computer_operation schema must define ComputerOperationRequest");
@@ -235,11 +274,11 @@ assert(schemaJson.$defs?.ComputerOperationSuccess, "computer_operation schema mu
 assert(schemaJson.$defs?.ComputerOperationFailure, "computer_operation schema must define ComputerOperationFailure");
 
 const ciWorkflow = readText(".github/workflows/ci.yml");
-assertCostCappedActionsWorkflow(ciWorkflow, "CI");
+assertBoundedCiActionsWorkflow(ciWorkflow, "CI");
 assert(ciWorkflow.includes("npm run product:check"), "CI workflow must run npm run product:check");
 
 const releaseWorkflow = readText(".github/workflows/release.yml");
-assertCostCappedActionsWorkflow(releaseWorkflow, "release");
+assertManualReleaseActionsWorkflow(releaseWorkflow, "release");
 assert(releaseWorkflow.includes("fetch-depth: 0"), "release workflow must fetch full history for public audit history checks");
 assert(releaseWorkflow.includes("node scripts/release-validate.mjs --require-dated-changelog --require-release-tag"), "release workflow must require dated changelog and matching release tag");
 assert(releaseWorkflow.includes("npm run public:repo-ready"), "release workflow must run npm run public:repo-ready before packaging");
