@@ -35,7 +35,7 @@ const baseline = securityDiagnostics({
   machineName: "baseline",
   host: "127.0.0.1",
   ownerToken: "token",
-  publicBaseUrl: "https://workspace-linker.example.com",
+  publicBaseUrl: "https://computer-linker.example.com",
   workspaces: [
     {
       id: "read-only",

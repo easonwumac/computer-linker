@@ -12,9 +12,10 @@ import {
 export function configDir(): string {
   return resolve(expandHomePath(
     firstNonBlank(
+      process.env.COMPUTER_LINKER_CONFIG_DIR,
       process.env.WORKSPACE_LINKER_CONFIG_DIR,
       process.env.LOCALPORT_CONFIG_DIR,
-    ) ?? join(homedir(), ".workspace-linker"),
+    ) ?? join(homedir(), ".computer-linker"),
   ));
 }
 
@@ -81,10 +82,12 @@ function withEnvOverrides(config: LocalPortConfig): LocalPortConfig {
   return {
     ...config,
     publicBaseUrl: firstNonBlank(
+      process.env.COMPUTER_LINKER_PUBLIC_BASE_URL,
       process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL,
       process.env.LOCALPORT_PUBLIC_BASE_URL,
     ) ?? config.publicBaseUrl,
     ownerToken: firstNonBlank(
+      process.env.COMPUTER_LINKER_OWNER_TOKEN,
       process.env.WORKSPACE_LINKER_OWNER_TOKEN,
       process.env.LOCALPORT_OWNER_TOKEN,
     ) ?? config.ownerToken,

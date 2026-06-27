@@ -1,6 +1,6 @@
 # Release Checklist
 
-Workspace Linker's first productized target is an alpha release for trusted
+Computer Linker's first productized target is an alpha release for trusted
 local development machines. Do not treat alpha as an unattended public service.
 
 ## Alpha Gate
@@ -72,7 +72,7 @@ evidence file and mark the full external smoke pass without hand-editing JSON;
 it auto-detects exposure, tunnel target, and scope from local preflight state
 when possible. Pass explicit `--client`, `--exposure`, `--tunnel-or-url`, or
 `--scope` only when auto-detection cannot infer the tested target. `smoke` can
-refresh an existing Workspace Linker alpha evidence file, but still requires
+refresh an existing Computer Linker alpha evidence file, but still requires
 `--force` before replacing unrelated files. Use `alpha:evidence init`,
 `record-smoke`, or `record` only when you want to split the steps or keep
 separate notes per check. `smoke`, `init`, `record-smoke`, and `record` refuse
@@ -85,7 +85,7 @@ narrows the prompt to the missing operation. It is a preflight only; it does not
 replace manual redaction and client-instruction confirmation. `recordCommand`
 shows the short evidence command to run when the preflight no longer fails. Use
 [alpha-evidence.example.json](alpha-evidence.example.json) for the schema.
-The public release audit blocks `.workspace-linker-alpha-evidence.json` if it
+The public release audit blocks `.computer-linker-alpha-evidence.json` if it
 is ever tracked or packed; only the example schema belongs in the public repo.
 
 Before publishing the detached public mirror, run the final local release
@@ -116,7 +116,7 @@ fresh public mirror instead:
 
 ```bash
 npm run public:mirror -- --remote <github-owner>/<public-repo>
-cd ../workspace-linker-public
+cd ../computer-linker-public
 git push -u origin main --follow-tags
 ```
 
@@ -136,10 +136,10 @@ issue, and homepage links are rewritten to the public repository. Public-facing
 GitHub links in files such as issue-template config and schema ids are also
 rewritten. Real publishable mirrors require the matching changelog heading to
 be dated instead of `Unreleased`; remote dry-runs print whether the real run
-would be blocked. The default output directory is `../workspace-linker-public`; pass
+would be blocked. The default output directory is `../computer-linker-public`; pass
 `--output <path>` only when you need a different disposable mirror directory.
 When the default directory already contains a clean one-commit snapshot created
-by Workspace Linker, `public:snapshot` replaces it automatically so the short
+by Computer Linker, `public:snapshot` replaces it automatically so the short
 publish command is repeatable.
 Without `--remote`, the output is a local verification snapshot and the package
 metadata remains unchanged; do not push that verification-only mirror. Use
@@ -153,10 +153,10 @@ from the private dogfooding history.
 Use `npm run public:ready` and `npm run public:snapshot` directly only when
 debugging a failed release gate.
 
-`workspace-linker doctor` and `/api/v1/control` with `action: "doctor"` also
+`computer-linker doctor` and `/api/v1/control` with `action: "doctor"` also
 return `releaseReadiness`. The release is blocked when that object has
 `status: "blocked"` or non-empty `blockingReasons`.
-`workspace-linker config validate` exposes the same config, security, and
+`computer-linker config validate` exposes the same config, security, and
 release-readiness subset for release scripts and exits non-zero when the status
 is blocked.
 
@@ -177,9 +177,9 @@ is blocked.
 - `npm run public:repo-ready` passes before changing the existing GitHub
   repository to public visibility with preserved history. If it fails only on
   local history fingerprints, publish from `public:mirror` instead.
-- `workspace-linker doctor --json` reports no `releaseReadiness.blockingReasons`
+- `computer-linker doctor --json` reports no `releaseReadiness.blockingReasons`
   on the target machine.
-- `workspace-linker config validate` exits successfully on the target machine.
+- `computer-linker config validate` exits successfully on the target machine.
 - At least one workspace scope is configured and its path exists.
 - HTTP exposure has an owner token before any tunnel is started.
 - Shell or Codex scopes have an explicit command allowlist when used outside
@@ -209,21 +209,21 @@ For each shell or Codex-enabled scope, verify:
 ## Smoke Commands
 
 ```bash
-workspace-linker init
-workspace-linker self-test
-workspace-linker status
-workspace-linker status --details
-workspace-linker status --json
-workspace-linker doctor
-workspace-linker doctor --json
-workspace-linker config validate
-workspace-linker config policy app --json
-workspace-linker client setup
-workspace-linker client setup --details
-workspace-linker client setup --show-token
-workspace-linker client setup --json
-workspace-linker client smoke --url http://127.0.0.1:3939/mcp --allow-http
-workspace-linker client chatgpt verify --mode coding
+computer-linker init
+computer-linker self-test
+computer-linker status
+computer-linker status --details
+computer-linker status --json
+computer-linker doctor
+computer-linker doctor --json
+computer-linker config validate
+computer-linker config policy app --json
+computer-linker client setup
+computer-linker client setup --details
+computer-linker client setup --show-token
+computer-linker client setup --json
+computer-linker client smoke --url http://127.0.0.1:3939/mcp --allow-http
+computer-linker client chatgpt verify --mode coding
 npm run alpha:evidence -- check
 ```
 
@@ -244,7 +244,7 @@ npm run public:repo-ready
 ```
 
 The manual GitHub Actions `Release Package` workflow runs `public:repo-ready`
-and uploads the resulting `workspace-linker-*.tgz` artifact for final
+and uploads the resulting `computer-linker-*.tgz` artifact for final
 inspection. It must be launched manually from the `v<package.version>` tag in a
 repo whose preserved history is safe for public packaging, such as the
 `--remote` public snapshot. The workflow also rejects an `Unreleased` changelog

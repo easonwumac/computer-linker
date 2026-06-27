@@ -76,7 +76,7 @@ async function runCompatibilityStdioMcpFlow(configRoot: string): Promise<void> {
     env: {
       ...process.env,
       LOCALPORT_CONFIG_DIR: configRoot,
-      WORKSPACE_LINKER_MCP_TOOL_SURFACE: "compatibility",
+      COMPUTER_LINKER_MCP_TOOL_SURFACE: "compatibility",
     },
     stderr: "pipe",
   });
@@ -175,7 +175,7 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   }
 
   const computerInfoResult = await client.callTool({ name: "get_computer_info", arguments: {} });
-  assert.equal(toolStructured(computerInfoResult).kind, "workspace-linker-computer-info");
+  assert.equal(toolStructured(computerInfoResult).kind, "computer-linker-computer-info");
   const computerInfo = toolJson(computerInfoResult) as {
     kind: string;
     machineName: string;
@@ -185,7 +185,7 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
     operationRegistry: Array<{ op: string; backendOperation: string }>;
     compatibility: { genericTools: string[]; workspaceTools: string[] };
   };
-  assert.equal(computerInfo.kind, "workspace-linker-computer-info");
+  assert.equal(computerInfo.kind, "computer-linker-computer-info");
   assert.equal(computerInfo.machineName, "mcp-test");
   assert.equal(computerInfo.service.version, sourcePackageJson.version);
   assert.equal(computerInfo.scopes[0].id, "app");

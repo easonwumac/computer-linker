@@ -45,7 +45,7 @@ for (let index = 0; index < rawArgs.length; index += 1) {
 
 if (flags.has("--help")) {
   console.log([
-    "Workspace Linker alpha readiness report",
+    "Computer Linker alpha readiness report",
     "",
     "Usage:",
     "  npm run alpha:check",
@@ -73,8 +73,8 @@ if (flags.has("--help")) {
     "",
     "Notes:",
     "  External evidence is checked only when --require-evidence, --evidence,",
-    "  or WORKSPACE_LINKER_ALPHA_EVIDENCE is set.",
-    "  --require-evidence uses .workspace-linker-alpha-evidence.json when it exists.",
+    "  or COMPUTER_LINKER_ALPHA_EVIDENCE is set.",
+    "  --require-evidence uses .computer-linker-alpha-evidence.json when it exists.",
   ].join("\n"));
   process.exit(0);
 }
@@ -88,9 +88,9 @@ const acceptPublicSnapshot = flags.has("--accept-public-snapshot");
 const requireEvidence = flags.has("--require-evidence");
 const requireDatedChangelog = flags.has("--require-dated-changelog");
 const explicitEvidencePath = flagValues.has("--evidence");
-const environmentEvidencePathSet = Object.hasOwn(process.env, "WORKSPACE_LINKER_ALPHA_EVIDENCE");
-const environmentEvidencePath = environmentEvidencePathSet ? process.env.WORKSPACE_LINKER_ALPHA_EVIDENCE || undefined : undefined;
-const defaultEvidencePath = requireEvidence && !environmentEvidencePathSet && existsSync(".workspace-linker-alpha-evidence.json") ? ".workspace-linker-alpha-evidence.json" : undefined;
+const environmentEvidencePathSet = Object.hasOwn(process.env, "COMPUTER_LINKER_ALPHA_EVIDENCE");
+const environmentEvidencePath = environmentEvidencePathSet ? process.env.COMPUTER_LINKER_ALPHA_EVIDENCE || undefined : undefined;
+const defaultEvidencePath = requireEvidence && !environmentEvidencePathSet && existsSync(".computer-linker-alpha-evidence.json") ? ".computer-linker-alpha-evidence.json" : undefined;
 const evidencePath = explicitEvidencePath ? flagValues.get("--evidence") : environmentEvidencePath ?? defaultEvidencePath;
 const maxEvidenceAgeDays = readPositiveIntegerFlag("--max-evidence-age-days", 14);
 const evidenceRequested = requireEvidence || explicitEvidencePath || environmentEvidencePathSet;
@@ -713,7 +713,7 @@ if (failures.length === 0 && !warnings.some((check) => check.status === "skipped
 }
 
 const report = {
-  kind: "workspace-linker-alpha-readiness",
+  kind: "computer-linker-alpha-readiness",
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   status: overallStatus,
@@ -743,7 +743,7 @@ if (overallStatus === "blocked") {
 
 function printTextReport(report) {
   console.log("");
-  console.log("Workspace Linker alpha readiness");
+  console.log("Computer Linker alpha readiness");
   console.log(`status: ${readinessStatusLabel(report.status)}`);
   console.log(`package: ${report.package.name}@${report.package.version}`);
   console.log(`git: ${report.git.branch} ${report.git.head} clean=${report.git.clean ? "yes" : "no"}`);

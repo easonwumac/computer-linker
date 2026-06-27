@@ -7,7 +7,8 @@ import { promisify } from "node:util";
 import { executableCommand, findExecutableCommand, windowsVerbatimArgumentsOption } from "./platform-shell.js";
 
 const execFileAsync = promisify(execFile);
-const windowsScreenshotCommandEnv = "WORKSPACE_LINKER_WINDOWS_SCREENSHOT_COMMAND";
+const windowsScreenshotCommandEnv = "COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND";
+const legacyWindowsScreenshotCommandEnv = "WORKSPACE_LINKER_WINDOWS_SCREENSHOT_COMMAND";
 
 export interface ScreenshotPermission {
   status: "granted" | "unknown" | "unsupported" | "os_permission_required";
@@ -96,7 +97,7 @@ export async function captureScreenshot(options: ScreenshotCaptureOptions): Prom
     throw new Error(`screen.${options.source} capture is not implemented for ${provider.name}`);
   }
 
-  const dir = join(tmpdir(), "workspace-linker-screenshots");
+  const dir = join(tmpdir(), "computer-linker-screenshots");
   await mkdir(dir, { recursive: true });
   const file = join(dir, `screenshot-${randomUUID()}.png`);
   const args = provider.captureArgs(options, file);
@@ -176,6 +177,7 @@ function screenshotProvider(): {
 
   if (platform() === "win32") {
     const command = process.env[windowsScreenshotCommandEnv]
+      ?? process.env[legacyWindowsScreenshotCommandEnv]
       ?? findExecutableCommand("powershell")
       ?? findExecutableCommand("powershell.exe")
       ?? findExecutableCommand("pwsh");
@@ -240,7 +242,7 @@ async function downscaleScreenshotIfNeeded(file: string, options: ScreenshotCapt
     return;
   }
 
-  const tempFile = join(tmpdir(), "workspace-linker-screenshots", `screenshot-resized-${randomUUID()}.png`);
+  const tempFile = join(tmpdir(), "computer-linker-screenshots", `screenshot-resized-${randomUUID()}.png`);
   try {
     if (platform() === "win32") {
       await downscalePngWithPowerShell(file, tempFile, target);

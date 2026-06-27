@@ -1,10 +1,10 @@
 # ChatGPT Setup
 
-Workspace Linker can be tested from ChatGPT as a remote MCP server when the
+Computer Linker can be tested from ChatGPT as a remote MCP server when the
 ChatGPT workspace supports custom MCP apps / developer mode.
 
 ChatGPT cannot reach a server that only listens on `localhost` from your
-computer. For cloud-hosted ChatGPT clients, expose Workspace Linker through an
+computer. For cloud-hosted ChatGPT clients, expose Computer Linker through an
 HTTPS URL. Cloudflare custom hostnames should be saved as `publicBaseUrl`
 before OAuth client setup; Tailscale Funnel URLs are detected and saved by
 `start C:\Projects\my-app --dev --tunnel tailscale`.
@@ -14,25 +14,25 @@ before OAuth client setup; Tailscale Funnel URLs are detected and saved by
 Commands below use the installed CLI:
 
 ```powershell
-npm install -g workspace-linker
+npm install -g @easonwumac/computer-linker
 ```
 
-From this checkout, run `npm install` once and replace `workspace-linker` with
+From this checkout, run `npm install` once and replace `computer-linker` with
 `npm run dev --`.
 
 ## 2. Choose A Workspace
 
-Pass the folder to `start`. Workspace Linker creates the config, owner token,
+Pass the folder to `start`. Computer Linker creates the config, owner token,
 and workspace entry automatically before the server starts:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --dev
+computer-linker start C:\Projects\my-app --dev
 ```
 
 If you want to configure without starting the server yet, use `setup`:
 
 ```powershell
-workspace-linker setup C:\Projects\my-app --dev --show-token
+computer-linker setup C:\Projects\my-app --dev --show-token
 ```
 
 Permission meaning:
@@ -46,12 +46,12 @@ New workspaces are read-only by default. Use `--dev` for normal development
 folders where ChatGPT should modify files and run local project commands. Add
 `--write`, `--shell`, or `--codex` separately only when you need finer control.
 
-When `start` or `setup` enables `--shell` or `--codex`, Workspace Linker adds a
+When `start` or `setup` enables `--shell` or `--codex`, Computer Linker adds a
 default execution policy. The default policy allows common project commands
 such as `npm *`, `pnpm *`, `yarn *`, `bun *`, `node *`, `npx *`, and `git *`;
 `codex *` is added only for Codex-enabled scopes. Runtime and output are capped.
 
-Use `workspace-linker status` for a quick check and `workspace-linker doctor`
+Use `computer-linker status` for a quick check and `computer-linker doctor`
 before exposing any workspace with `shell` or `codex`; those operations start
 in the workspace but are not OS-level filesystem sandboxes.
 
@@ -60,17 +60,17 @@ in the workspace but are not OS-level filesystem sandboxes.
 Cloudflare Quick Tunnel:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --dev --tunnel cloudflare
+computer-linker start C:\Projects\my-app --dev --tunnel cloudflare
 ```
 
 Tailscale Funnel:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --dev --tunnel tailscale
+computer-linker start C:\Projects\my-app --dev --tunnel tailscale
 ```
 
 You do not need to know `https://<machine>.<tailnet>.ts.net` before setup.
-Workspace Linker detects that URL from `tailscale funnel` output or Tailscale
+Computer Linker detects that URL from `tailscale funnel` output or Tailscale
 status, prints the public MCP URL, and saves the detected origin as
 `publicBaseUrl`.
 The `*.ts.net` hostname is public only when Tailscale reports Funnel as enabled;
@@ -80,22 +80,22 @@ OpenAI Secure MCP Tunnel:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
-workspace-linker start C:\Projects\my-app --dev --tunnel openai --tunnel-id tunnel_...
+computer-linker start C:\Projects\my-app --dev --tunnel openai --tunnel-id tunnel_...
 ```
 
 This mode does not create a public MCP URL and does not need `publicBaseUrl`.
 In ChatGPT connector settings, choose **Tunnel** and select or paste the
-`tunnel_...` id. Do not paste the Workspace Linker bearer token into ChatGPT
+`tunnel_...` id. Do not paste the Computer Linker bearer token into ChatGPT
 Tunnel mode; the local `tunnel-client` forwards the owner token to the private
-local MCP server. Workspace Linker downloads the official OpenAI
+local MCP server. Computer Linker downloads the official OpenAI
 `tunnel-client` release into its config directory on first use, verifies the
 asset with `SHA256SUMS.txt`, and then reuses that managed binary. It does not
 search the Desktop for `tunnel-client.exe`; pass `--tunnel-client` or set
-`WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT` only when you intentionally want a
+`COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT` only when you intentionally want a
 pinned executable.
 
 If ChatGPT or the tunnel control plane returns `401 Access denied: this tunnel
-requires an active organization context`, the local Workspace Linker server is
+requires an active organization context`, the local Computer Linker server is
 usually not the failing component. Check that the API key belongs to the
 Platform organization that owns or can use the tunnel, that the organization
 has Tunnels Read + Use permission, and that the tunnel is associated with the
@@ -106,16 +106,16 @@ OpenAI organization context for the tunnel owner.
 If you run the HTTP server and tunnel separately:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --dev --url https://your-public-origin.example.com
+computer-linker start C:\Projects\my-app --dev --url https://your-public-origin.example.com
 ```
 
 When a running tunnel reports a public URL, persist that HTTPS origin with:
 
 ```powershell
-workspace-linker config set-public-url https://your-public-origin.example.com
+computer-linker config set-public-url https://your-public-origin.example.com
 ```
 
-You can still use `WORKSPACE_LINKER_PUBLIC_BASE_URL` as a temporary override,
+You can still use `COMPUTER_LINKER_PUBLIC_BASE_URL` as a temporary override,
 but `config set-public-url` is easier for repeated ChatGPT testing.
 
 For Cloudflare, Tailscale Funnel, or a custom HTTPS reverse proxy, the public
@@ -128,22 +128,22 @@ https://your-public-origin.example.com/mcp
 ## 4. Verify Readiness
 
 ```bash
-workspace-linker status
-workspace-linker status --details
-workspace-linker status --json
-workspace-linker doctor
-workspace-linker doctor --json
-workspace-linker doctor --fix
-workspace-linker client chatgpt url
-workspace-linker client chatgpt smoke
-workspace-linker client chatgpt verify --mode coding
-workspace-linker client chatgpt verify --mode coding --json
-workspace-linker client chatgpt profile --mode coding
+computer-linker status
+computer-linker status --details
+computer-linker status --json
+computer-linker doctor
+computer-linker doctor --json
+computer-linker doctor --fix
+computer-linker client chatgpt url
+computer-linker client chatgpt smoke
+computer-linker client chatgpt verify --mode coding
+computer-linker client chatgpt verify --mode coding --json
+computer-linker client chatgpt profile --mode coding
 ```
 
 The capabilities endpoint should report:
 
-- `name: workspace-linker`
+- `name: computer-linker`
 - `exposure.readyForTunnel: true`
 - no critical security findings
 - `connectionProfile.http.publicMcpUrl` equal to your HTTPS `/mcp` URL
@@ -196,7 +196,7 @@ validates `/healthz`, authenticated `/api/v1/capabilities`,
 loopback testing:
 
 ```bash
-workspace-linker client chatgpt smoke --url http://127.0.0.1:3939/mcp --allow-http
+computer-linker client chatgpt smoke --url http://127.0.0.1:3939/mcp --allow-http
 ```
 
 Use `status`, `doctor`, `tunnel status`, `history`, and `client chatgpt smoke`
@@ -226,7 +226,7 @@ commands, and the first prompt. It also includes `wizard.overallStatus`, `wizard
 `wizard.effectiveMcpServerUrl`, `wizard.detectedPublicUrl`, and ordered setup
 steps so a UI or hosted model can show the next required action without
 reimplementing readiness checks. `wizard.detectedPublicUrl` is populated from
-currently running Workspace Linker tunnel processes, even before that URL is
+currently running Computer Linker tunnel processes, even before that URL is
 saved as `publicBaseUrl`. A detected HTTPS tunnel URL can make bearer-token
 ChatGPT setup ready immediately; OAuth discovery remains disabled until the
 same origin is saved as `publicBaseUrl`.
@@ -253,12 +253,12 @@ curl http://127.0.0.1:3939/api/v1/capabilities \
 Generate the connector profile:
 
 ```bash
-workspace-linker client chatgpt url
-workspace-linker client chatgpt profile --mode coding
-workspace-linker client chatgpt profile --mode coding --url https://your-public-origin.example.com
-workspace-linker client chatgpt manifest --mode coding
-workspace-linker client chatgpt connector --mode coding
-workspace-linker client chatgpt files ./chatgpt-config --mode coding
+computer-linker client chatgpt url
+computer-linker client chatgpt profile --mode coding
+computer-linker client chatgpt profile --mode coding --url https://your-public-origin.example.com
+computer-linker client chatgpt manifest --mode coding
+computer-linker client chatgpt connector --mode coding
+computer-linker client chatgpt files ./chatgpt-config --mode coding
 ```
 
 The output directory contains `chatgpt-profile.json`,
@@ -270,7 +270,7 @@ fields, and safety boundaries instead of guessing function shapes.
 Use `--url https://...` when `tunnel status` detected a running tunnel URL but
 you do not want to write it to config yet. This changes the exported MCP URL
 only; save the same origin as `publicBaseUrl` before relying on OAuth discovery
-metadata. When a Workspace Linker-managed tunnel is running, the CLI exports use
+metadata. When a Computer Linker-managed tunnel is running, the CLI exports use
 the detected tunnel origin for the exported MCP URL and include a warning if the
 origin is not saved.
 
@@ -293,15 +293,15 @@ Authorization: Bearer <ownerToken>
 or:
 
 ```text
-x-workspace-linker-token: <ownerToken>
+x-computer-linker-token: <ownerToken>
 ```
 
 The default output redacts the owner token. For a trusted local setup screen,
 print the full token explicitly:
 
 ```bash
-workspace-linker client chatgpt profile --mode coding --show-token
-workspace-linker client chatgpt connector --mode coding --show-token
+computer-linker client chatgpt profile --mode coding --show-token
+computer-linker client chatgpt connector --mode coding --show-token
 ```
 
 ## First Prompt To Test
@@ -321,7 +321,7 @@ Expected flow:
 The default MCP surface intentionally exposes only `get_computer_info`,
 `computer_operation`, and `get_operation_history`. Older clients can opt in to
 the legacy workspace tools with
-`WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility`; that mode exposes
+`COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility`; that mode exposes
 `get_capabilities`, `list_workspaces`, `open_workspace`,
 `workspace_operation`, `read`, `ls`, `grep`, `glob`, and `create_file`.
 
@@ -360,8 +360,8 @@ later.
 If the connector is not reachable yet, use the same history insight locally:
 
 ```bash
-workspace-linker history --view last
-workspace-linker history --view debug_bundle --workspace app --json --output ./workspace-linker-debug-bundle.json
+computer-linker history --view last
+computer-linker history --view debug_bundle --workspace app --json --output ./computer-linker-debug-bundle.json
 ```
 
 Tell GPT-style clients to prefer this generic operation envelope:
@@ -381,7 +381,7 @@ Tell GPT-style clients to prefer this generic operation envelope:
 - If ChatGPT cannot connect, confirm the `/mcp` URL is HTTPS and reachable from
   outside your machine.
 - If ChatGPT shows the connector but never calls tools, try a different
-  ChatGPT model/lane and check `workspace-linker history --view last` or tunnel
+  ChatGPT model/lane and check `computer-linker history --view last` or tunnel
   metrics before changing tunnel settings. Some ChatGPT accounts or model lanes
   can show the app while not routing actions to MCP tools.
 - If OAuth metadata is wrong, restart HTTP mode after changing `publicBaseUrl`

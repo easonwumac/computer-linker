@@ -1,9 +1,9 @@
 {
-  "kind": "workspace-linker-alpha-evidence",
+  "kind": "computer-linker-alpha-evidence",
   "schemaVersion": 1,
   "testedAt": "2026-06-24T00:00:00.000Z",
   "package": {
-    "name": "workspace-linker",
+    "name": "computer-linker",
     "version": "0.1.0"
   },
   "git": {

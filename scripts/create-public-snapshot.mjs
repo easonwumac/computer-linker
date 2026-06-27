@@ -147,7 +147,7 @@ function isReplaceableGeneratedSnapshotOutput(outputDir) {
   if (!existsSync(packagePath)) return false;
   try {
     const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
-    if (packageJson.name !== "workspace-linker") return false;
+    if (!isGeneratedComputerLinkerPackageName(packageJson.name)) return false;
   } catch {
     return false;
   }
@@ -157,6 +157,11 @@ function isReplaceableGeneratedSnapshotOutput(outputDir) {
   const status = safeGitOutput(["status", "--porcelain"], outputDir);
   if (revisionCount !== "1" || status !== "") return false;
   return subject === "Initial public snapshot" || subject?.startsWith("Initial public snapshot from ") === true;
+}
+
+function isGeneratedComputerLinkerPackageName(value) {
+  if (value === "computer-linker" || value === "@easonwumac/computer-linker") return true;
+  return typeof value === "string" && /^@[a-z0-9._-]+\/computer-linker[a-z0-9._-]*$/.test(value);
 }
 
 function existingOutputDryRunMessage(outputDir, allowGeneratedSnapshotReplace) {
@@ -387,7 +392,7 @@ function verifySnapshot(outputDir, branch, releaseTag) {
   }
 }
 
-const defaultOutputArg = "../workspace-linker-public";
+const defaultOutputArg = "../computer-linker-public";
 const outputArg = readOption("--output", defaultOutputArg);
 const branch = readOption("--branch", "main");
 const remote = normalizeRemote(readOption("--remote", ""));

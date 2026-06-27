@@ -62,7 +62,7 @@ export function securityDiagnostics(config: LocalPortConfig = loadConfig()): Sec
         id: "shell-broad-access",
         severity: "warning",
         title: "Shell permission is broad",
-        detail: "Workspace Linker starts commands in the workspace, but the OS shell itself is not a filesystem sandbox.",
+        detail: "Computer Linker starts commands in the workspace, but the OS shell itself is not a filesystem sandbox.",
         workspaceId: workspace.id,
       });
     }
@@ -83,7 +83,7 @@ export function securityDiagnostics(config: LocalPortConfig = loadConfig()): Sec
         severity: commandAvailable("codex") ? "warning" : "critical",
         title: "Codex permission is broad",
         detail: commandAvailable("codex")
-          ? "Workspace Linker starts codex in the workspace, but codex may invoke tools with broader OS access."
+          ? "Computer Linker starts codex in the workspace, but codex may invoke tools with broader OS access."
           : "This workspace allows codex, but the codex CLI was not found on PATH.",
         workspaceId: workspace.id,
       });

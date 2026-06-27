@@ -14,7 +14,7 @@ export const compatibilityMcpTools = [
 ] as const;
 
 export function mcpToolSurface(): McpToolSurface {
-  const raw = (process.env.WORKSPACE_LINKER_MCP_TOOL_SURFACE ?? process.env.LOCALPORT_MCP_TOOL_SURFACE ?? "generic")
+  const raw = (process.env.COMPUTER_LINKER_MCP_TOOL_SURFACE ?? process.env.WORKSPACE_LINKER_MCP_TOOL_SURFACE ?? process.env.LOCALPORT_MCP_TOOL_SURFACE ?? "generic")
     .trim()
     .toLowerCase();
   if (raw === "compatibility" || raw === "legacy" || raw === "all") return "compatibility";

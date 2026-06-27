@@ -1,14 +1,14 @@
 # MCP Client Recipes
 
-Use `workspace-linker client setup` as the source of truth for the current
+Use `computer-linker client setup` as the source of truth for the current
 connection details. Use `--show-token` only on a trusted local screen.
 
 ## Local MCP Clients
 
-Start Workspace Linker:
+Start Computer Linker:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --coding
+computer-linker start C:\Projects\my-app --coding
 ```
 
 Configure the client:
@@ -20,42 +20,42 @@ Configure the client:
 Verify:
 
 ```powershell
-workspace-linker diagnose client --local
-workspace-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp
+computer-linker diagnose client --local
+computer-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp
 ```
 
 ## OpenAI Secure MCP Tunnel
 
-Create the tunnel in OpenAI Platform, then start Workspace Linker:
+Create the tunnel in OpenAI Platform, then start Computer Linker:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
-workspace-linker start C:\Projects\my-app --coding --tunnel openai --tunnel-id tunnel_...
+computer-linker start C:\Projects\my-app --coding --tunnel openai --tunnel-id tunnel_...
 ```
 
 In the client, choose Tunnel mode and select or paste the `tunnel_...` id. Do
-not paste the Workspace Linker bearer token into OpenAI Tunnel mode; the local
+not paste the Computer Linker bearer token into OpenAI Tunnel mode; the local
 tunnel client forwards it to the local MCP server.
 
 Verify:
 
 ```powershell
-workspace-linker diagnose client
-workspace-linker history --view connections
+computer-linker diagnose client
+computer-linker history --view connections
 ```
 
 ## Tailscale Funnel
 
 ```powershell
-workspace-linker start C:\Projects\my-app --coding --tunnel tailscale
+computer-linker start C:\Projects\my-app --coding --tunnel tailscale
 ```
 
-Workspace Linker detects the Funnel HTTPS origin and saves it as
+Computer Linker detects the Funnel HTTPS origin and saves it as
 `publicBaseUrl`. Configure the client with the printed HTTPS URL plus `/mcp`
 and the bearer header from:
 
 ```powershell
-workspace-linker client setup --show-token
+computer-linker client setup --show-token
 ```
 
 ## Cloudflare
@@ -63,25 +63,25 @@ workspace-linker client setup --show-token
 Quick tunnel:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --coding --tunnel cloudflare
+computer-linker start C:\Projects\my-app --coding --tunnel cloudflare
 ```
 
 Owned hostname:
 
 ```powershell
-workspace-linker start C:\Projects\my-app --coding --url https://mcp.your-domain.com --tunnel cloudflare
+computer-linker start C:\Projects\my-app --coding --url https://mcp.your-domain.com --tunnel cloudflare
 ```
 
 Configure the client with `https://mcp.your-domain.com/mcp` and the bearer
-header from `workspace-linker client setup --show-token`.
+header from `computer-linker client setup --show-token`.
 
 ## Minimal SDK Client
 
-With Workspace Linker already running:
+With Computer Linker already running:
 
 ```powershell
-$env:WORKSPACE_LINKER_MCP_URL = "http://127.0.0.1:3939/mcp"
-$env:WORKSPACE_LINKER_TOKEN = "<ownerToken>"
+$env:COMPUTER_LINKER_MCP_URL = "http://127.0.0.1:3939/mcp"
+$env:COMPUTER_LINKER_TOKEN = "<ownerToken>"
 node examples/minimal-mcp-client.mjs
 ```
 

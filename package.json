@@ -1,5 +1,5 @@
 {
-  "name": "workspace-linker",
+  "name": "@easonwumac/computer-linker",
   "version": "0.1.0",
   "description": "One computer, one permissioned MCP linker for local workspaces.",
   "type": "module",
@@ -24,12 +24,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/easonwumac/workspace-linker.git"
+    "url": "git+https://github.com/easonwumac/computer-linker.git"
   },
   "bugs": {
-    "url": "https://github.com/easonwumac/workspace-linker/issues"
+    "url": "https://github.com/easonwumac/computer-linker/issues"
   },
-  "homepage": "https://github.com/easonwumac/workspace-linker#readme",
+  "homepage": "https://github.com/easonwumac/computer-linker#readme",
   "exports": {
     ".": {
       "types": "./dist/client.d.ts",
@@ -41,7 +41,7 @@
     }
   },
   "bin": {
-    "workspace-linker": "dist/cli.js"
+    "computer-linker": "dist/cli.js"
   },
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",

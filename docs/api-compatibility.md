@@ -1,6 +1,6 @@
 # API Compatibility
 
-Workspace Linker is still `0.x`, but the public MCP surface is intentionally
+Computer Linker is still `0.x`, but the public MCP surface is intentionally
 small and treated as the product contract.
 
 ## Stable MCP Surface

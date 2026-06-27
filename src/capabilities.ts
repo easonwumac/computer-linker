@@ -37,7 +37,7 @@ export interface ToolInstallHint {
 }
 
 export interface ToolReadiness {
-  kind: "workspace-linker-tool-readiness";
+  kind: "computer-linker-tool-readiness";
   schemaVersion: 1;
   ready: boolean;
   requiredMissing: string[];
@@ -67,7 +67,7 @@ export interface StartupReadinessMode {
 }
 
 export interface StartupReadiness {
-  kind: "workspace-linker-startup-readiness";
+  kind: "computer-linker-startup-readiness";
   schemaVersion: 1;
   ready: boolean;
   platform: string;
@@ -100,7 +100,7 @@ export interface ReleaseReadinessCheck {
 }
 
 export interface ReleaseReadiness {
-  kind: "workspace-linker-release-readiness";
+  kind: "computer-linker-release-readiness";
   schemaVersion: 1;
   ready: boolean;
   status: "ready" | "needs_attention" | "blocked";
@@ -134,7 +134,7 @@ export function getLocalPortCapabilities(): unknown {
   const activeMcpToolSurface = mcpToolSurface();
 
   return {
-    name: "workspace-linker",
+    name: "computer-linker",
     version: workspaceLinkerVersion(),
     machineId: config.machineId,
     machineName: config.machineName,
@@ -167,7 +167,7 @@ export function getLocalPortCapabilities(): unknown {
     mcpToolSurface: {
       active: activeMcpToolSurface,
       default: "generic",
-      compatibilityOptIn: "WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility",
+      compatibilityOptIn: "COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility",
     },
     mcpTools: exposedMcpTools(activeMcpToolSurface),
     jsonApi: {
@@ -250,7 +250,7 @@ export function getLocalPortCapabilities(): unknown {
     localTools,
     security: {
       boundaryModel: {
-        workspacePathEnforced: "Workspace Linker validates file, search, patch, git, and workspace metadata paths before executing those operations.",
+        workspacePathEnforced: "Computer Linker validates file, search, patch, git, and workspace metadata paths before executing those operations.",
         workspaceCwdOnly: "Shell, long-running process, and Codex operations start in the workspace but are not OS filesystem sandboxes.",
         durableAudit: "Operations are recorded without file contents, write payloads, or token values.",
       },
@@ -305,9 +305,9 @@ export function getLocalPortDoctor(): unknown {
       localMcpUrl: `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/mcp`,
       localApiUrl: `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/api/v1`,
       startCommands: {
-        start: "workspace-linker start",
-        serveHttp: "workspace-linker start",
-        serveStdio: "workspace-linker serve --transport stdio",
+        start: "computer-linker start",
+        serveHttp: "computer-linker start",
+        serveStdio: "computer-linker serve --transport stdio",
       },
     },
     startup,
@@ -350,10 +350,10 @@ export function getLocalPortDoctor(): unknown {
       manifestExists: service.manifestExists,
       command: service.commandDisplay,
       statusCommands: service.statusCommands,
-      profileCommand: `workspace-linker service profile --platform ${service.platform}`,
-      profileBundleCommand: `workspace-linker service profile --platform ${service.platform} --output-dir ./service-profile`,
-      installDryRunCommand: `workspace-linker service install --dry-run --platform ${service.platform}`,
-      uninstallDryRunCommand: `workspace-linker service uninstall --dry-run --platform ${service.platform}`,
+      profileCommand: `computer-linker service profile --platform ${service.platform}`,
+      profileBundleCommand: `computer-linker service profile --platform ${service.platform} --output-dir ./service-profile`,
+      installDryRunCommand: `computer-linker service install --dry-run --platform ${service.platform}`,
+      uninstallDryRunCommand: `computer-linker service uninstall --dry-run --platform ${service.platform}`,
       notes: service.notes,
     },
     localTools,
@@ -367,45 +367,45 @@ export function startupReadiness(config: LocalPortConfig, service: ServiceStatus
   const port = config.port ?? 3939;
   const localMcpUrl = `http://${host}:${port}/mcp`;
   const localApiUrl = `http://${host}:${port}/api/v1`;
-  const profileCommand = `workspace-linker service profile --platform ${service.platform}`;
-  const profileBundleCommand = `workspace-linker service profile --platform ${service.platform} --output-dir ./service-profile`;
-  const installDryRunCommand = `workspace-linker service install --dry-run --platform ${service.platform}`;
-  const uninstallDryRunCommand = `workspace-linker service uninstall --dry-run --platform ${service.platform}`;
+  const profileCommand = `computer-linker service profile --platform ${service.platform}`;
+  const profileBundleCommand = `computer-linker service profile --platform ${service.platform} --output-dir ./service-profile`;
+  const installDryRunCommand = `computer-linker service install --dry-run --platform ${service.platform}`;
+  const uninstallDryRunCommand = `computer-linker service uninstall --dry-run --platform ${service.platform}`;
   const modes: StartupReadinessMode[] = [
     {
       id: "start",
       title: "Local HTTP MCP server",
-      command: "workspace-linker start",
+      command: "computer-linker start",
       persistent: false,
       useWhen: "Foreground local MCP/API server. This does not expose the server to the public internet.",
     },
     {
       id: "tunnel-cloudflare",
       title: "Cloudflare tunnel",
-      command: "workspace-linker start <workspace-path> --dev --tunnel cloudflare",
+      command: "computer-linker start <workspace-path> --dev --tunnel cloudflare",
       persistent: false,
       useWhen: "First public setup for one folder through cloudflared when a cloud MCP client must connect.",
     },
     {
       id: "tunnel-tailscale",
       title: "Tailscale Funnel",
-      command: "workspace-linker start <workspace-path> --dev --tunnel tailscale",
+      command: "computer-linker start <workspace-path> --dev --tunnel tailscale",
       persistent: false,
       useWhen: "First public setup for one folder with a Funnel URL and automatic publicBaseUrl detection.",
     },
     {
       id: "tunnel-openai",
       title: "OpenAI Secure MCP Tunnel",
-      command: "workspace-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...",
+      command: "computer-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...",
       persistent: false,
       useWhen: "First public setup for one folder through OpenAI Tunnel mode. ChatGPT uses the tunnel id instead of a public MCP URL.",
     },
     {
       id: "stdio",
       title: "stdio MCP server",
-      command: "workspace-linker serve --transport stdio",
+      command: "computer-linker serve --transport stdio",
       persistent: false,
-      useWhen: "Local MCP clients that launch Workspace Linker as a child process.",
+      useWhen: "Local MCP clients that launch Computer Linker as a child process.",
     },
     {
       id: "service",
@@ -446,15 +446,15 @@ export function startupReadiness(config: LocalPortConfig, service: ServiceStatus
     },
   ];
   const nextActions = [
-    "Run `workspace-linker start <workspace-path>` for one-command read-only local setup and startup.",
-    "Use `workspace-linker start <workspace-path> --dev` when the client should edit files and run project commands.",
-    "Run `workspace-linker doctor --fix` to apply safe local config repairs.",
+    "Run `computer-linker start <workspace-path>` for one-command read-only local setup and startup.",
+    "Use `computer-linker start <workspace-path> --dev` when the client should edit files and run project commands.",
+    "Run `computer-linker doctor --fix` to apply safe local config repairs.",
     `Run \`${profileBundleCommand}\` to generate persistent startup files for ${service.platform}.`,
     `Run \`${installDryRunCommand}\` before applying any OS service changes.`,
   ];
 
   return {
-    kind: "workspace-linker-startup-readiness",
+    kind: "computer-linker-startup-readiness",
     schemaVersion: 1,
     ready: checks.every((check) => check.status !== "fail"),
     platform: service.platform,
@@ -568,7 +568,7 @@ export function releaseReadiness(config: LocalPortConfig, input: {
       : "ready";
 
   return {
-    kind: "workspace-linker-release-readiness",
+    kind: "computer-linker-release-readiness",
     schemaVersion: 1,
     ready: blockingReasons.length === 0,
     status,
@@ -625,7 +625,7 @@ function doctorNextActions(
     actions.add("Generate or configure an owner token before exposing this machine.");
   }
   if (blockingReasons.some((reason) => reason.includes("tunnel provider"))) {
-    actions.add("Install cloudflared or tailscale, configure a trusted reverse proxy, or use `workspace-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...` with CONTROL_PLANE_API_KEY.");
+    actions.add("Install cloudflared or tailscale, configure a trusted reverse proxy, or use `computer-linker start <workspace-path> --dev --tunnel openai --tunnel-id tunnel_...` with CONTROL_PLANE_API_KEY.");
   }
   if (securityFindings.some((finding) => finding.id === "public-base-url-missing")) {
     actions.add("Set publicBaseUrl to the stable tunnel origin before OAuth client setup.");
@@ -637,7 +637,7 @@ function doctorNextActions(
     actions.add("Review workspaces with shell or codex permission; these are cwd-bound local execution, not filesystem sandboxes.");
   }
   if (release?.status === "blocked") {
-    actions.add("Resolve releaseReadiness.blockingReasons before packaging or exposing Workspace Linker.");
+    actions.add("Resolve releaseReadiness.blockingReasons before packaging or exposing Computer Linker.");
   }
   if (release?.status === "needs_attention") {
     actions.add("Review releaseReadiness.warnings before tagging an alpha release.");
@@ -669,7 +669,7 @@ function exposureReadiness(
   const blockingReasons: string[] = [];
 
   if (!ownerTokenConfigured) {
-    blockingReasons.push("ownerToken is required before exposing Workspace Linker beyond loopback");
+    blockingReasons.push("ownerToken is required before exposing Computer Linker beyond loopback");
   }
   if (tunnelToolsAvailable.length === 0 && !process.env.CONTROL_PLANE_API_KEY && !process.env.OPENAI_API_KEY) {
     blockingReasons.push("install a tunnel provider or configure OpenAI Secure MCP Tunnel credentials");
@@ -717,7 +717,7 @@ function localToolCapabilities(): CommandCapability[] {
       windows: "winget install Git.Git",
       docs: "https://git-scm.com/downloads",
     })),
-    commandCapability(toolDefinition("node", ["--version"], "runtime", "required", ["Workspace Linker runtime"], {
+    commandCapability(toolDefinition("node", ["--version"], "runtime", "required", ["Computer Linker runtime"], {
       macos: "Install Node.js 20.12+ from nodejs.org, nvm, fnm, or Homebrew.",
       linux: "Install Node.js 20.12+ from nodejs.org, nvm, fnm, or your distribution package manager.",
       windows: "Install Node.js 20.12+ from nodejs.org or winget.",
@@ -785,7 +785,7 @@ function localToolReadiness(tools: CommandCapability[]): ToolReadiness {
     .map((tool) => tool.name);
 
   return {
-    kind: "workspace-linker-tool-readiness",
+    kind: "computer-linker-tool-readiness",
     schemaVersion: 1,
     ready: requiredMissing.length === 0,
     requiredMissing,

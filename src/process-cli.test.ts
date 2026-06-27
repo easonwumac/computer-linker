@@ -12,15 +12,15 @@ import { serveHttp } from "./server.js";
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
 const tsxCliPath = join(dirname(require.resolve("tsx/package.json")), "dist", "cli.mjs");
-const originalConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
+const originalConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalLocalPortConfigDir = process.env.LOCALPORT_CONFIG_DIR;
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-process-cli-test-"));
+const root = await mkdtemp(join(tmpdir(), "computer-linker-process-cli-test-"));
 const configRoot = join(root, "config");
 const workspaceRoot = join(root, "workspace");
 const port = await getAvailablePort();
 
 try {
-  process.env.WORKSPACE_LINKER_CONFIG_DIR = configRoot;
+  process.env.COMPUTER_LINKER_CONFIG_DIR = configRoot;
   delete process.env.LOCALPORT_CONFIG_DIR;
   await mkdir(workspaceRoot, { recursive: true });
   await writeFile(join(workspaceRoot, "process-cli-child.js"), [
@@ -67,7 +67,7 @@ try {
     )));
 
     const listText = (await runCliOutput("process", "list", "runner")).stdout;
-    assert.match(listText, /Workspace Linker managed processes/);
+    assert.match(listText, /Computer Linker managed processes/);
     assert.match(listText, new RegExp(processId));
 
     const read = await waitForProcessRead(processId);
@@ -93,8 +93,8 @@ try {
     server.close();
   }
 } finally {
-  if (originalConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-  else process.env.WORKSPACE_LINKER_CONFIG_DIR = originalConfigDir;
+  if (originalConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+  else process.env.COMPUTER_LINKER_CONFIG_DIR = originalConfigDir;
 
   if (originalLocalPortConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalLocalPortConfigDir;
@@ -107,7 +107,7 @@ async function runCliOutput(...args: string[]): Promise<{ stdout: string; stderr
     cwd: process.cwd(),
     env: {
       ...process.env,
-      WORKSPACE_LINKER_CONFIG_DIR: process.env.WORKSPACE_LINKER_CONFIG_DIR,
+      COMPUTER_LINKER_CONFIG_DIR: process.env.COMPUTER_LINKER_CONFIG_DIR,
       LOCALPORT_CONFIG_DIR: process.env.LOCALPORT_CONFIG_DIR,
     },
   });

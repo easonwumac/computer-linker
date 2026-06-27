@@ -24,7 +24,7 @@ export interface ServiceFileSet {
 }
 
 export interface ServiceProfile {
-  kind: "workspace-linker-service-profile";
+  kind: "computer-linker-service-profile";
   schemaVersion: 1;
   platform: ServicePlatform;
   serviceName: string;
@@ -49,14 +49,14 @@ export interface ServiceProfile {
 }
 
 export interface WrittenServiceProfile {
-  kind: "workspace-linker-service-files";
+  kind: "computer-linker-service-files";
   outputDir: string;
   platform: ServicePlatform;
   files: ServiceFileSet;
 }
 
 export interface ServiceStatus {
-  kind: "workspace-linker-service-status";
+  kind: "computer-linker-service-status";
   schemaVersion: 1;
   platform: ServicePlatform;
   serviceName: string;
@@ -82,7 +82,7 @@ export interface ServiceStatus {
 export type ServicePlanAction = "install" | "uninstall" | "start" | "stop";
 
 export interface ServicePlan {
-  kind: "workspace-linker-service-plan";
+  kind: "computer-linker-service-plan";
   schemaVersion: 1;
   action: ServicePlanAction;
   dryRun: boolean;
@@ -96,7 +96,7 @@ export interface ServicePlan {
 }
 
 export interface ServiceLogReport {
-  kind: "workspace-linker-service-logs";
+  kind: "computer-linker-service-logs";
   schemaVersion: 1;
   platform: ServicePlatform;
   serviceName: string;
@@ -121,8 +121,8 @@ export interface ServiceLogReport {
 
 export function serviceProfile(config: LocalPortConfig, options: ServiceProfileOptions = {}): ServiceProfile {
   const platform = options.platform ?? currentServicePlatform();
-  const serviceName = sanitizeServiceName(options.serviceName ?? "workspace-linker");
-  const label = platform === "macos" ? `com.workspace-linker.${serviceName}` : serviceName;
+  const serviceName = sanitizeServiceName(options.serviceName ?? "computer-linker");
+  const label = platform === "macos" ? `com.computer-linker.${serviceName}` : serviceName;
   const nodePath = resolve(options.nodePath ?? process.execPath);
   const cliPath = resolve(options.cliPath ?? process.argv[1] ?? "dist/cli.js");
   const serviceConfigDir = resolve(expandHomePath(options.configDirectory ?? configDir()));
@@ -137,7 +137,7 @@ export function serviceProfile(config: LocalPortConfig, options: ServiceProfileO
   });
 
   return {
-    kind: "workspace-linker-service-profile",
+    kind: "computer-linker-service-profile",
     schemaVersion: 1,
     platform,
     serviceName,
@@ -189,7 +189,7 @@ export function writeServiceProfileFiles(config: LocalPortConfig, options: Servi
   writeFileSync(files.uninstall, uninstallScriptBody(profile), { mode: 0o700 });
 
   return {
-    kind: "workspace-linker-service-files",
+    kind: "computer-linker-service-files",
     outputDir,
     platform: profile.platform,
     files,
@@ -199,7 +199,7 @@ export function writeServiceProfileFiles(config: LocalPortConfig, options: Servi
 export function serviceStatus(config: LocalPortConfig, options: ServiceProfileOptions = {}): ServiceStatus {
   const profile = serviceProfile(config, options);
   return {
-    kind: "workspace-linker-service-status",
+    kind: "computer-linker-service-status",
     schemaVersion: 1,
     platform: profile.platform,
     serviceName: profile.serviceName,
@@ -234,7 +234,7 @@ export function servicePlan(
         ? profile.startCommands
         : profile.stopCommands;
   return {
-    kind: "workspace-linker-service-plan",
+    kind: "computer-linker-service-plan",
     schemaVersion: 1,
     action,
     dryRun: options.dryRun ?? true,
@@ -243,7 +243,7 @@ export function servicePlan(
     label: profile.label,
     requiresElevation: serviceActionRequiresElevation(profile.platform, action),
     commands,
-    recommendedProfileCommand: `workspace-linker service profile --platform ${profile.platform} --output-dir ${shellQuote(defaultServiceOutputDir(options))}`,
+    recommendedProfileCommand: `computer-linker service profile --platform ${profile.platform} --output-dir ${shellQuote(defaultServiceOutputDir(options))}`,
     notes: [
       options.dryRun === false
         ? "This action may change the OS service manager."
@@ -265,7 +265,7 @@ export function serviceLogs(
   const profile = serviceProfile(config, options);
   const lines = normalizeLogLines(options.lines);
   return {
-    kind: "workspace-linker-service-logs",
+    kind: "computer-linker-service-logs",
     schemaVersion: 1,
     platform: profile.platform,
     serviceName: profile.serviceName,
@@ -283,7 +283,7 @@ export function formatServiceStatus(status: ServiceStatus): string {
     ? "service-manager"
     : status.manifestExists ? "present" : "missing";
   return [
-    `Workspace Linker service status (${status.platform})`,
+    `Computer Linker service status (${status.platform})`,
     `serviceName: ${status.serviceName}`,
     `label: ${status.label}`,
     `configPath: ${status.configPath}`,
@@ -303,7 +303,7 @@ export function formatServiceStatus(status: ServiceStatus): string {
 
 export function formatServicePlan(plan: ServicePlan): string {
   return [
-    `Workspace Linker service ${plan.action}${plan.dryRun ? " dry run" : ""} (${plan.platform})`,
+    `Computer Linker service ${plan.action}${plan.dryRun ? " dry run" : ""} (${plan.platform})`,
     `serviceName: ${plan.serviceName}`,
     `requiresElevation: ${plan.requiresElevation ? "yes" : "no"}`,
     `profileCommand: ${plan.recommendedProfileCommand}`,
@@ -316,7 +316,7 @@ export function formatServicePlan(plan: ServicePlan): string {
 
 export function formatServiceLogs(report: ServiceLogReport): string {
   const lines = [
-    `Workspace Linker service logs (${report.platform})`,
+    `Computer Linker service logs (${report.platform})`,
     `serviceName: ${report.serviceName}`,
     `stdout: ${report.stdout.path} (${report.stdout.exists ? "present" : "missing"})`,
     report.stdout.tail ? report.stdout.tail : "  (no stdout log content)",
@@ -371,7 +371,7 @@ function systemdUnit(input: {
   configDirectory: string;
 }): string {
   return `[Unit]
-Description=Workspace Linker HTTP MCP server
+Description=Computer Linker HTTP MCP server
 After=network-online.target
 Wants=network-online.target
 
@@ -380,7 +380,7 @@ Type=simple
 ExecStart=${input.command.map(systemdEscapeArg).join(" ")}
 Restart=on-failure
 RestartSec=3
-Environment=WORKSPACE_LINKER_CONFIG_DIR=${systemdEscapeArg(input.configDirectory)}
+Environment=COMPUTER_LINKER_CONFIG_DIR=${systemdEscapeArg(input.configDirectory)}
 
 [Install]
 WantedBy=multi-user.target
@@ -405,7 +405,7 @@ ${args}
   </array>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>WORKSPACE_LINKER_CONFIG_DIR</key>
+    <key>COMPUTER_LINKER_CONFIG_DIR</key>
     <string>${xmlEscape(input.configDirectory)}</string>
   </dict>
   <key>RunAtLoad</key>
@@ -429,13 +429,13 @@ function windowsServiceScript(input: {
   const logFiles = serviceLogFiles(input.configDirectory);
   const command = [
     `if not exist ${windowsQuote(input.configDirectory)} mkdir ${windowsQuote(input.configDirectory)}`,
-    `set "WORKSPACE_LINKER_CONFIG_DIR=${input.configDirectory}"`,
+    `set "COMPUTER_LINKER_CONFIG_DIR=${input.configDirectory}"`,
     `${input.command.map(windowsQuote).join(" ")} >> ${windowsQuote(logFiles.stdout)} 2>> ${windowsQuote(logFiles.stderr)}`,
   ].join(" && ");
   const binPath = `${windowsQuote(process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe")} /d /s /c ${windowsQuote(command)}`;
   return `$ErrorActionPreference = "Stop"
-sc.exe create ${powershellQuote(input.serviceName)} binPath= ${powershellQuote(binPath)} start= auto DisplayName= "Workspace Linker"
-sc.exe description ${powershellQuote(input.serviceName)} "Workspace Linker HTTP MCP server"
+sc.exe create ${powershellQuote(input.serviceName)} binPath= ${powershellQuote(binPath)} start= auto DisplayName= "Computer Linker"
+sc.exe description ${powershellQuote(input.serviceName)} "Computer Linker HTTP MCP server"
 sc.exe start ${powershellQuote(input.serviceName)}
 `;
 }
@@ -522,7 +522,7 @@ function logCommands(
 
 function serviceNotes(platform: ServicePlatform): string[] {
   const common = [
-    "Run `workspace-linker init` before installing so ownerToken is configured.",
+    "Run `computer-linker init` before installing so ownerToken is configured.",
     "The service starts HTTP mode on the configured host and port.",
     "Use Tailscale Serve, Cloudflare Access, or equivalent controls before exposing it beyond loopback.",
   ];
@@ -579,7 +579,7 @@ function serviceActionRequiresElevation(platform: ServicePlatform, action: Servi
 
 function sanitizeServiceName(value: string): string {
   const sanitized = value.trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, "-").replace(/^-+|-+$/g, "");
-  return sanitized || "workspace-linker";
+  return sanitized || "computer-linker";
 }
 
 function shellQuote(value: string): string {

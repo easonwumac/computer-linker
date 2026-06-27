@@ -61,7 +61,7 @@ function recordAllEvidence(file) {
   return readEvidence(file);
 }
 
-const tempRoot = mkdtempSync(join(tmpdir(), "workspace-linker-alpha-evidence-test-"));
+const tempRoot = mkdtempSync(join(tmpdir(), "computer-linker-alpha-evidence-test-"));
 try {
   const freshTimestamp = new Date().toISOString();
 
@@ -95,11 +95,11 @@ try {
     "",
   ].join("\n"));
   const missingHistoryPreflight = runResult(["preflight", "--json"], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(missingHistoryPreflight.status, 0);
   const missingHistoryPreflightJson = parseJsonOutput(missingHistoryPreflight.stdout);
-  assert.equal(missingHistoryPreflightJson.kind, "workspace-linker-alpha-evidence-preflight");
+  assert.equal(missingHistoryPreflightJson.kind, "computer-linker-alpha-evidence-preflight");
   assert.equal(missingHistoryPreflightJson.status, "fail");
   assert.equal(missingHistoryPreflightJson.observed.publicMcpOnly, true);
   assert.equal(missingHistoryPreflightJson.observed.tunnelOrUrl, "tunnel_preflight123");
@@ -120,7 +120,7 @@ try {
   assert.ok(missingHistoryPreflightJson.nextActions.some((action) => action.includes("When this preflight no longer fails")));
 
   const missingHistoryPreflightText = runResult(["preflight"], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(missingHistoryPreflightText.status, 0);
   assert.match(missingHistoryPreflightText.stdout, /status: needs external client action/);
@@ -152,7 +152,7 @@ try {
     "",
   ].join("\n"));
   const staleHeadPreflightText = runResult(["preflight"], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(staleHeadPreflightText.status, 0);
   assert.match(staleHeadPreflightText.stdout, /MCP tool calls: get_computer_info=yes computer_operation=yes get_operation_history=yes/);
@@ -174,7 +174,7 @@ try {
     "",
   ].join("\n"));
   const readyPreflight = parseJsonOutput(run(["preflight", "--json"], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   }));
   assert.equal(readyPreflight.status, "warn");
   assert.equal(readyPreflight.observed.currentHeadFresh, true);
@@ -187,7 +187,7 @@ try {
   assert.ok(readyPreflight.nextActions.some((action) => action.includes("alpha:evidence -- smoke")));
 
   const readyPreflightText = run(["preflight"], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.match(readyPreflightText, /status: ready after manual confirmation/);
   assert.match(readyPreflightText, /current HEAD observations: yes/);
@@ -204,9 +204,9 @@ try {
     "--redaction-confirmed",
     "--json",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   }));
-  assert.equal(autoSmokeReport.kind, "workspace-linker-alpha-evidence-smoke");
+  assert.equal(autoSmokeReport.kind, "computer-linker-alpha-evidence-smoke");
   assert.equal(autoSmokeReport.status, "pass");
   assert.equal(autoSmokeReport.client, "External MCP client");
   assert.equal(autoSmokeReport.exposure, "openai");
@@ -228,7 +228,7 @@ try {
     events: [],
   }], null, 2)}\n`);
   const missingTunnelPreflight = runResult(["preflight", "--json"], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(missingTunnelPreflight.status, 0);
   const missingTunnelPreflightJson = parseJsonOutput(missingTunnelPreflight.stdout);
@@ -238,7 +238,7 @@ try {
   assert.ok(missingTunnelPreflightJson.nextActions.some((action) => action.includes("Paste the prompt above")));
 
   const missingTunnelPreflightText = runResult(["preflight"], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(missingTunnelPreflightText.status, 0);
   assert.match(missingTunnelPreflightText.stdout, /MCP tool calls: get_computer_info=yes computer_operation=yes get_operation_history=yes/);
@@ -254,7 +254,7 @@ try {
     join(tempRoot, "missing-tunnel-smoke.json"),
     "--redaction-confirmed",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(missingTunnelSmoke.status, 0);
   assert.match(missingTunnelSmoke.stderr, /smoke preflight failed/);
@@ -310,9 +310,9 @@ try {
     "--redaction-confirmed",
     "--json",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   }));
-  assert.equal(oneCommandSmokeReport.kind, "workspace-linker-alpha-evidence-smoke");
+  assert.equal(oneCommandSmokeReport.kind, "computer-linker-alpha-evidence-smoke");
   assert.equal(oneCommandSmokeReport.status, "pass");
   assert.equal(oneCommandSmokeReport.client, "ChatGPT web");
   assert.equal(oneCommandSmokeReport.tunnelOrUrl, "tunnel_onecommand123");
@@ -344,7 +344,7 @@ try {
     "--redaction-confirmed",
     "--json",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   }));
   assert.equal(oneCommandRefresh.status, "pass");
   assert.equal(oneCommandRefresh.refreshedExistingEvidence, true);
@@ -365,7 +365,7 @@ try {
     "tunnel_replacement123",
     "--redaction-confirmed",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: preflightConfigDir },
+    env: { COMPUTER_LINKER_CONFIG_DIR: preflightConfigDir },
   });
   assert.notEqual(nonEvidenceNoOverwrite.status, 0);
   assert.match(nonEvidenceNoOverwrite.stderr, /already exists; pass --force/);
@@ -393,7 +393,7 @@ try {
     "--redaction-confirmed",
     "--json",
   ]));
-  assert.equal(smokeRecordReport.kind, "workspace-linker-alpha-evidence-record-smoke");
+  assert.equal(smokeRecordReport.kind, "computer-linker-alpha-evidence-record-smoke");
   assert.equal(smokeRecordReport.status, "pass");
   assert.equal(smokeRecordReport.redactionConfirmed, true);
   assert.deepEqual(smokeRecordReport.checks, requiredChecks);
@@ -413,7 +413,7 @@ try {
     "--redaction-confirmed",
     "--json",
   ]));
-  assert.equal(recordReport.kind, "workspace-linker-alpha-evidence-record");
+  assert.equal(recordReport.kind, "computer-linker-alpha-evidence-record");
   assert.equal(recordReport.checkId, "client-instructions-usable");
   assert.equal(recordReport.redactionConfirmed, true);
 
@@ -507,7 +507,7 @@ try {
     "openai",
     "--redaction-confirmed",
   ], {
-    env: { WORKSPACE_LINKER_CONFIG_DIR: join(tempRoot, "empty-config") },
+    env: { COMPUTER_LINKER_CONFIG_DIR: join(tempRoot, "empty-config") },
   });
   assert.notEqual(missingTargetSmoke.status, 0);
   assert.match(missingTargetSmoke.stderr, /could not auto-detect --tunnel-or-url/);

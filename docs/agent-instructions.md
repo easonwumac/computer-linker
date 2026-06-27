@@ -61,5 +61,5 @@ Do not call compatibility tools such as `list_workspaces`, `open_workspace`, or
 `workspace_operation` unless the MCP client cannot send the generic
 `computer_operation` envelope.
 
-Do not assume shell or write access. Workspace Linker may expose read-only,
+Do not assume shell or write access. Computer Linker may expose read-only,
 coding, or full-trust scopes.

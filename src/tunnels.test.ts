@@ -4,17 +4,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getTunnelProvider, getTunnelProviders, listTunnelProcesses, tailscalePublicUrlFromFunnelStatus, tailscalePublicUrlFromStatusJson, tunnelCommand, tunnelDiagnostics, tunnelProviderContracts, tunnelRuntimeEvents } from "./tunnels.js";
 
-const originalConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
+const originalConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalLocalPortConfigDir = process.env.LOCALPORT_CONFIG_DIR;
-const originalOpenAiTunnelId = process.env.WORKSPACE_LINKER_OPENAI_TUNNEL_ID;
-const originalOpenAiTunnelClient = process.env.WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT;
-const root = await mkdtemp(join(tmpdir(), "workspace-linker-tunnels-test-"));
+const originalOpenAiTunnelId = process.env.COMPUTER_LINKER_OPENAI_TUNNEL_ID;
+const originalOpenAiTunnelClient = process.env.COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT;
+const root = await mkdtemp(join(tmpdir(), "computer-linker-tunnels-test-"));
 
 try {
-  process.env.WORKSPACE_LINKER_CONFIG_DIR = root;
+  process.env.COMPUTER_LINKER_CONFIG_DIR = root;
   delete process.env.LOCALPORT_CONFIG_DIR;
-  process.env.WORKSPACE_LINKER_OPENAI_TUNNEL_ID = "";
-  process.env.WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT = "";
+  process.env.COMPUTER_LINKER_OPENAI_TUNNEL_ID = "";
+  process.env.COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT = "";
 
 assert.deepEqual(tunnelCommand({ provider: "cloudflare", localPort: 3939 }), {
   provider: "cloudflare",
@@ -63,8 +63,8 @@ assert.deepEqual(openAiCommand.args.slice(0, 5), [
   "--mcp.server-url",
   "url=http://127.0.0.1:3939/mcp",
 ]);
-assert.ok(openAiCommand.args.includes("Authorization: env:WORKSPACE_LINKER_MCP_AUTHORIZATION"));
-assert.equal(openAiCommand.env?.WORKSPACE_LINKER_MCP_AUTHORIZATION, "Bearer owner-secret");
+assert.ok(openAiCommand.args.includes("Authorization: env:COMPUTER_LINKER_MCP_AUTHORIZATION"));
+assert.equal(openAiCommand.env?.COMPUTER_LINKER_MCP_AUTHORIZATION, "Bearer owner-secret");
 assert.doesNotMatch(openAiCommand.display, /owner-secret/);
 
 const openAiTunnelLog = [
@@ -270,15 +270,15 @@ assert.equal(tailscalePublicUrlFromFunnelStatus(JSON.stringify({
   },
 })), "https://desktop.example.ts.net");
 } finally {
-  if (originalConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
-  else process.env.WORKSPACE_LINKER_CONFIG_DIR = originalConfigDir;
+  if (originalConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+  else process.env.COMPUTER_LINKER_CONFIG_DIR = originalConfigDir;
 
   if (originalLocalPortConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalLocalPortConfigDir;
-  if (originalOpenAiTunnelId === undefined) delete process.env.WORKSPACE_LINKER_OPENAI_TUNNEL_ID;
-  else process.env.WORKSPACE_LINKER_OPENAI_TUNNEL_ID = originalOpenAiTunnelId;
-  if (originalOpenAiTunnelClient === undefined) delete process.env.WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT;
-  else process.env.WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT = originalOpenAiTunnelClient;
+  if (originalOpenAiTunnelId === undefined) delete process.env.COMPUTER_LINKER_OPENAI_TUNNEL_ID;
+  else process.env.COMPUTER_LINKER_OPENAI_TUNNEL_ID = originalOpenAiTunnelId;
+  if (originalOpenAiTunnelClient === undefined) delete process.env.COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT;
+  else process.env.COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT = originalOpenAiTunnelClient;
 
   await rm(root, { recursive: true, force: true });
 }

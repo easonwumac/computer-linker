@@ -75,7 +75,7 @@ const historyViewMap: Record<string, string> = {
 };
 
 const genericAgentInstructions = [
-  "You are connected to Workspace Linker, a local MCP server for this computer.",
+  "You are connected to Computer Linker, a local MCP server for this computer.",
   "First call get_computer_info to inspect available scopes, permissions, and safety boundaries.",
   "Call computer_operation with dotted ops from computerOperationRegistry and the stable envelope {scope, op, target, input, options}.",
   "Stay inside configured scopes. Prefer file.search, file.read, code.context, and get_operation_history before write.",
@@ -95,7 +95,7 @@ export function getComputerInfo(): unknown {
   };
   const activeMcpToolSurface = mcpToolSurface();
   return {
-    kind: "workspace-linker-computer-info",
+    kind: "computer-linker-computer-info",
     schemaVersion: 1,
     machineId: config.machineId,
     machineName: config.machineName,
@@ -108,7 +108,7 @@ export function getComputerInfo(): unknown {
       nodeVersion: process.version,
     },
     service: {
-      name: "workspace-linker",
+      name: "computer-linker",
       version: workspaceLinkerVersion(),
       transports: ["stdio", "http"],
       localUrl: capabilities.startup?.localMcpUrl ?? `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/mcp`,
@@ -134,7 +134,7 @@ export function getComputerInfo(): unknown {
     mcpToolSurface: {
       active: activeMcpToolSurface,
       exposedTools: exposedMcpTools(activeMcpToolSurface),
-      compatibilityOptIn: "WORKSPACE_LINKER_MCP_TOOL_SURFACE=compatibility",
+      compatibilityOptIn: "COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility",
     },
     compatibility: {
       workspaceTools: [...compatibilityMcpTools],
@@ -174,7 +174,7 @@ export function getMcpClientSetup(options: McpClientSetupOptions = {}): unknown 
   const localBearerHeader = config.ownerToken ? profile.http.auth.header ?? "Authorization: Bearer <ownerToken>" : null;
 
   return {
-    kind: "workspace-linker-mcp-client-setup",
+    kind: "computer-linker-mcp-client-setup",
     schemaVersion: 1,
     machineId: config.machineId,
     machineName: config.machineName,
@@ -205,15 +205,15 @@ export function getMcpClientSetup(options: McpClientSetupOptions = {}): unknown 
         ? activeOpenAiTunnel
           ? null
           : options.includeSecrets === true
-          ? `x-workspace-linker-token: ${config.ownerToken}`
-          : "x-workspace-linker-token: <ownerToken>"
+          ? `x-computer-linker-token: ${config.ownerToken}`
+          : "x-computer-linker-token: <ownerToken>"
         : null,
       localBearerHeader,
       oauthDiscovery: publicMcpUrl && config.ownerToken && config.publicBaseUrl
         ? {
             authorizationServerMetadataUrl: new URL("/.well-known/oauth-authorization-server", config.publicBaseUrl).href,
             protectedResourceMetadataUrl: new URL("/.well-known/oauth-protected-resource/mcp", config.publicBaseUrl).href,
-            scopes: ["workspace-linker"],
+            scopes: ["computer-linker"],
           }
         : null,
       notes: activeOpenAiTunnel

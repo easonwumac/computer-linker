@@ -463,7 +463,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
     description: "Search text quickly using ripgrep when available.",
     requiredFields: ["query"],
     optionalFields: ["path", "glob", "fixedStrings", "caseSensitive", "beforeContext", "afterContext", "maxResults"],
-    example: { operation: "search_text", path: ".", query: "Workspace Linker", glob: "*.ts", beforeContext: 1, afterContext: 2 },
+    example: { operation: "search_text", path: ".", query: "Computer Linker", glob: "*.ts", beforeContext: 1, afterContext: 2 },
   },
   {
     operation: "search_symbols",
@@ -580,7 +580,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
     operation: "codex_continue",
     permission: "codex",
-    description: "Run a Codex continuation workflow using recent Workspace Linker history and optional user guidance.",
+    description: "Run a Codex continuation workflow using recent Computer Linker history and optional user guidance.",
     requiredFields: [],
     optionalFields: ["prompt", "workflowId", "workingDirectory", "timeoutSeconds", "maxResults", "maxBytes", "maxOutputBytes"],
     example: { operation: "codex_continue", workflowId: "codex_fix_...", prompt: "Continue from the latest failing test.", workingDirectory: ".", maxResults: 50, maxOutputBytes: 200000 },
@@ -1154,7 +1154,7 @@ function operationBoundaryNote(operation: WorkspaceOperationName): string {
   if (operation === "codex_runs") return "Returns bounded Codex workflow run records for this configured workspace without full prompts.";
   if (operation === "screen_list") return "Returns screenshot provider capability and permission metadata without capturing pixels.";
   if (operation === "screen_capture" || operation === "screen_capture_window" || operation === "screen_capture_process") return "Captures local screen pixels through the platform provider and is gated by explicit screen permission.";
-  if (operation === "process_list" || operation === "process_read" || operation === "process_stop") return "Managed-process access is limited to allowed process kinds Workspace Linker started for this configured workspace.";
+  if (operation === "process_list" || operation === "process_read" || operation === "process_stop") return "Managed-process access is limited to allowed process kinds Computer Linker started for this configured workspace.";
   if (operation === "history" || operation === "history_insight") return "Returns audit metadata for this workspace without file contents or token values.";
   if (operation === "coding_context" || operation === "project_overview" || operation === "instructions" || operation === "agent_skills") return "Reads bounded workspace metadata and selected workspace files only.";
   if (operation === "git_stage" || operation === "git_unstage") return "Git pathspecs are validated inside the workspace before mutating the repository index.";
@@ -2428,7 +2428,7 @@ function codexWorkflowUserPrompt(input: WorkspaceOperationInput): string {
   if (input.operation === "codex_test") {
     return input.prompt ?? (input.script ? `Run or inspect the package script named ${input.script} and summarize failures.` : "Run or inspect the appropriate project tests and summarize failures.");
   }
-  return input.prompt ?? "Continue from the recent Workspace Linker history, resolve the latest failure if one exists, and summarize the next concrete action.";
+  return input.prompt ?? "Continue from the recent Computer Linker history, resolve the latest failure if one exists, and summarize the next concrete action.";
 }
 
 function buildCodexWorkflowPrompt(
@@ -2444,7 +2444,7 @@ function buildCodexWorkflowPrompt(
   },
 ): string {
   return [
-    `Workspace Linker Codex workflow: ${operation}`,
+    `Computer Linker Codex workflow: ${operation}`,
     `Workflow id: ${context.workflowId}`,
     `Workspace: ${context.workspace.exposedPath.id} (${context.workspace.exposedPath.name})`,
     `Working directory: ${context.workingDirectory}`,
@@ -2454,7 +2454,7 @@ function buildCodexWorkflowPrompt(
     "",
     "Current change summary:",
     serializePromptContext(context.preRunChangeSummary),
-    context.history ? ["", "Recent Workspace Linker history/debug bundle:", serializePromptContext(context.history)].join("\n") : "",
+    context.history ? ["", "Recent Computer Linker history/debug bundle:", serializePromptContext(context.history)].join("\n") : "",
     "",
     codexWorkflowInstructions(operation, context.script),
   ].filter(Boolean).join("\n");
@@ -2493,7 +2493,7 @@ function codexWorkflowInstructions(operation: CodexWorkflowOperationName, script
     case "codex_continue":
       return [
         "Instructions:",
-        "- Continue from the supplied recent Workspace Linker history.",
+        "- Continue from the supplied recent Computer Linker history.",
         "- If a failed replay template is present, use it to understand the failed operation before acting.",
         "- Summarize what was continued, what changed, and what remains.",
       ].join("\n");

@@ -3,17 +3,20 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const url = new URL(
-  process.env.WORKSPACE_LINKER_MCP_URL ??
+  process.env.COMPUTER_LINKER_MCP_URL ??
+    process.env.WORKSPACE_LINKER_MCP_URL ??
     process.argv[2] ??
     "http://127.0.0.1:3939/mcp",
 );
 const token =
+  process.env.COMPUTER_LINKER_TOKEN ??
+  process.env.COMPUTER_LINKER_OWNER_TOKEN ??
   process.env.WORKSPACE_LINKER_TOKEN ??
   process.env.WORKSPACE_LINKER_OWNER_TOKEN ??
   process.argv[3];
 
 const client = new Client({
-  name: "workspace-linker-minimal-client",
+  name: "computer-linker-minimal-client",
   version: "0.1.0",
 });
 const transport = new StreamableHTTPClientTransport(url, {

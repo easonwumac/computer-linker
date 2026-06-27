@@ -198,7 +198,7 @@ try {
       action: "get_computer_info",
     });
     assert.equal(computerInfo.status, 200);
-    assert.equal(computerInfo.body.data.kind, "workspace-linker-computer-info");
+    assert.equal(computerInfo.body.data.kind, "computer-linker-computer-info");
     assert.equal(computerInfo.body.data.machineName, "api-test");
     assert.equal(computerInfo.body.data.scopes[0].id, "app");
     assert.equal(computerInfo.body.data.scopes[0].type, "folder");
@@ -222,7 +222,7 @@ try {
       action: "client_setup",
     });
     assert.equal(clientSetup.status, 200);
-    assert.equal(clientSetup.body.data.kind, "workspace-linker-mcp-client-setup");
+    assert.equal(clientSetup.body.data.kind, "computer-linker-mcp-client-setup");
     assert.equal(clientSetup.body.data.machineName, "api-test");
     assert.equal(clientSetup.body.data.localReady, true);
     assert.equal(clientSetup.body.data.remoteReady, false);
@@ -389,13 +389,13 @@ try {
     assert.equal(chatGptSetup.status, 200);
     assert.equal(chatGptSetup.body.data.kind, "chatgpt-setup-status");
     assert.equal(chatGptSetup.body.data.mode, "coding");
-    assert.equal(chatGptSetup.body.data.setupFields.appName, "Workspace Linker (api-test)");
+    assert.equal(chatGptSetup.body.data.setupFields.appName, "Computer Linker (api-test)");
     assert.equal(chatGptSetup.body.data.setupFields.bearerHeader, "Authorization: Bearer <ownerToken>");
     assert.equal(chatGptSetup.body.data.setupFields.mcpServerUrl, "http://127.0.0.1:3959/mcp");
     assert.equal(chatGptSetup.body.data.ready, false);
     assert.equal(chatGptSetup.body.data.connectProfile.serverUrl, "http://127.0.0.1:3959/mcp");
     assert.equal(chatGptSetup.body.data.connectProfile.auth.bearerHeader, "Authorization: Bearer <ownerToken>");
-    assert.equal(chatGptSetup.body.data.connectProfile.cli.connectorConfig, "workspace-linker client chatgpt connector --mode coding --show-token");
+    assert.equal(chatGptSetup.body.data.connectProfile.cli.connectorConfig, "computer-linker client chatgpt connector --mode coding --show-token");
     assert.ok(chatGptSetup.body.data.connectProfile.firstPrompt.includes("get_computer_info"));
     assert.ok(chatGptSetup.body.data.blockingReasons.some((reason: string) => reason.includes("public-base-url")));
     assert.equal(chatGptSetup.body.data.wizard.overallStatus, "blocked");
@@ -419,7 +419,7 @@ try {
     assert.equal(detectedTunnelSetup.body.data.setupFields.mcpServerUrl, "https://api-detected.trycloudflare.com/mcp");
     assert.equal(detectedTunnelSetup.body.data.connectProfile.serverUrl, "https://api-detected.trycloudflare.com/mcp");
     assert.equal(detectedTunnelSetup.body.data.connectProfile.auth.oauthEnabled, false);
-    assert.equal(detectedTunnelSetup.body.data.connectProfile.cli.publicSmoke, "workspace-linker client chatgpt smoke --url https://api-detected.trycloudflare.com");
+    assert.equal(detectedTunnelSetup.body.data.connectProfile.cli.publicSmoke, "computer-linker client chatgpt smoke --url https://api-detected.trycloudflare.com");
     assert.equal(detectedTunnelSetup.body.data.wizard.detectedPublicUrl, "https://api-detected.trycloudflare.com");
     assert.equal(detectedTunnelSetup.body.data.wizard.effectiveMcpServerUrl, "https://api-detected.trycloudflare.com/mcp");
     assert.equal(detectedTunnelSetup.body.data.wizard.overallStatus, "ready");
@@ -757,7 +757,7 @@ try {
     assert.equal(capabilities.body.data.codingCapabilities.durableHistory, true);
     assert.match(capabilities.body.data.security.boundaryModel.workspaceCwdOnly, /not OS filesystem sandboxes/);
     assert.ok(capabilities.body.data.security.findings.some((finding: { id: string; workspaceId?: string }) => finding.id === "shell-broad-access" && finding.workspaceId === "runner"));
-    assert.equal(capabilities.body.data.releaseReadiness.kind, "workspace-linker-release-readiness");
+    assert.equal(capabilities.body.data.releaseReadiness.kind, "computer-linker-release-readiness");
     assert.equal(typeof capabilities.body.data.releaseReadiness.ready, "boolean");
     assert.equal(capabilities.body.data.configDiagnostics.criticalCount, 0);
     assert.ok(Array.isArray(capabilities.body.data.configDiagnostics.findings));
@@ -771,15 +771,15 @@ try {
     const controlCapabilities = await control({ action: "get_capabilities" });
     assert.equal(controlCapabilities.status, 200);
     assert.equal(controlCapabilities.body.data.machineName, "api-test");
-    assert.equal(controlCapabilities.body.data.startup.kind, "workspace-linker-startup-readiness");
+    assert.equal(controlCapabilities.body.data.startup.kind, "computer-linker-startup-readiness");
     assert.equal(controlCapabilities.body.data.startup.localApiUrl, "http://127.0.0.1:3959/api/v1");
     assert.ok(controlCapabilities.body.data.startup.modes.some((mode: { id: string; command: string }) => (
       mode.id === "start" &&
-      mode.command === "workspace-linker start"
+      mode.command === "computer-linker start"
     )));
     assert.ok(controlCapabilities.body.data.startup.modes.some((mode: { id: string; command: string }) => (
       mode.id === "tunnel-cloudflare" &&
-      mode.command === "workspace-linker start <workspace-path> --dev --tunnel cloudflare"
+      mode.command === "computer-linker start <workspace-path> --dev --tunnel cloudflare"
     )));
     assert.ok(controlCapabilities.body.data.startup.modes.every((mode: { command: string }) => !mode.command.includes("--no-tunnel")));
     assert.ok(controlCapabilities.body.data.startup.modes.some((mode: { id: string; command: string }) => (
@@ -793,9 +793,9 @@ try {
     assert.equal(controlDoctor.body.data.machine.nodeVersion, process.version);
     assert.equal(controlDoctor.body.data.runtime.localMcpUrl, "http://127.0.0.1:3959/mcp");
     assert.equal(controlDoctor.body.data.runtime.localApiUrl, "http://127.0.0.1:3959/api/v1");
-    assert.equal(controlDoctor.body.data.runtime.startCommands.start, "workspace-linker start");
-    assert.equal(controlDoctor.body.data.runtime.startCommands.serveHttp, "workspace-linker start");
-    assert.equal(controlDoctor.body.data.startup.kind, "workspace-linker-startup-readiness");
+    assert.equal(controlDoctor.body.data.runtime.startCommands.start, "computer-linker start");
+    assert.equal(controlDoctor.body.data.runtime.startCommands.serveHttp, "computer-linker start");
+    assert.equal(controlDoctor.body.data.startup.kind, "computer-linker-startup-readiness");
     assert.equal(controlDoctor.body.data.startup.localMcpUrl, "http://127.0.0.1:3959/mcp");
     assert.equal(typeof controlDoctor.body.data.startup.ready, "boolean");
     assert.match(controlDoctor.body.data.startup.service.profileBundleCommand, /service profile --platform/);
@@ -804,14 +804,14 @@ try {
     assert.equal(controlDoctor.body.data.workspaces.total, 3);
     assert.equal(controlDoctor.body.data.workspaces.shellEnabled, 1);
     assert.equal(controlDoctor.body.data.workspaces.codexEnabled, 0);
-    assert.equal(controlDoctor.body.data.releaseReadiness.kind, "workspace-linker-release-readiness");
+    assert.equal(controlDoctor.body.data.releaseReadiness.kind, "computer-linker-release-readiness");
     assert.equal(controlDoctor.body.data.releaseReadiness.recommendedGate, "npm run product:check");
     assert.ok(controlDoctor.body.data.releaseReadiness.checks.some((check: { id: string }) => check.id === "command-policy"));
     assert.equal(controlDoctor.body.data.configDiagnostics.criticalCount, 0);
     assert.ok(Array.isArray(controlDoctor.body.data.security.findings));
     assert.ok(Array.isArray(controlDoctor.body.data.tunnels.tools));
     assert.ok(Array.isArray(controlDoctor.body.data.tunnels.commands));
-    assert.match(controlDoctor.body.data.service.profileCommand, /^workspace-linker service profile --platform /);
+    assert.match(controlDoctor.body.data.service.profileCommand, /^computer-linker service profile --platform /);
     assert.match(controlDoctor.body.data.service.profileBundleCommand, /--output-dir \.\/service-profile$/);
     assert.match(controlDoctor.body.data.service.installDryRunCommand, /service install --dry-run --platform/);
     assert.ok(Array.isArray(controlDoctor.body.data.service.statusCommands));
@@ -1360,7 +1360,7 @@ try {
       limit: 20,
     });
     assert.equal(debugBundle.status, 200);
-    assert.equal(debugBundle.body.data.debugBundle.format, "workspace-linker-debug-bundle-v1");
+    assert.equal(debugBundle.body.data.debugBundle.format, "computer-linker-debug-bundle-v1");
     assert.ok(debugBundle.body.data.debugBundle.redactions.some((redaction: string) => redaction.includes("Owner tokens")));
     assert.ok(debugBundle.body.data.debugBundle.redactions.some((redaction: string) => redaction.includes("screenshot image bytes")));
     assert.ok(Array.isArray(debugBundle.body.data.debugBundle.connections));

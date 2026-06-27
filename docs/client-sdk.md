@@ -1,15 +1,15 @@
 # Client SDK Contract
 
-Workspace Linker exposes a small TypeScript client for MCP hosts, local
+Computer Linker exposes a small TypeScript client for MCP hosts, local
 automation, and compatibility connectors. Prefer the generic
 computer contract for new integrations:
 
 ```ts
-import { WorkspaceLinkerClient } from "workspace-linker";
+import { ComputerLinkerClient } from "@easonwumac/computer-linker";
 
-const client = new WorkspaceLinkerClient({
+const client = new ComputerLinkerClient({
   baseUrl: "http://127.0.0.1:3939/api/v1",
-  ownerToken: process.env.WORKSPACE_LINKER_TOKEN,
+  ownerToken: process.env.COMPUTER_LINKER_TOKEN,
 });
 
 await client.getComputerInfo();
@@ -26,8 +26,8 @@ if (result.ok) console.log(result.data);
 ```
 
 The SDK talks to the JSON API under `/api/v1`. Treat that API as a local or
-trusted-private automation surface. Public tunnels created by `workspace-linker
-start --tunnel ...` and `workspace-linker expose ...` default to MCP-only, so
+trusted-private automation surface. Public tunnels created by `computer-linker
+start --tunnel ...` and `computer-linker expose ...` default to MCP-only, so
 public hosts expose `/mcp` but return 404 for `/api` and `/healthz`.
 Use the SDK against `connectionProfile.http.localApiUrl`, or against a
 deliberately private reverse proxy where you have chosen to expose the JSON API.
@@ -61,7 +61,7 @@ the top level with `action: "computer_operation"`:
 Use `input` for operation data and `options` for limits, filters, and runtime
 controls. The response is always a standard operation result envelope with
 `ok`, `operationId`, `scope`, `op`, `startedAt`, `durationMs`, `data` on
-success, and `error` on failure. Workspace Linker still enforces the configured
+success, and `error` on failure. Computer Linker still enforces the configured
 workspace boundary on the server side.
 Use `getComputerInfo()` to discover `computerOperationRegistry`; new clients
 should prefer its dotted op names such as `code.context`, `file.read`,
@@ -123,12 +123,12 @@ workspace list, and operation registry contracts. It
 returns `ready`, `status`, `blockingReasons`, `warnings`, `nextActions`,
 `recommendedWorkspace`, and the source payloads so GPT clients can decide
 whether to connect, show setup steps, or continue with coding operations.
-`smoke()` is the SDK equivalent of `workspace-linker client smoke` for local or
+`smoke()` is the SDK equivalent of `computer-linker client smoke` for local or
 trusted-private integrations. It checks `/healthz`, `/api/v1/capabilities`,
 authenticated `get_computer_info`, one read-only `computer_operation`
 `file.list` in a readable scope, and an MCP SDK flow on `/mcp`: initialize,
 tools/list, `get_computer_info`, and one read-only `computer_operation`.
-It then returns a `workspace-linker-client-smoke` report with `ready`, `checks`,
+It then returns a `computer-linker-client-smoke` report with `ready`, `checks`,
 `blockingReasons`, `warnings`, and `nextActions`. Public tunnel smoke remains
 MCP-only by default because public hosts expose `/mcp` and intentionally block
 the JSON API, but the MCP tool flow still runs. The CLI and SDK use the same
@@ -139,7 +139,7 @@ stdio or loopback MCP usage, while `remoteReady` and `remoteBlockingReasons`
 describe what remains before a cloud or tunnel client can connect. It also
 returns `firstPrompt` and `agentInstructions`, which are the same generic
 copy-pasteable MCP agent guidance printed by
-`workspace-linker client setup --details`.
+`computer-linker client setup --details`.
 `operationRegistry()` returns the stable `computer_operation` contract,
 filtered dotted operation metadata, required capabilities, permissions,
 boundaries, schemas, and examples. `workspaceOperationRegistry()` returns the

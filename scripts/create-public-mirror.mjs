@@ -20,7 +20,7 @@ function usage() {
     "",
     "Options:",
     "  --remote <repo>          Required. GitHub owner/repo or full GitHub URL.",
-    "  --output <path>          Advanced. Disposable mirror directory; default is ../workspace-linker-public.",
+    "  --output <path>          Advanced. Disposable mirror directory; default is ../computer-linker-public.",
     "  --branch <name>          Advanced. Mirror branch name; default is main.",
     "  --dry-run                Verify the full flow without writing the mirror.",
     "  --force                  Replace a non-default disposable output directory.",

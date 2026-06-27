@@ -1,11 +1,11 @@
 # Security Policy
 
-Workspace Linker is local-first software that exposes a user's computer to an
+Computer Linker is local-first software that exposes a user's computer to an
 MCP client. Treat every configured scope as a trust boundary.
 
 ## Supported Versions
 
-Workspace Linker is currently pre-1.0. Security fixes are targeted at the
+Computer Linker is currently pre-1.0. Security fixes are targeted at the
 latest published version only until a stable release line exists.
 
 ## Reporting A Vulnerability
