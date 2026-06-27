@@ -38,6 +38,23 @@ The stable operation result envelope includes:
 New dotted operations, new optional fields, and additional diagnostic metadata
 are non-breaking additions.
 
+## Discovery Split
+
+`get_computer_info`, `/api/v1/capabilities`, and SDK `connectReadiness()`
+expose machine-readable discovery with `primary` and `compatibility` sections.
+New clients should read `discovery.primary` first:
+
+- `primary.mcpTools`: `get_computer_info`, `computer_operation`,
+  `get_operation_history`
+- `primary.jsonApi.preferredAction`: `computer_operation` for local or
+  trusted-private JSON API clients
+- `primary.registries`: the generic `computerOperationRegistry` and
+  `get_computer_info.operationRegistry`
+
+`discovery.compatibility` keeps older workspace tools, actions, endpoints, and
+registries discoverable for migration. Compatibility entries are not the
+recommended product path.
+
 ## Compatibility Tools
 
 Tools such as `list_workspaces`, `open_workspace`, and `workspace_operation`

@@ -139,8 +139,11 @@ operations, search, git, commands, Codex workflows, and audit history.
 `connectReadiness()` is a client-side aggregate over generic MCP client setup,
 workspace list, and operation registry contracts. It
 returns `ready`, `status`, `blockingReasons`, `warnings`, `nextActions`,
-`recommendedWorkspace`, and the source payloads so GPT clients can decide
-whether to connect, show setup steps, or continue with coding operations.
+`recommendedWorkspace`, `discovery`, and the source payloads so GPT clients can
+decide whether to connect, show setup steps, or continue with coding
+operations. `discovery.primary` is the machine-readable recommendation for new
+clients; `discovery.compatibility` exists only for older workspace-operation
+integrations.
 `smoke()` is the SDK equivalent of `computer-linker client smoke` for local or
 trusted-private integrations. It checks `/healthz`, `/api/v1/capabilities`,
 authenticated `get_computer_info`, one read-only `computer_operation`

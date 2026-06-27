@@ -116,6 +116,7 @@ const computerInfoOutputSchema = z.object({
   tools: looseObjectOutputSchema,
   operationContract: looseObjectOutputSchema,
   operationRegistry: z.array(looseObjectOutputSchema),
+  discovery: looseObjectOutputSchema,
   compatibility: z.object({
     workspaceTools: z.array(z.string()),
     genericTools: z.array(z.string()),
@@ -159,6 +160,7 @@ const capabilitiesOutputSchema = z.object({
   workspaces: z.array(workspaceOutputSchema),
   mcpTools: z.array(z.string()),
   jsonApi: looseObjectOutputSchema,
+  discovery: looseObjectOutputSchema,
   clientGuidance: looseObjectOutputSchema,
   workspaceOperations: z.array(z.string()),
   operationRegistry: z.array(looseObjectOutputSchema),

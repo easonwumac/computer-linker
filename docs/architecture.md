@@ -207,9 +207,15 @@ exact configured path remain exact.
 Capability discovery includes `computerOperationContract` and
 `computerOperationRegistry` so new clients can use the generic
 `computer_operation` envelope without hardcoding operation names. It also
-includes an `exposure` summary that tells clients whether this machine is
-loopback-only, which tunnel tools are available, whether the server is ready for
-tunnel exposure, and which blocking reasons or warnings remain.
+includes `discovery.primary` and `discovery.compatibility` sections so clients
+can choose the three-tool MCP flow without treating legacy workspace tools as
+first-class recommendations. `discovery.primary` lists the default MCP tools,
+the local/trusted-private JSON `computer_operation` action, and the generic
+operation registry sources. `discovery.compatibility` keeps legacy workspace
+tools, actions, endpoints, and registries visible for migration. Capability
+discovery also includes an `exposure` summary that tells clients whether this
+machine is loopback-only, which tunnel tools are available, whether the server
+is ready for tunnel exposure, and which blocking reasons or warnings remain.
 `computer_operation` returns the product-level result envelope with `ok`,
 `operationId`, `scope`, `op`, timing fields, `data` on success, and `error` on
 failure. Compatibility `workspace_operation` continues to return the legacy

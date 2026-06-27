@@ -191,6 +191,7 @@ assert(changelog.includes("Quickstart text and JSON now explain that `start` sta
 assert(changelog.includes("Product spec guidance for the CLI management surface now matches"), "CHANGELOG must mention product spec first-run help alignment");
 assert(changelog.includes("Package metadata now positions Computer Linker as a generic MCP/local\n  automation package"), "CHANGELOG must mention generic package metadata positioning");
 assert(changelog.includes("SDK entrypoint types now expose `ComputerLinker*` names"), "CHANGELOG must mention SDK ComputerLinker type exports");
+assert(changelog.includes("Capability discovery now separates primary MCP/JSON API recommendations"), "CHANGELOG must mention primary/compatibility discovery split");
 assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.computer-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
 assert(changelog.includes("npm run public:release-ready"), "CHANGELOG must mention the final public release readiness command");
 assert(changelog.includes("Local npm release wrapper commands"), "CHANGELOG must mention local npm release automation");
@@ -213,6 +214,7 @@ assert(readme.includes("node examples/minimal-mcp-client.mjs"), "README must doc
 assert(readme.includes("docs/api-compatibility.md"), "README must link the API compatibility policy");
 assert(readme.includes("docs/agent-instructions.md"), "README must link reusable agent instructions");
 assert(readme.includes("docs/client-recipes.md"), "README must link MCP client recipes");
+assert(readme.includes("Capability discovery exposes `discovery.primary`"), "README must explain primary/compatibility discovery split");
 assert(readme.includes("does\nnot accept the owner token as a positional command argument"), "README minimal client guidance must avoid positional token arguments");
 assert(readme.includes("Sensitive file content is blocked by default"), "README must document default sensitive file protection");
 assert(readme.includes('"op": "file.read"'), "README useful first operations must include a generic file.read example");
@@ -240,7 +242,12 @@ const architecture = readText("docs/architecture.md");
 const agentInstructionsDoc = readText("docs/agent-instructions.md");
 assert(architecture.includes("`network:false` is a legacy non-grant marker"), "architecture docs must clarify network:false is not network isolation");
 assert(architecture.includes("registry `networkAccess`"), "architecture docs must mention registry networkAccess semantics");
+assert(architecture.includes("`discovery.primary` and `discovery.compatibility`"), "architecture docs must explain primary/compatibility discovery split");
 assert(agentInstructionsDoc.includes("Do not treat `network:false` as a network sandbox"), "agent instructions must warn clients about network:false semantics");
+
+const apiCompatibility = readText("docs/api-compatibility.md");
+assert(apiCompatibility.includes("## Discovery Split"), "API compatibility docs must describe the discovery split");
+assert(apiCompatibility.includes("`discovery.compatibility` keeps older workspace tools"), "API compatibility docs must keep compatibility entries migration-only");
 
 const minimalMcpClient = readText("examples/minimal-mcp-client.mjs");
 assert(!/\?\?\s*process\.argv\[3\]/.test(minimalMcpClient), "minimal MCP client must not silently accept owner tokens as positional arguments");
@@ -253,23 +260,31 @@ const clientSdkDocs = readText("docs/client-sdk.md");
 assert(clientSdkDocs.includes("Passing an MCP URL such as `http://127.0.0.1:3939/mcp` fails immediately"), "client SDK docs must clarify MCP URL fail-fast behavior");
 assert(clientSdkDocs.includes("ComputerLinkerClientOptions"), "client SDK docs must demonstrate ComputerLinker type imports");
 assert(clientSdkDocs.includes("WorkspaceLinkerClient") && clientSdkDocs.includes("compatibility aliases"), "client SDK docs must explain WorkspaceLinker compatibility aliases");
+assert(clientSdkDocs.includes("`recommendedWorkspace`, `discovery`"), "client SDK docs must mention connectReadiness discovery output");
 
 const clientSource = readText("src/client.ts");
 for (const exportedType of [
   "ComputerLinkerClientOptions",
   "ComputerLinkerOperationRequest",
   "ComputerLinkerMcpClientSetup",
+  "ComputerLinkerDiscovery",
   "ComputerLinkerOperationRegistryFilters",
   "ComputerLinkerClientSmokeReport",
 ]) {
   assert(clientSource.includes(`export type ${exportedType} =`), `SDK source must export ${exportedType}`);
 }
 
+const discoveryContractSource = readText("src/discovery-contract.ts");
+assert(discoveryContractSource.includes("computerLinkerDiscovery"), "discovery contract source must expose a shared discovery builder");
+assert(discoveryContractSource.includes("primaryJsonApiActions"), "discovery contract source must define primary JSON API actions");
+assert(discoveryContractSource.includes("compatibilityJsonApiActions"), "discovery contract source must define compatibility JSON API actions");
+
 const sdkPackageSmokeScript = readText("scripts/package-smoke.mjs");
 for (const exportedType of [
   "ComputerLinkerClientOptions",
   "ComputerLinkerOperationRequest",
   "ComputerLinkerMcpClientSetup",
+  "ComputerLinkerDiscovery",
   "WorkspaceLinkerClientOptions",
 ]) {
   assert(sdkPackageSmokeScript.includes(exportedType), `package smoke must validate ${exportedType}`);

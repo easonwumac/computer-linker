@@ -15,6 +15,7 @@ import { serviceStatus, type ServiceStatus } from "./service.js";
 import { listTunnelProcesses, tunnelDiagnostics } from "./tunnels.js";
 import { WorkspaceRegistry } from "./workspaces.js";
 import { exposedMcpTools, mcpToolSurface } from "./mcp-surface.js";
+import { compatibilityJsonApiActions, compatibilityJsonApiEndpoints, computerLinkerDiscovery, primaryJsonApiActions, primaryJsonApiEndpoints } from "./discovery-contract.js";
 import { allowedWorkspaceOperations, publicWorkspaceOperationRegistry, workspaceOperationCatalog, workspaceOperationContract, workspaceOperationNames, workspaceOperationSafety } from "./workspace-operations.js";
 
 export interface CommandCapability {
@@ -173,9 +174,14 @@ export function getLocalPortCapabilities(): unknown {
     jsonApi: {
       basePath: "/api/v1",
       unifiedEndpoint: "POST /control",
-      actions: ["get_computer_info", "client_setup", "computer_operation", "get_operation_history", "get_capabilities", "doctor", "list_workspaces", "history", "history_insight", "operation_registry", "computer_operation_registry", "workspace_operation_registry", "workspace_operation", "operation"],
-      endpoints: ["GET /health", "GET /capabilities", "GET /workspaces", "GET /history", "POST /workspace-operation", "POST /control"],
+      actions: [...primaryJsonApiActions, ...compatibilityJsonApiActions],
+      primaryActions: [...primaryJsonApiActions],
+      compatibilityActions: [...compatibilityJsonApiActions],
+      endpoints: [...new Set([...primaryJsonApiEndpoints, ...compatibilityJsonApiEndpoints])],
+      primaryEndpoints: [...primaryJsonApiEndpoints],
+      compatibilityEndpoints: [...compatibilityJsonApiEndpoints],
     },
+    discovery: computerLinkerDiscovery(),
     clientGuidance: {
       recommendedFlow: ["get_computer_info", "client_setup", "computer_operation", "get_operation_history"],
       preferredControlShape: {

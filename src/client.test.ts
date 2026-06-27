@@ -73,6 +73,14 @@ try {
     assert.equal(connectReadiness.clientSetup.remoteReady, false);
     assert.ok(connectReadiness.clientSetup.remoteBlockingReasons.some((reason) => reason.includes("No public MCP URL")));
     assert.ok(connectReadiness.warnings.some((warning) => warning.includes("No public MCP URL")));
+    assert.deepEqual(connectReadiness.discovery.primary.mcpFlow, [
+      "get_computer_info",
+      "computer_operation",
+      "get_operation_history",
+    ]);
+    assert.equal(connectReadiness.discovery.primary.jsonApi.preferredAction, "computer_operation");
+    assert.equal(connectReadiness.discovery.primary.jsonApi.actions.includes("workspace_operation"), false);
+    assert.ok(connectReadiness.discovery.compatibility.mcpTools.includes("workspace_operation"));
     assert.equal(connectReadiness.operationRegistry.kind, "computer-operation-registry");
     assert.ok(connectReadiness.operationRegistry.operations.some((operation) => operation.op === "file.search"));
     assert.ok(connectReadiness.operationRegistry.operations.some((operation) => operation.op === "code.search_symbols"));
@@ -585,6 +593,13 @@ async function assertClientContractShape(): Promise<void> {
   assert.equal(readiness.status, "ready");
   assert.equal(readiness.machine?.machineName, "shape-machine");
   assert.equal(readiness.recommendedWorkspace?.id, "app");
+  assert.deepEqual(readiness.discovery.primary.mcpTools, [
+    "get_computer_info",
+    "computer_operation",
+    "get_operation_history",
+  ]);
+  assert.equal(readiness.discovery.primary.jsonApi.actions.includes("workspace_operation"), false);
+  assert.ok(readiness.discovery.compatibility.jsonApi.actions.includes("workspace_operation"));
   const smoke = await client.smoke({ timeoutMs: 1000 });
   assert.equal(smoke.ready, true);
   assert.equal(smoke.baseUrl, "https://computer-linker.example.com/");

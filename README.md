@@ -318,6 +318,8 @@ request/result schema is documented in
 The compatibility policy for the public MCP surface is documented in
 [docs/api-compatibility.md](docs/api-compatibility.md), and reusable agent
 setup guidance is in [docs/agent-instructions.md](docs/agent-instructions.md).
+Capability discovery exposes `discovery.primary` for the recommended three-tool
+flow and `discovery.compatibility` for migration-only workspace APIs.
 Default `get_computer_info` discovery is privacy-conscious for cloud clients:
 scope ids, names, permissions, and non-absolute display paths are returned, but
 full local folder roots are redacted unless explicitly requested for owner

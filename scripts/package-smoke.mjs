@@ -89,10 +89,12 @@ const clientTypeExports = [
   "ComputerLinkerMcpClientSetup",
   "ComputerLinkerOperationRegistryFilters",
   "ComputerLinkerOperationRegistry",
+  "ComputerLinkerDiscovery",
   "ComputerLinkerClientSmokeReport",
   "WorkspaceLinkerClientOptions",
   "WorkspaceLinkerComputerOperationRequest",
   "WorkspaceLinkerMcpClientSetup",
+  "WorkspaceLinkerDiscovery",
 ];
 
 function assertClientDtsExports(clientDtsPath, label) {
@@ -131,6 +133,8 @@ const requiredFiles = [
   "dist/client.d.ts",
   "dist/client-smoke.js",
   "dist/client-smoke.d.ts",
+  "dist/discovery-contract.js",
+  "dist/discovery-contract.d.ts",
 ];
 
 for (const path of requiredFiles) {

@@ -158,6 +158,18 @@ try {
       "get_operation_history",
     ]);
     assert.equal(capabilities.body.data.jsonApi.unifiedEndpoint, "POST /control");
+    assert.deepEqual(capabilities.body.data.jsonApi.primaryActions, [
+      "get_computer_info",
+      "client_setup",
+      "computer_operation",
+      "get_operation_history",
+    ]);
+    assert.equal(capabilities.body.data.jsonApi.primaryActions.includes("workspace_operation"), false);
+    assert.equal(capabilities.body.data.jsonApi.primaryActions.includes("operation"), false);
+    assert.ok(capabilities.body.data.jsonApi.compatibilityActions.includes("workspace_operation"));
+    assert.ok(capabilities.body.data.jsonApi.compatibilityActions.includes("operation"));
+    assert.deepEqual(capabilities.body.data.jsonApi.primaryEndpoints, ["POST /control"]);
+    assert.ok(capabilities.body.data.jsonApi.compatibilityEndpoints.includes("POST /workspace-operation"));
     assert.ok(capabilities.body.data.jsonApi.actions.includes("get_computer_info"));
     assert.ok(capabilities.body.data.jsonApi.actions.includes("client_setup"));
     assert.ok(capabilities.body.data.jsonApi.actions.includes("computer_operation"));
@@ -171,6 +183,33 @@ try {
     assert.ok(capabilities.body.data.jsonApi.actions.includes("workspace_operation"));
     assert.ok(capabilities.body.data.jsonApi.actions.includes("operation"));
     assert.ok(capabilities.body.data.jsonApi.endpoints.includes("POST /control"));
+    assert.equal(capabilities.body.data.discovery.kind, "computer-linker-discovery");
+    assert.equal(capabilities.body.data.discovery.recommended, "primary");
+    assert.deepEqual(capabilities.body.data.discovery.primary.mcpTools, [
+      "get_computer_info",
+      "computer_operation",
+      "get_operation_history",
+    ]);
+    assert.deepEqual(capabilities.body.data.discovery.primary.mcpFlow, [
+      "get_computer_info",
+      "computer_operation",
+      "get_operation_history",
+    ]);
+    assert.equal(capabilities.body.data.discovery.primary.jsonApi.preferredAction, "computer_operation");
+    assert.deepEqual(capabilities.body.data.discovery.primary.jsonApi.actions, [
+      "get_computer_info",
+      "client_setup",
+      "computer_operation",
+      "get_operation_history",
+    ]);
+    assert.equal(capabilities.body.data.discovery.primary.jsonApi.actions.includes("workspace_operation"), false);
+    assert.equal(capabilities.body.data.discovery.primary.registries.includes("computerOperationRegistry"), true);
+    assert.equal(capabilities.body.data.discovery.primary.registries.includes("operationRegistry"), false);
+    assert.ok(capabilities.body.data.discovery.compatibility.mcpTools.includes("workspace_operation"));
+    assert.ok(capabilities.body.data.discovery.compatibility.jsonApi.actions.includes("workspace_operation"));
+    assert.ok(capabilities.body.data.discovery.compatibility.registries.includes("workspace_operation_registry"));
+    assert.equal(capabilities.body.data.clientGuidance.recommendedFlow.includes("workspace_operation"), false);
+    assert.equal(capabilities.body.data.clientGuidance.recommendedFlow.includes("operation"), false);
     assert.deepEqual(capabilities.body.data.clientGuidance.recommendedFlow, ["get_computer_info", "client_setup", "computer_operation", "get_operation_history"]);
     assert.equal(capabilities.body.data.clientGuidance.preferredControlShape.action, "computer_operation");
     assert.equal(capabilities.body.data.clientGuidance.preferredControlShape.op, "file.read");
@@ -241,6 +280,14 @@ try {
     assert.equal(computerInfo.body.data.scopes[0].type, "folder");
     assert.ok(computerInfo.body.data.scopes[0].allowedOperations.includes("read"));
     assert.equal(computerInfo.body.data.operationContract.mcp.tool, "computer_operation");
+    assert.deepEqual(computerInfo.body.data.discovery.primary.mcpTools, [
+      "get_computer_info",
+      "computer_operation",
+      "get_operation_history",
+    ]);
+    assert.equal(computerInfo.body.data.discovery.primary.jsonApi.preferredAction, "computer_operation");
+    assert.equal(computerInfo.body.data.discovery.primary.jsonApi.actions.includes("workspace_operation"), false);
+    assert.ok(computerInfo.body.data.discovery.compatibility.mcpTools.includes("workspace_operation"));
     assert.ok(computerInfo.body.data.operationRegistry.some((entry: { op: string; backendOperation: string }) => (
       entry.op === "file.search" && entry.backendOperation === "search_text"
     )));

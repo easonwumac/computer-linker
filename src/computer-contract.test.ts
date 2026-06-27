@@ -59,6 +59,13 @@ try {
         note: string;
       };
     }>;
+    discovery: {
+      primary: {
+        mcpTools: string[];
+        jsonApi: { actions: string[]; preferredAction: string };
+      };
+      compatibility: { mcpTools: string[] };
+    };
   };
   assert.equal(defaultComputerInfo.scopes[0].id, "app");
   assert.equal(defaultComputerInfo.scopes[0].displayPath, "workspace");
@@ -67,6 +74,14 @@ try {
   assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.hostNetworkMayBeUsed, false);
   assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.networkBlockedByComputerLinker, false);
   assert.equal(defaultComputerInfo.scopes[0].roots, undefined);
+  assert.deepEqual(defaultComputerInfo.discovery.primary.mcpTools, [
+    "get_computer_info",
+    "computer_operation",
+    "get_operation_history",
+  ]);
+  assert.equal(defaultComputerInfo.discovery.primary.jsonApi.preferredAction, "computer_operation");
+  assert.equal(defaultComputerInfo.discovery.primary.jsonApi.actions.includes("workspace_operation"), false);
+  assert.ok(defaultComputerInfo.discovery.compatibility.mcpTools.includes("workspace_operation"));
   const commandRun = defaultComputerInfo.operationRegistry.find((operation) => operation.op === "command.run");
   assert.equal(commandRun?.networkAccess.mode, "host-process-may-use-network");
   assert.equal(commandRun?.networkAccess.hostNetworkMayBeUsed, true);

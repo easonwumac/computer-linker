@@ -12,6 +12,7 @@ import {
   type ComputerOperationEnvelope,
 } from "./computer-operation-registry.js";
 import { loadConfig } from "./config.js";
+import { computerLinkerDiscovery } from "./discovery-contract.js";
 import { historyInsight } from "./history-insights.js";
 import { compatibilityMcpTools, exposedMcpTools, genericMcpTools, mcpToolSurface } from "./mcp-surface.js";
 import { workspaceLinkerVersion } from "./package-metadata.js";
@@ -147,6 +148,7 @@ export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
     },
     operationContract: computerOperationContract,
     operationRegistry: publicComputerOperationRegistry(),
+    discovery: computerLinkerDiscovery(),
     compatibilityOperationRegistry: capabilities.operationRegistry,
     mcpToolSurface: {
       active: activeMcpToolSurface,

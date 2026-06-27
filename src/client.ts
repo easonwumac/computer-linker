@@ -12,6 +12,8 @@ import type {
   WorkspaceLinkerClientSmokeReport,
   WorkspaceLinkerClientSmokeStatus,
 } from "./client-smoke.js";
+import { computerLinkerDiscovery } from "./discovery-contract.js";
+import type { ComputerLinkerDiscovery as ComputerLinkerDiscoveryContract } from "./discovery-contract.js";
 
 export type {
   WorkspaceLinkerClientSmokeCheck,
@@ -145,6 +147,8 @@ export interface WorkspaceLinkerMcpClientSetup {
   agentInstructions?: string[];
 }
 
+export type WorkspaceLinkerDiscovery = ComputerLinkerDiscoveryContract;
+
 export interface WorkspaceLinkerConnectReadinessOptions {
   /** @deprecated Only used by chatGptSetup(); connectReadiness() is generic. */
   mode?: ChatGptVerifyMode;
@@ -165,6 +169,7 @@ export interface WorkspaceLinkerConnectReadiness {
     name: string;
     allowedOperations: WorkspaceOperationName[];
   } | null;
+  discovery: WorkspaceLinkerDiscovery;
   clientSetup: WorkspaceLinkerMcpClientSetup;
   workspaces: WorkspaceLinkerWorkspace[];
   operationRegistry: WorkspaceLinkerOperationRegistry;
@@ -202,6 +207,7 @@ export type ComputerLinkerComputerOperationRegistry = WorkspaceLinkerComputerOpe
 export type ComputerLinkerWorkspaceOperationRegistry = WorkspaceLinkerWorkspaceOperationRegistry;
 export type ComputerLinkerOperationRegistry = WorkspaceLinkerOperationRegistry;
 export type ComputerLinkerMcpClientSetup = WorkspaceLinkerMcpClientSetup;
+export type ComputerLinkerDiscovery = WorkspaceLinkerDiscovery;
 export type ComputerLinkerConnectReadinessOptions = WorkspaceLinkerConnectReadinessOptions;
 export type ComputerLinkerConnectReadiness = WorkspaceLinkerConnectReadiness;
 export type ComputerLinkerGitOperation = WorkspaceLinkerGitOperation;
@@ -339,6 +345,7 @@ export class WorkspaceLinkerClient {
         machineName: workspaces.machineName,
       },
       recommendedWorkspace: recommendedWorkspace(workspaces.workspaces),
+      discovery: computerLinkerDiscovery(),
       clientSetup,
       workspaces: workspaces.workspaces,
       operationRegistry,
