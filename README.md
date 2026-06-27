@@ -91,7 +91,9 @@ that already consumed the previous JSON field.
 
 For more guided setup paths, see [docs/tutorials.md](docs/tutorials.md). It
 covers local coding, read-only review, OpenAI Secure MCP Tunnel, public HTTPS
-tunnels, and the first operations an agent should call.
+tunnels, and the first operations an agent should call. For copyable daily CLI
+commands, use [docs/cli-reference.md](docs/cli-reference.md). For agent
+operation recipes, use [docs/agent-playbook.md](docs/agent-playbook.md).
 
 There is no web dashboard in the product path. Human setup and management are
 CLI-first; MCP and the JSON API are only protocol surfaces for clients,
@@ -586,7 +588,11 @@ app. It is a local MCP program that exposes approved computer abilities.
 
 See [docs/README.md](docs/README.md) for the full documentation map,
 [docs/getting-started.md](docs/getting-started.md) for the short setup path,
+[docs/cli-reference.md](docs/cli-reference.md) for copyable CLI commands,
 [docs/tutorials.md](docs/tutorials.md) for scenario walkthroughs,
+[docs/agent-playbook.md](docs/agent-playbook.md) for MCP agent operation
+recipes, [docs/sdk-quickstart.md](docs/sdk-quickstart.md) for the short SDK
+integration path,
 [docs/product-spec.md](docs/product-spec.md) for the product spec,
 [docs/architecture.md](docs/architecture.md) for implementation notes, and
 [docs/developer-guide.md](docs/developer-guide.md) for module boundaries. See

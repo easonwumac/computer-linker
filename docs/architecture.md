@@ -94,9 +94,15 @@ or tunnel brands:
   - Own concrete local behavior for files/search, commands, managed processes,
     Codex, screenshots, shell selection, sensitive file blocking, and Git
     output redaction.
-- Client helpers: `src/client.ts`, `src/client-smoke.ts`, `src/chatgpt.ts`
-  - Own reusable MCP client setup/smoke guidance. ChatGPT helpers are thin
-    compatibility exports over generic client guidance.
+- Client helpers: `src/client.ts`, `src/client-computer-helpers.ts`,
+  `src/client-smoke.ts`, `src/chatgpt.ts`
+  - `src/client.ts` owns the public SDK class, JSON API calls, readiness
+    aggregation, and compatibility aliases.
+  - `src/client-computer-helpers.ts` owns the namespaced `client.computer.*`
+    helper contract and the mapping from helper calls to `computer_operation`
+    envelopes.
+  - `src/client-smoke.ts` owns reusable MCP/API smoke checks. ChatGPT helpers
+    are thin compatibility exports over generic client guidance.
 - Tunnels and public exposure: `src/tunnels.ts`
   - Own provider detection, process start/status, public URL discovery, and
     OpenAI tunnel-client installation/verification.

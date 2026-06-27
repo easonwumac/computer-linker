@@ -103,7 +103,9 @@ for (const path of [
   "SECURITY.md",
   "docs/README.md",
   "docs/getting-started.md",
+  "docs/cli-reference.md",
   "docs/tutorials.md",
+  "docs/agent-playbook.md",
   "docs/developer-guide.md",
   "docs/architecture.md",
   "docs/product-spec.md",
@@ -112,6 +114,7 @@ for (const path of [
   "docs/alpha-evidence.example.json",
   "docs/agent-instructions.md",
   "docs/api-compatibility.md",
+  "docs/sdk-quickstart.md",
   "docs/client-sdk.md",
   "docs/client-recipes.md",
   "docs/computer-operation-v1.schema.json",
@@ -192,6 +195,8 @@ assert(changelog.includes("Product spec guidance for the CLI management surface 
 assert(changelog.includes("Package metadata now positions Computer Linker as a generic MCP/local\n  automation package"), "CHANGELOG must mention generic package metadata positioning");
 assert(changelog.includes("SDK entrypoint types now expose `ComputerLinker*` names"), "CHANGELOG must mention SDK ComputerLinker type exports");
 assert(changelog.includes("SDK now includes `client.computer.*` helpers"), "CHANGELOG must mention computer-operation-first SDK helpers");
+assert(changelog.includes("CLI quick reference, agent playbook, and SDK quickstart"), "CHANGELOG must mention the expanded teaching docs");
+assert(changelog.includes("SDK computer helper contract is now split into `src/client-computer-helpers.ts`"), "CHANGELOG must mention the SDK helper module split");
 assert(changelog.includes("Capability discovery now separates primary MCP/JSON API recommendations"), "CHANGELOG must mention primary/compatibility discovery split");
 assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.computer-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
 assert(changelog.includes("npm run public:release-ready"), "CHANGELOG must mention the final public release readiness command");
@@ -206,6 +211,9 @@ assert(readme.includes("Leave that terminal running. In another terminal"), "REA
 assert(readme.includes("computer-linker here"), "README Quick Start must document the current-folder startup shortcut");
 assert(readme.includes("docs/README.md"), "README must link the documentation map");
 assert(readme.includes("docs/getting-started.md"), "README must link the step-by-step tutorial");
+assert(readme.includes("docs/cli-reference.md"), "README must link the CLI quick reference");
+assert(readme.includes("docs/agent-playbook.md"), "README must link the agent playbook");
+assert(readme.includes("docs/sdk-quickstart.md"), "README must link the SDK quickstart");
 assert(readme.includes("docs/developer-guide.md"), "README must link the developer guide");
 assert(readme.includes("computer-linker check"), "README Quick Start must document the productized install check");
 assert(readme.includes("`quickstart --json` exposes `commands.check`"), "README must document the quickstart JSON check command contract");
@@ -234,16 +242,21 @@ assert(readme.includes("pushes to `main`\nand pull requests targeting `main`"), 
 const docsIndex = readText("docs/README.md");
 assert(docsIndex.includes("Getting Started") && docsIndex.includes("Developer Guide"), "docs index must route users and developers to the right guides");
 assert(docsIndex.includes("Client SDK"), "docs index must route SDK consumers to the client SDK guide");
+assert(docsIndex.includes("CLI Quick Reference"), "docs index must route CLI users to the quick reference");
+assert(docsIndex.includes("Agent Playbook"), "docs index must route agents to the playbook");
+assert(docsIndex.includes("SDK Quickstart"), "docs index must route SDK consumers to the short quickstart");
 
 const developerGuide = readText("docs/developer-guide.md");
 assert(developerGuide.includes("ensureWorkspaceRootDirectory"), "developer guide must explain shared workspace root helpers");
 assert(developerGuide.includes("Adding An Operation"), "developer guide must document the operation extension workflow");
+assert(developerGuide.includes("src/client-computer-helpers.ts"), "developer guide must document the SDK helper module boundary");
 
 const architecture = readText("docs/architecture.md");
 const agentInstructionsDoc = readText("docs/agent-instructions.md");
 assert(architecture.includes("`network:false` is a legacy non-grant marker"), "architecture docs must clarify network:false is not network isolation");
 assert(architecture.includes("registry `networkAccess`"), "architecture docs must mention registry networkAccess semantics");
 assert(architecture.includes("`discovery.primary` and `discovery.compatibility`"), "architecture docs must explain primary/compatibility discovery split");
+assert(architecture.includes("src/client-computer-helpers.ts"), "architecture docs must include the SDK helper module boundary");
 assert(agentInstructionsDoc.includes("Do not treat `network:false` as a network sandbox"), "agent instructions must warn clients about network:false semantics");
 
 const apiCompatibility = readText("docs/api-compatibility.md");
@@ -312,6 +325,20 @@ assert(gettingStarted.includes("computer-linker here"), "getting started tutoria
 assert(gettingStarted.includes("computer-linker start C:\\Projects\\my-app"), "getting started tutorial must document explicit-path startup");
 assert(gettingStarted.includes("computer-linker client setup --show-token"), "getting started tutorial must document trusted local token reveal");
 assert(gettingStarted.includes("get_computer_info") && gettingStarted.includes("computer_operation"), "getting started tutorial must explain the primary MCP tools");
+
+const cliReference = readText("docs/cli-reference.md");
+assert(cliReference.includes("computer-linker here") && cliReference.includes("computer-linker start C:\\Projects\\my-app"), "CLI reference must show current-folder and explicit-folder startup");
+assert(cliReference.includes("--tunnel openai") && cliReference.includes("--tunnel tailscale") && cliReference.includes("--tunnel cloudflare"), "CLI reference must show supported tunnel shortcuts");
+assert(cliReference.includes("computer-linker client setup --show-token"), "CLI reference must document trusted token reveal");
+
+const agentPlaybook = readText("docs/agent-playbook.md");
+assert(agentPlaybook.includes("First call get_computer_info") && agentPlaybook.includes("computer_operation"), "agent playbook must teach the primary MCP flow");
+assert(agentPlaybook.includes('"op": "file.search"') && agentPlaybook.includes('"op": "package.run"'), "agent playbook must include read/search and verification operation recipes");
+assert(agentPlaybook.includes("Do not treat `network:false` as network isolation"), "agent playbook must warn about networkAccess semantics");
+
+const sdkQuickstart = readText("docs/sdk-quickstart.md");
+assert(sdkQuickstart.includes("new ComputerLinkerClient") && sdkQuickstart.includes("client.computer.file.search"), "SDK quickstart must demonstrate the new SDK helper surface");
+assert(sdkQuickstart.includes("Passing `http://127.0.0.1:3939/mcp` fails intentionally"), "SDK quickstart must clarify MCP URL vs JSON API URL");
 
 const chatGptSetupDocs = readText("docs/chatgpt-setup.md");
 assert(!/four-tool|four tool|4-tool/i.test(chatGptSetupDocs), "ChatGPT setup docs must not describe the default MCP surface as four-tool");

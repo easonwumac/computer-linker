@@ -15,6 +15,11 @@ individual MCP clients. Use this guide when adding or moving code.
 - Protocol shape lives in `src/computer-contract.ts`,
   `src/computer-operation-registry.ts`, `src/mcp-surface.ts`, and
   `src/server.ts`.
+- SDK client shape lives in `src/client.ts` and
+  `src/client-computer-helpers.ts`. Keep the public client class, API calls,
+  readiness aggregation, and compatibility aliases in `src/client.ts`. Keep
+  namespaced `client.computer.*` helper types and helper-to-envelope mapping in
+  `src/client-computer-helpers.ts`.
 - Local operation providers live in focused modules such as `src/search.ts`,
   `src/processes.ts`, `src/codex-runs.ts`, `src/screenshot.ts`, and
   `src/sensitive-files.ts`. Keep output filtering in provider helpers such as
@@ -30,6 +35,11 @@ module instead of putting the behavior in `src/cli.ts`.
 When a CLI-only helper starts being reused by multiple commands, move it to one
 of the existing `src/cli-*.ts` support modules or create a similarly focused
 module. Avoid adding more cross-cutting helpers to the bottom of `src/cli.ts`.
+
+When an SDK helper is only a convenience wrapper around `computer_operation`,
+put the helper and its public type in `src/client-computer-helpers.ts`. Keep
+`src/client.ts` focused on transport, setup/readiness methods, and compatibility
+methods.
 
 ## Provider Extraction Rules
 
@@ -73,6 +83,8 @@ Update docs in the same change as behavior:
 - README for quick path changes.
 - `docs/getting-started.md` for install and first-use changes.
 - `docs/client-recipes.md` for MCP client setup changes.
+- `docs/cli-reference.md`, `docs/agent-playbook.md`, or
+  `docs/sdk-quickstart.md` when command, agent, or SDK usage changes.
 - `docs/architecture.md` or this guide for module or boundary changes.
 - `docs/release-checklist.md` and `CHANGELOG.md` for release gate changes.
 

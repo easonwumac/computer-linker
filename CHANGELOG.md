@@ -12,6 +12,8 @@ called out even when the package version is still `0.x`.
 - Added a docs documentation map and developer guide so setup, client usage,
   service mode, release checks, architecture, and extension workflow have clear
   entrypoints.
+- Added CLI quick reference, agent playbook, and SDK quickstart docs so users,
+  MCP-capable agents, and integration authors each have a short teaching path.
 - Added an installed service smoke checklist for Windows, macOS, and Linux.
 
 ### Changed
@@ -32,6 +34,9 @@ called out even when the package version is still `0.x`.
 - SDK now includes `client.computer.*` helpers that call the primary
   `computer_operation` JSON action with dotted operation names, while legacy
   workspace helper methods remain available as deprecated compatibility APIs.
+- SDK computer helper contract is now split into `src/client-computer-helpers.ts`
+  so the public client class stays focused on transport, setup/readiness, and
+  compatibility behavior.
 - Capability discovery now separates primary MCP/JSON API recommendations from
   compatibility workspace tools, actions, endpoints, and registries.
 - README, getting started, architecture, product spec, release checklist, and
