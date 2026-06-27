@@ -93,6 +93,7 @@ const requiredFiles = [
   "LICENSE",
   "SECURITY.md",
   "docs/alpha-evidence.example.json",
+  "docs/tutorials.md",
   "docs/chatgpt-setup.md",
   "docs/agent-instructions.md",
   "docs/api-compatibility.md",

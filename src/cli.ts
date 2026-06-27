@@ -10,6 +10,9 @@ import { loadConfig } from "./config.js";
 import { configPath, generateOwnerToken, writeConfig, writeDefaultConfig } from "./config.js";
 import { getLocalPortDoctor } from "./capabilities.js";
 import { chatGptSmoke, chatGptUrl, chatGptVerify, formatChatGptSmoke, formatChatGptUrl, formatChatGptVerify, parseChatGptVerifyMode } from "./chatgpt.js";
+import { formatCliCommand, invocationCommand, invocationCommandParts, isNpmDevCliInvocation } from "./cli-format.js";
+import { booleanFlag, readClientTokenOption, readOption, readOptionalIntegerOption, readOptionalStringOption, readRepeatedOptions } from "./cli-options.js";
+import { assertReadOnlyNotMixed, defaultExecutionPolicyForPermissions, formatPermissions, mergePolicyList, permissionPresetFlags, policyChanged, repairedExecutionPolicy } from "./cli-permissions.js";
 import { formatWorkspaceLinkerClientSmoke, runWorkspaceLinkerMcpClientSmoke } from "./client-smoke.js";
 import type { WorkspaceLinkerClientSmokeReport } from "./client-smoke.js";
 import { getMcpClientSetup } from "./computer-contract.js";
@@ -46,59 +49,6 @@ interface StatusFinding {
 }
 
 type WorkspaceConfigEntry = LocalPortConfig["workspaces"][number];
-
-interface PermissionPresetFlags {
-  readOnly: boolean;
-  dev: boolean;
-  write: boolean;
-  shell: boolean;
-  codex: boolean;
-  screen: boolean;
-  canonicalArgs: string[];
-}
-
-function permissionPresetFlags(args: string[], commandLabel: string, options: { defaultCoding?: boolean } = {}): PermissionPresetFlags {
-  assertReadOnlyNotMixed(args, commandLabel);
-  const readOnly = args.includes("--read-only");
-  const fullTrust = args.includes("--full-trust");
-  const dev = args.includes("--dev") || args.includes("--coding");
-  const defaultCoding = Boolean(options.defaultCoding && !hasExplicitPermissionMode(args));
-  const development = dev || fullTrust || defaultCoding;
-  return {
-    readOnly,
-    dev,
-    write: !readOnly && (development || args.includes("--write")),
-    shell: !readOnly && (development || args.includes("--shell")),
-    codex: !readOnly && (fullTrust || args.includes("--codex")),
-    screen: !readOnly && (fullTrust || args.includes("--screen")),
-    canonicalArgs: canonicalPermissionArgs(args),
-  };
-}
-
-function assertReadOnlyNotMixed(args: string[], commandLabel: string): void {
-  if (!args.includes("--read-only")) return;
-  const conflicts = ["--dev", "--coding", "--full-trust", "--write", "--shell", "--codex", "--screen"]
-    .filter((flag) => args.includes(flag));
-  if (conflicts.length > 0) {
-    throw new Error(`${commandLabel} --read-only cannot be combined with ${conflicts.join(", ")}`);
-  }
-}
-
-function hasExplicitPermissionMode(args: string[]): boolean {
-  return ["--read-only", "--dev", "--coding", "--full-trust", "--write", "--shell"]
-    .some((flag) => args.includes(flag));
-}
-
-function canonicalPermissionArgs(args: string[]): string[] {
-  if (args.includes("--read-only")) return ["--read-only"];
-  if (args.includes("--full-trust")) return ["--full-trust"];
-  const parts: string[] = [];
-  if (args.includes("--write")) parts.push("--write");
-  if (args.includes("--shell")) parts.push("--shell");
-  if (args.includes("--codex")) parts.push("--codex");
-  if (args.includes("--screen")) parts.push("--screen");
-  return parts;
-}
 
 async function main(argv: string[]): Promise<void> {
   const [rawCommand, ...args] = argv;
@@ -2943,48 +2893,6 @@ function uniqueWorkspaceSummaries(workspaces: WorkspaceConfigEntry[]): Array<{ i
   return summaries;
 }
 
-function defaultExecutionPolicyForPermissions(
-  permissions: { shell: boolean; codex: boolean },
-): WorkspacePolicy | undefined {
-  if (!permissions.shell && !permissions.codex) return undefined;
-  const allowedCommands = [
-    "npm *",
-    "pnpm *",
-    "yarn *",
-    "bun *",
-    "node *",
-    "npx *",
-    "git *",
-  ];
-  if (permissions.codex) allowedCommands.push("codex *");
-  return {
-    maxRuntimeSeconds: permissions.codex ? 1800 : 600,
-    maxOutputBytes: 200000,
-    allowedCommands,
-    deniedCommands: ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
-  };
-}
-
-function repairedExecutionPolicy(
-  policy: WorkspacePolicy | undefined,
-  permissions: { shell: boolean; codex: boolean },
-): WorkspacePolicy | undefined {
-  const defaults = defaultExecutionPolicyForPermissions(permissions);
-  if (!defaults) return policy;
-  if (!policy) return defaults;
-  return {
-    ...policy,
-    maxRuntimeSeconds: policy.maxRuntimeSeconds ?? defaults.maxRuntimeSeconds,
-    maxOutputBytes: policy.maxOutputBytes ?? defaults.maxOutputBytes,
-    allowedCommands: policy.allowedCommands?.length ? policy.allowedCommands : defaults.allowedCommands,
-    deniedCommands: mergePolicyList(policy.deniedCommands, defaults.deniedCommands ?? []),
-  };
-}
-
-function policyChanged(before: WorkspacePolicy | undefined, after: WorkspacePolicy | undefined): boolean {
-  return JSON.stringify(before ?? null) !== JSON.stringify(after ?? null);
-}
-
 function removeExactDuplicateWorkspaces(workspaces: WorkspaceConfigEntry[]): {
   workspaces: WorkspaceConfigEntry[];
   repairs: Array<{ id: string; status: "applied"; detail: string; workspaceId?: string }>;
@@ -3206,18 +3114,6 @@ function applyPolicyUpdates(
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-function mergePolicyList(current: string[] | undefined, next: string[]): string[] {
-  const seen = new Set<string>();
-  const merged: string[] = [];
-  for (const item of [...(current ?? []), ...next]) {
-    const text = item.trim().replace(/\s+/g, " ");
-    if (!text || seen.has(text)) continue;
-    seen.add(text);
-    merged.push(text);
-  }
-  return merged;
-}
-
 function printConfigPolicy(workspaceId: string, policy: WorkspacePolicy | undefined, json: boolean): void {
   if (json) {
     console.log(JSON.stringify({
@@ -3237,16 +3133,6 @@ function printPolicyLines(policy: WorkspacePolicy | undefined): void {
   console.log(`maxOutputBytes: ${policy?.maxOutputBytes ?? "not set"}`);
   console.log(`allowedCommands: ${policy?.allowedCommands?.join(", ") || "not set"}`);
   console.log(`deniedCommands: ${policy?.deniedCommands?.join(", ") || "not set"}`);
-}
-
-function formatPermissions(permissions: LocalPortConfig["workspaces"][number]["permissions"]): string {
-  return [
-    `read=${permissions.read}`,
-    `write=${permissions.write}`,
-    `shell=${permissions.shell}`,
-    `codex=${permissions.codex}`,
-    `screen=${Boolean(permissions.screen)}`,
-  ].join(" ");
 }
 
 function addWorkspace(args: string[]): void {
@@ -4248,57 +4134,6 @@ function printQuickstartReport(report: QuickstartReport): void {
 
 function quickstartCommandParts(): string[] {
   return invocationCommandParts();
-}
-
-function invocationCommand(...args: string[]): string {
-  return formatCliCommand([...invocationCommandParts(), ...args]);
-}
-
-function invocationCommandParts(): string[] {
-  if (isNpmDevCliInvocation()) {
-    return ["npm", "run", "dev", "--"];
-  }
-  const scriptArg = process.argv[1];
-  const invokedPath = scriptArg ? resolve(scriptArg) : "";
-  const checkoutDistCliPath = resolve(process.cwd(), "dist", "cli.js");
-  const normalizedInvokedPath = invokedPath.replaceAll("\\", "/").toLowerCase();
-  if (
-    normalizedInvokedPath.endsWith("/dist/cli.js") &&
-    !isInstalledPackageCliPath(normalizedInvokedPath)
-  ) {
-    if (invokedPath === checkoutDistCliPath) {
-      return ["node", process.platform === "win32" ? "dist\\cli.js" : "dist/cli.js"];
-    }
-    return ["node", invokedPath];
-  }
-  return ["computer-linker"];
-}
-
-function isInstalledPackageCliPath(normalizedInvokedPath: string): boolean {
-  return /\/node_modules\/(?:@[^/]+\/)?computer-linker\/dist\/cli\.js$/.test(normalizedInvokedPath);
-}
-
-function isNpmDevCliInvocation(): boolean {
-  return (
-    process.env.npm_lifecycle_event === "dev" &&
-    typeof process.env.npm_lifecycle_script === "string" &&
-    /\btsx(?:\s+|$)/.test(process.env.npm_lifecycle_script) &&
-    /src[\\/]+cli\.ts\b/.test(process.env.npm_lifecycle_script)
-  );
-}
-
-function formatCliCommand(parts: string[]): string {
-  return parts.map((part) => quoteCliPart(part)).join(" ");
-}
-
-function quoteCliPart(part: string): string {
-  if (part === "") return "\"\"";
-  if (process.platform === "win32") {
-    if (!/[\s"&|<>^()%!:\\/]/.test(part)) return part;
-    return `"${part.replaceAll("\"", "\"\"")}"`;
-  }
-  if (!/[\s"'\\$`!&|;<>(){}[\]*?]/.test(part)) return part;
-  return `'${part.replaceAll("'", "'\\''")}'`;
 }
 
 function printHelp(args: string[] = []): void {
@@ -5406,66 +5241,6 @@ function printChatGptHelp(): void {
   );
 }
 
-function readOption(args: string[], name: string): string | undefined {
-  const index = args.indexOf(name);
-  if (index === -1) return undefined;
-  return args[index + 1];
-}
-
-function readClientTokenOption(args: string[]): string | undefined {
-  return readOption(args, "--token") ??
-    firstNonBlankEnvironmentValue([
-      "COMPUTER_LINKER_TOKEN",
-      "COMPUTER_LINKER_OWNER_TOKEN",
-      "WORKSPACE_LINKER_TOKEN",
-      "WORKSPACE_LINKER_OWNER_TOKEN",
-    ]);
-}
-
-function firstNonBlankEnvironmentValue(names: string[]): string | undefined {
-  for (const name of names) {
-    const value = process.env[name]?.trim();
-    if (value) return value;
-  }
-  return undefined;
-}
-
-function readRepeatedOptions(args: string[], name: string, command: string): string[] {
-  const values: string[] = [];
-  for (let index = 0; index < args.length; index += 1) {
-    if (args[index] !== name) continue;
-    const value = args[index + 1];
-    if (!value || value.startsWith("--")) {
-      throw new Error(`${command} requires a value`);
-    }
-    values.push(value);
-    index += 1;
-  }
-  return values;
-}
-
-function readOptionalStringOption(args: string[], name: string, command: string): string | undefined {
-  const value = readOption(args, name);
-  if (!args.includes(name)) return undefined;
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${command} requires a value`);
-  }
-  return value;
-}
-
-function readOptionalIntegerOption(args: string[], name: string, command: string): number | undefined {
-  const value = readOption(args, name);
-  if (!args.includes(name)) return undefined;
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${command} requires a positive integer`);
-  }
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`${command} requires a positive integer`);
-  }
-  return parsed;
-}
-
 function readChatGptModeOption(args: string[], command: string): ReturnType<typeof parseChatGptProfileMode> {
   const value = readOption(args, "--mode");
   if (args.includes("--mode") && (!value || value.startsWith("--"))) {
@@ -5477,12 +5252,6 @@ function readChatGptModeOption(args: string[], command: string): ReturnType<type
 function readPublicUrlOption(args: string[], command: string): string | undefined {
   if (!args.includes("--url")) return undefined;
   return requireHttpsUrl(readOption(args, "--url"), command, `computer-linker ${command} <https-url>`);
-}
-
-function booleanFlag(args: string[], name: string, current: boolean): boolean {
-  if (args.includes(`--${name}`)) return true;
-  if (args.includes(`--no-${name}`)) return false;
-  return current;
 }
 
 function requireHttpsUrl(value: string | undefined, name: string, usage = "computer-linker config set-public-url <https-url>"): string {

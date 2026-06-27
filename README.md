@@ -86,6 +86,10 @@ read-only `computer_operation`, then removes the temporary files.
 check. `commands.selfTest` remains as a compatibility alias for older agents
 that already consumed the previous JSON field.
 
+For more guided setup paths, see [docs/tutorials.md](docs/tutorials.md). It
+covers local coding, read-only review, OpenAI Secure MCP Tunnel, public HTTPS
+tunnels, and the first operations an agent should call.
+
 There is no web dashboard in the product path. Human setup and management are
 CLI-first; MCP and the JSON API are only protocol surfaces for clients,
 automation, and smoke checks. The default help output is intentionally short;
@@ -572,8 +576,9 @@ Computer Linker is not a remote desktop, a cloud service, or a ChatGPT-specific
 app. It is a local MCP program that exposes approved computer abilities.
 
 See [docs/README.md](docs/README.md) for the full documentation map,
-[docs/getting-started.md](docs/getting-started.md) for the step-by-step
-tutorial, [docs/product-spec.md](docs/product-spec.md) for the product spec,
+[docs/getting-started.md](docs/getting-started.md) for the short setup path,
+[docs/tutorials.md](docs/tutorials.md) for scenario walkthroughs,
+[docs/product-spec.md](docs/product-spec.md) for the product spec,
 [docs/architecture.md](docs/architecture.md) for implementation notes, and
 [docs/developer-guide.md](docs/developer-guide.md) for module boundaries. See
 [docs/release-checklist.md](docs/release-checklist.md) for the alpha release

@@ -101,6 +101,7 @@ for (const path of [
   "SECURITY.md",
   "docs/README.md",
   "docs/getting-started.md",
+  "docs/tutorials.md",
   "docs/developer-guide.md",
   "docs/architecture.md",
   "docs/product-spec.md",

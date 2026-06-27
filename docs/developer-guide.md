@@ -5,8 +5,11 @@ individual MCP clients. Use this guide when adding or moving code.
 
 ## Module Boundaries
 
-- CLI commands live in `src/cli.ts`. Keep command parsing and human output
+- CLI commands live in `src/cli.ts`. Keep command dispatch and human output
   there, but move reusable behavior into focused modules.
+- CLI support modules are `src/cli-format.ts` for command display,
+  `src/cli-options.ts` for flag parsing, and `src/cli-permissions.ts` for
+  permission presets plus default execution policy.
 - Config and workspace scope rules live in `src/config.ts`,
   `src/permissions.ts`, `src/workspaces.ts`, and `src/workspace-roots.ts`.
 - Protocol shape lives in `src/computer-contract.ts`,
@@ -23,6 +26,10 @@ individual MCP clients. Use this guide when adding or moving code.
 
 When a new behavior is used by both the CLI and the MCP server, create a small
 module instead of putting the behavior in `src/cli.ts`.
+
+When a CLI-only helper starts being reused by multiple commands, move it to one
+of the existing `src/cli-*.ts` support modules or create a similarly focused
+module. Avoid adding more cross-cutting helpers to the bottom of `src/cli.ts`.
 
 ## Provider Extraction Rules
 

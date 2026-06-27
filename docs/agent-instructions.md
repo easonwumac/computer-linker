@@ -22,10 +22,13 @@ Call `get_computer_info` before any workspace action. Read:
 ```json
 {
   "scope": "workspace-id",
-  "op": "file.list",
+  "op": "file.tree",
   "target": ".",
   "input": {},
-  "options": {}
+  "options": {
+    "maxDepth": 2,
+    "maxEntries": 80
+  }
 }
 ```
 
@@ -37,7 +40,7 @@ Call `get_computer_info` before any workspace action. Read:
 
 ## Preferred Operations
 
-- Inspect files: `file.list`, `file.read`, `file.search`
+- Inspect files: `file.tree`, `file.read`, `file.search`
 - Edit files: `file.write`, `file.edit`, `file.patch`
 - Git inspection: `git.status`, `git.diff`
 - Git mutation: `git.stage`, `git.commit`

@@ -67,11 +67,15 @@ and `x-computer-linker-token`.
 The codebase should stay organized around product boundaries instead of client
 or tunnel brands:
 
-- CLI orchestration: `src/cli.ts`
+- CLI orchestration: `src/cli.ts`, `src/cli-format.ts`,
+  `src/cli-options.ts`, `src/cli-permissions.ts`
   - Parses commands, prints human help, starts setup/server/tunnel flows, and
     keeps compatibility commands behind focused help topics.
   - Daily setup entrypoints are `computer-linker here` for the current folder
     and `computer-linker start <workspace-path>` for explicit paths.
+  - Shared CLI command formatting, option parsing, permission presets, and
+    default execution policy live outside the main command dispatcher so new
+    command modules can reuse them without growing `src/cli.ts`.
 - Config and scope model: `src/config.ts`, `src/config-diagnostics.ts`,
   `src/workspaces.ts`, `src/permissions.ts`, `src/capability-policy.ts`
   - Own config load/write, machine identity, folder scopes, permission
