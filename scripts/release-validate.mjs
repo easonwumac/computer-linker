@@ -578,6 +578,15 @@ assert(clientSmokeSource.includes("localHttpSmoke"), "generic MCP client smoke m
 const computerContractSource = readText("src/computer-contract.ts");
 assert(computerContractSource.includes("agentInstructions: genericAgentInstructions"), "client setup must expose copy-pasteable generic agent instructions");
 assert(computerContractSource.includes("Do not call workspace_operation, read, ls, grep, glob, or create_file"), "generic agent instructions must keep compatibility tools opt-in");
+const auditRedactionSource = readText("src/audit-redaction.ts");
+assert(auditRedactionSource.includes("Authorization") && auditRedactionSource.includes("Bearer"), "audit redaction must cover bearer authorization headers");
+assert(auditRedactionSource.includes("OPENAI_KEY_RE") && auditRedactionSource.includes("sk-<redacted>"), "audit redaction must cover OpenAI-style API keys");
+assert(auditRedactionSource.includes("SECRET_ASSIGNMENT_RE") && auditRedactionSource.includes("<redacted>"), "audit redaction must cover env-style token/key assignments");
+assert(auditRedactionSource.includes("BASIC_AUTH_URL_RE"), "audit redaction must cover URLs with inline credentials");
+const auditSource = readText("src/audit.ts");
+assert(auditSource.includes("redactAuditValue({ timestamp") && auditSource.includes("redactAuditValue(JSON.parse(line) as AuditEvent)"), "audit write/read paths must apply audit redaction");
+const historyInsightsSource = readText("src/history-insights.ts");
+assert(historyInsightsSource.includes("Secret-shaped values in audit preview fields are redacted"), "debug bundle redactions must describe secret-shaped audit field redaction");
 const capabilityPolicySource = readText("src/capability-policy.ts");
 assert(capabilityPolicySource.includes("networkAccess: operationNetworkAccessPolicy"), "operation capability policy must expose machine-readable networkAccess semantics");
 assert(capabilityPolicySource.includes("networkBlockedByComputerLinker: false"), "networkAccess must avoid implying Computer Linker blocks host network access");

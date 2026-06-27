@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { redactAuditValue } from "./audit-redaction.js";
 import { auditLogPath } from "./config.js";
 
 export interface AuditEvent {
@@ -59,7 +60,7 @@ export interface ReadAuditEventsOptions {
 export function writeAuditEvent(event: AuditEventInput): void {
   const path = auditLogPath();
   mkdirSync(dirname(path), { recursive: true });
-  appendFileSync(path, `${JSON.stringify({ timestamp: new Date().toISOString(), ...event })}\n`, {
+  appendFileSync(path, `${JSON.stringify(redactAuditValue({ timestamp: new Date().toISOString(), ...event }))}\n`, {
     mode: 0o600,
   });
 }
@@ -115,7 +116,7 @@ export function readAuditEvents(options: ReadAuditEventsOptions = {}): AuditEven
     .trimEnd()
     .split("\n")
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as AuditEvent);
+    .map((line) => redactAuditValue(JSON.parse(line) as AuditEvent));
 
   if (options.type) events = events.filter((event) => event.type === options.type);
   if (options.success !== undefined) events = events.filter((event) => event.success === options.success);

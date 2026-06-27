@@ -22,6 +22,10 @@ called out even when the package version is still `0.x`.
   command allowlist matching, so broad policies such as `npm *` and `git *`
   do not permit chained raw shell commands unless explicitly enabled for a
   trusted scope.
+- Audit preview fields and debug bundles now redact common secret-shaped
+  values, including bearer headers, `sk-...` API keys, env-style token/key
+  assignments, password assignments, and database URLs with inline
+  credentials.
 
 ## 0.1.11 - 2026-06-27
 

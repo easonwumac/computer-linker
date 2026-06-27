@@ -1,5 +1,6 @@
 import { auditLogPath } from "./config.js";
 import { readAuditEvents, type AuditEvent, type AuditReplayTemplate } from "./audit.js";
+import { redactAuditValue } from "./audit-redaction.js";
 import { listTunnelProcesses, tunnelRuntimeEvents, type TunnelRuntimeEvent } from "./tunnels.js";
 
 export type HistoryInsightView = "summary" | "last" | "timeline" | "sessions" | "connections" | "failed_replay" | "debug_bundle";
@@ -209,6 +210,7 @@ export function historyInsightFromEvents(events: AuditEvent[], options: HistoryI
       auditLogPath: auditLogPath(),
       redactions: [
         "Owner tokens and OAuth tokens are not written to the audit log.",
+        "Secret-shaped values in audit preview fields are redacted on write and again before export.",
         "File contents, patch bodies, write payloads, screenshot image bytes, and full command prompts are not included.",
         "commandPreview is truncated to a short diagnostic preview.",
         "Tunnel-client raw logs are converted to compact tunnel_event rows; full tunnel stderr/stdout is not exported.",
@@ -271,7 +273,7 @@ function lastInsightNextActions(summary: HistoryInsight["summary"], replay: Fail
 }
 
 function compactAuditEvent(event: AuditEvent): CompactAuditEvent {
-  return {
+  return redactAuditValue({
     timestamp: event.timestamp,
     type: event.type,
     success: event.success,
@@ -298,7 +300,7 @@ function compactAuditEvent(event: AuditEvent): CompactAuditEvent {
     tunnelRequestId: event.tunnelRequestId,
     severity: event.severity,
     statusCode: event.statusCode,
-  };
+  });
 }
 
 function mergeDerivedHistoryEvents(events: AuditEvent[], options: HistoryInsightOptions): AuditEvent[] {
