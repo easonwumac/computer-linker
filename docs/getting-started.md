@@ -212,6 +212,8 @@ For normal use, prefer `computer-linker here` or
 ## Next Documents
 
 - [Client recipes](client-recipes.md) for MCP client setup variants.
+- [User manual](user-manual.md) for daily commands, permission choices, tunnel
+  setup, safety boundaries, and troubleshooting.
 - [Agent instructions](agent-instructions.md) for pasteable client guidance.
 - [Service mode](service-mode.md) for installed background services.
 - [Developer guide](developer-guide.md) for module boundaries and extension

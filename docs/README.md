@@ -4,6 +4,8 @@ Start with the smallest document that matches the job:
 
 - [Getting Started](getting-started.md): install, expose one folder, connect an
   MCP client, and choose a tunnel.
+- [User Manual](user-manual.md): daily CLI usage, permission choices, tunnel
+  setup, agent operation flow, safety boundaries, and troubleshooting.
 - [Agent Instructions](agent-instructions.md): pasteable guidance for MCP
   clients and coding agents.
 - [Client Recipes](client-recipes.md): local HTTP, tunnel, minimal client, and
@@ -22,6 +24,7 @@ Start with the smallest document that matches the job:
   tag workflow.
 - [Product Spec](product-spec.md): product boundary and milestone definition.
 
-For normal setup, use [Getting Started](getting-started.md). For development,
-read [Architecture](architecture.md) and [Developer Guide](developer-guide.md)
+For normal setup, use [Getting Started](getting-started.md). For a fuller user
+guide, use [User Manual](user-manual.md). For development, read
+[Architecture](architecture.md) and [Developer Guide](developer-guide.md)
 before moving code across modules.

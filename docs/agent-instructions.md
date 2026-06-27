@@ -1,6 +1,6 @@
 # Agent Instructions
 
-Use these instructions when connecting an MCP-capable agent to Workspace
+Use these instructions when connecting an MCP-capable agent to Computer
 Linker.
 
 ## First Call
@@ -52,8 +52,9 @@ The exact list can grow. Always prefer names returned by
 Do not request secrets unless the user explicitly asks outside Workspace
 Linker. Direct reads and text searches block common sensitive files by default,
 including `.env*`, private keys, credential JSON files, and cloud CLI
-credential folders. Treat missing matches in those files as an intentional
-safety boundary.
+credential folders. Git diff/show/status output redacts sensitive diff blocks
+before returning content. Treat missing matches or redacted diff blocks in
+those files as an intentional safety boundary.
 
 ## Avoid By Default
 

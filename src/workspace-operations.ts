@@ -11,6 +11,7 @@ import { executableCommand, shellCommand } from "./platform-shell.js";
 import { listManagedProcesses, readManagedProcess, startManagedProcess, stopManagedProcess, type ManagedProcessSnapshot } from "./processes.js";
 import { captureScreenshot, listScreenshotTargets, screenshotCapability, type ScreenshotCaptureOptions } from "./screenshot.js";
 import { findFiles, searchSymbols, searchText } from "./search.js";
+import { sanitizeGitPatchOutput } from "./git-output.js";
 import { formatWorkspacePath, WorkspaceRegistry, type Workspace } from "./workspaces.js";
 
 export const workspaceOperationNames = [
@@ -3085,10 +3086,16 @@ async function repoStatus(
   if (options.includeDiff) {
     const diff = await runProcess("git", ["diff", "--"], cwd, 10_000);
     const stagedDiff = await runProcess("git", ["diff", "--cached", "--"], cwd, 10_000);
-    result.diff = truncateText(diff.stdout, maxBytes);
-    result.diffTruncated = diff.stdout.length > maxBytes;
-    result.stagedDiff = truncateText(stagedDiff.stdout, maxBytes);
-    result.stagedDiffTruncated = stagedDiff.stdout.length > maxBytes;
+    const sanitizedDiff = sanitizeGitPatchOutput(diff.stdout);
+    const sanitizedStagedDiff = sanitizeGitPatchOutput(stagedDiff.stdout);
+    result.diff = truncateText(sanitizedDiff.output, maxBytes);
+    result.diffTruncated = Buffer.byteLength(sanitizedDiff.output, "utf8") > maxBytes;
+    result.diffRedacted = sanitizedDiff.redacted;
+    result.diffRedactedPaths = sanitizedDiff.redactedPaths;
+    result.stagedDiff = truncateText(sanitizedStagedDiff.output, maxBytes);
+    result.stagedDiffTruncated = Buffer.byteLength(sanitizedStagedDiff.output, "utf8") > maxBytes;
+    result.stagedDiffRedacted = sanitizedStagedDiff.redacted;
+    result.stagedDiffRedactedPaths = sanitizedStagedDiff.redactedPaths;
   }
 
   return result;
@@ -3181,14 +3188,18 @@ async function gitDiff(
     };
   }
 
+  const sanitized = sanitizeGitPatchOutput(process.stdout);
+  const sizeBytes = Buffer.byteLength(sanitized.output, "utf8");
   return {
     isGitRepository: true,
     staged: options.staged,
     paths: options.paths,
     pathspecs: options.pathspecs,
-    diff: truncateText(process.stdout, maxBytes),
-    sizeBytes: Buffer.byteLength(process.stdout, "utf8"),
-    truncated: Buffer.byteLength(process.stdout, "utf8") > maxBytes,
+    diff: truncateText(sanitized.output, maxBytes),
+    sizeBytes,
+    truncated: sizeBytes > maxBytes,
+    redacted: sanitized.redacted,
+    redactedPaths: sanitized.redactedPaths,
   };
 }
 
@@ -3268,14 +3279,18 @@ async function gitShow(
     };
   }
 
+  const sanitized = sanitizeGitPatchOutput(process.stdout);
+  const sizeBytes = Buffer.byteLength(sanitized.output, "utf8");
   return {
     isGitRepository: true,
     ref,
     paths: options.paths,
     pathspecs: options.pathspecs,
-    output: truncateText(process.stdout, maxBytes),
-    sizeBytes: Buffer.byteLength(process.stdout, "utf8"),
-    truncated: Buffer.byteLength(process.stdout, "utf8") > maxBytes,
+    output: truncateText(sanitized.output, maxBytes),
+    sizeBytes,
+    truncated: sizeBytes > maxBytes,
+    redacted: sanitized.redacted,
+    redactedPaths: sanitized.redactedPaths,
   };
 }
 
@@ -3588,7 +3603,7 @@ function parseGitWorktrees(output: string): Array<Record<string, unknown>> {
 function optionalGitRef(value: string | undefined, name: string): string | undefined {
   const text = value?.trim();
   if (!text) return undefined;
-  if (text.startsWith("-") || text.includes("\0")) {
+  if (text.startsWith("-") || text.includes("\0") || text.includes(":")) {
     throw new Error(`${name} is not allowed`);
   }
   return text;

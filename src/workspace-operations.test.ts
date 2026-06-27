@@ -286,6 +286,9 @@ try {
     "  case 'diff -- src/app.ts':",
     "    process.stdout.write('diff --git a/src/app.ts b/src/app.ts\\n+path-specific\\n');",
     "    break;",
+    "  case 'diff -- .env':",
+    "    process.stdout.write('diff --git a/.env b/.env\\n--- a/.env\\n+++ b/.env\\n+WORKSPACE_LINKER_SECRET=path-secret\\n');",
+    "    break;",
     "  case 'diff -- app.ts':",
     "    process.stdout.write('diff --git a/app.ts b/app.ts\\n+subdir-relative\\n');",
     "    break;",
@@ -300,13 +303,13 @@ try {
     "    process.stdout.write('cccccccccccccccccccccccccccccccccccccccc\\x1fccccccc\\x1fCarol\\x1fcarol@example.com\\x1f2026-01-04T05:06:07+00:00\\x1fTouch src app\\x1e');",
     "    break;",
     "  case 'show --stat --patch --format=fuller HEAD --':",
-    "    process.stdout.write('commit aaaaaaa\\nAuthor: Alice <alice@example.com>\\n\\ndiff --git a/src/app.ts b/src/app.ts\\n+path-specific-show\\n');",
+    "    process.stdout.write('commit aaaaaaa\\nAuthor: Alice <alice@example.com>\\n\\n src/app.ts | 1 +\\n .env | 1 +\\n\\ndiff --git a/src/app.ts b/src/app.ts\\n+path-specific-show\\n\\ndiff --git a/.env b/.env\\n--- a/.env\\n+++ b/.env\\n+WORKSPACE_LINKER_SECRET=show-secret\\n');",
     "    break;",
     "  case 'show --stat --patch --format=fuller abc123 -- src/app.ts':",
     "    process.stdout.write('commit abc123\\nAuthor: Bob <bob@example.com>\\n\\ndiff --git a/src/app.ts b/src/app.ts\\n+filtered-show\\n');",
     "    break;",
     "  case 'diff --':",
-    "    process.stdout.write('diff --git a/src/app.ts b/src/app.ts\\n+changed\\n');",
+    "    process.stdout.write('diff --git a/src/app.ts b/src/app.ts\\n+changed\\n\\ndiff --git a/.env b/.env\\n--- a/.env\\n+++ b/.env\\n+WORKSPACE_LINKER_SECRET=repo-secret\\n');",
     "    break;",
     "  case 'diff --cached --':",
     "    process.stdout.write('diff --git a/staged.ts b/staged.ts\\n+staged\\n');",
@@ -661,8 +664,12 @@ try {
     stagedDiffStat: string;
     diff: string;
     diffTruncated: boolean;
+    diffRedacted: boolean;
+    diffRedactedPaths: string[];
     stagedDiff: string;
     stagedDiffTruncated: boolean;
+    stagedDiffRedacted: boolean;
+    stagedDiffRedactedPaths: string[];
   };
 
   assert.equal(repoStatus.isGitRepository, true);
@@ -671,8 +678,12 @@ try {
   assert.match(repoStatus.stagedDiffStat, /staged\.ts/);
   assert.equal(repoStatus.diff.length, 32);
   assert.equal(repoStatus.diffTruncated, true);
+  assert.equal(repoStatus.diffRedacted, true);
+  assert.deepEqual(repoStatus.diffRedactedPaths, [".env"]);
   assert.match(repoStatus.stagedDiff, /staged/);
   assert.equal(repoStatus.stagedDiffTruncated, true);
+  assert.equal(repoStatus.stagedDiffRedacted, false);
+  assert.deepEqual(repoStatus.stagedDiffRedactedPaths, []);
 
   const summary = await runWorkspaceOperation(registry, codexEnabled, {
     operation: "change_summary",
@@ -763,6 +774,26 @@ try {
   assert.deepEqual(subdirGitDiff.pathspecs, ["app.ts"]);
   assert.match(subdirGitDiff.diff, /subdir-relative/);
 
+  const repositoryGitDiff = await runWorkspaceOperation(registry, codexEnabled, {
+    operation: "git_diff",
+    maxBytes: 4096,
+  }) as { diff: string; redacted: boolean; redactedPaths: string[] };
+  assert.match(repositoryGitDiff.diff, /changed/);
+  assert.equal(repositoryGitDiff.redacted, true);
+  assert.deepEqual(repositoryGitDiff.redactedPaths, [".env"]);
+  assert.match(repositoryGitDiff.diff, /redacted this Git diff block/);
+  assert.doesNotMatch(repositoryGitDiff.diff, /repo-secret/);
+
+  const sensitivePathGitDiff = await runWorkspaceOperation(registry, codexEnabled, {
+    operation: "git_diff",
+    paths: [".env"],
+    maxBytes: 4096,
+  }) as { diff: string; redacted: boolean; redactedPaths: string[] };
+  assert.equal(sensitivePathGitDiff.redacted, true);
+  assert.deepEqual(sensitivePathGitDiff.redactedPaths, [".env"]);
+  assert.match(sensitivePathGitDiff.diff, /diff --git a\/.env b\/.env/);
+  assert.doesNotMatch(sensitivePathGitDiff.diff, /path-secret/);
+
   const stagedGitDiff = await runWorkspaceOperation(registry, codexEnabled, {
     operation: "git_diff",
     paths: ["staged.ts"],
@@ -808,6 +839,15 @@ try {
   assert.equal(gitShow.truncated, true);
   assert.ok(gitShow.sizeBytes > 30);
 
+  const fullGitShow = await runWorkspaceOperation(registry, codexEnabled, {
+    operation: "git_show",
+    maxBytes: 4096,
+  }) as { output: string; redacted: boolean; redactedPaths: string[] };
+  assert.match(fullGitShow.output, /path-specific-show/);
+  assert.equal(fullGitShow.redacted, true);
+  assert.deepEqual(fullGitShow.redactedPaths, [".env"]);
+  assert.doesNotMatch(fullGitShow.output, /show-secret/);
+
   const filteredGitShow = await runWorkspaceOperation(registry, codexEnabled, {
     operation: "git_show",
     ref: "abc123",
@@ -823,6 +863,14 @@ try {
     () => runWorkspaceOperation(registry, codexEnabled, {
       operation: "git_show",
       ref: "-bad",
+    }),
+    /ref is not allowed/,
+  );
+
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, codexEnabled, {
+      operation: "git_show",
+      ref: "HEAD:.env",
     }),
     /ref is not allowed/,
   );

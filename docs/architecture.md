@@ -85,9 +85,11 @@ or tunnel brands:
   - Own the stable `computer_operation` envelope, operation metadata, aliases,
     policy checks, and provider dispatch.
 - Providers: `src/search.ts`, `src/processes.ts`, `src/codex-runs.ts`,
-  `src/screenshot.ts`, `src/platform-shell.ts`, `src/sensitive-files.ts`
+  `src/screenshot.ts`, `src/platform-shell.ts`, `src/sensitive-files.ts`,
+  `src/git-output.ts`
   - Own concrete local behavior for files/search, commands, managed processes,
-    Codex, screenshots, shell selection, and sensitive file blocking.
+    Codex, screenshots, shell selection, sensitive file blocking, and Git
+    output redaction.
 - Client helpers: `src/client.ts`, `src/client-smoke.ts`, `src/chatgpt.ts`
   - Own reusable MCP client setup/smoke guidance. ChatGPT helpers are thin
     compatibility exports over generic client guidance.
@@ -388,15 +390,18 @@ Search is a first-class coding API:
   templates, or redacted debug bundle for the opened workspace
 - `change_summary`: return branch, changed-file counts, entries, and diff
   stats in one read-only call
-- `repo_status`: read git status and optional diff without shell permission
+- `repo_status`: read git status and optional diff without shell permission;
+  sensitive diff blocks are redacted before content is returned
 - `git_changes`: return structured changed-file entries and counts for staged,
   unstaged, untracked, ignored, and renamed files
 - `git_diff`: return bounded staged or unstaged diffs for the whole repository
-  or selected workspace-validated pathspecs without shell permission
+  or selected workspace-validated pathspecs without shell permission; sensitive
+  diff blocks are redacted before content is returned
 - `git_log`: return recent commits for the repository or selected
   workspace-validated pathspecs without shell permission
 - `git_show`: return a bounded commit or object view for the repository or
-  selected workspace-validated pathspecs without shell permission
+  selected workspace-validated pathspecs without shell permission; sensitive
+  diff blocks are redacted before content is returned
 - `git_stage` / `git_unstage`: update the Git index for selected
   workspace-validated paths without shell permission; these require `write`
   permission because they mutate repository state

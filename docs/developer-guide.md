@@ -14,13 +14,26 @@ individual MCP clients. Use this guide when adding or moving code.
   `src/server.ts`.
 - Local operation providers live in focused modules such as `src/search.ts`,
   `src/processes.ts`, `src/codex-runs.ts`, `src/screenshot.ts`, and
-  `src/sensitive-files.ts`.
+  `src/sensitive-files.ts`. Keep output filtering in provider helpers such as
+  `src/git-output.ts` instead of embedding parsing/redaction logic in the
+  workspace operation dispatcher.
 - Public exposure belongs in `src/tunnels.ts`, OAuth/auth modules, and public
   MCP-only tests.
 - Release and package checks belong in `scripts/*.mjs`.
 
 When a new behavior is used by both the CLI and the MCP server, create a small
 module instead of putting the behavior in `src/cli.ts`.
+
+## Provider Extraction Rules
+
+`src/workspace-operations.ts` should stay responsible for permission checks,
+path resolution, and dispatch. When an operation needs protocol-independent
+parsing, redaction, process management, search behavior, screenshot handling, or
+tool installation, put that behavior in a focused provider module and call it
+from the dispatcher.
+
+Tests should cover the public operation boundary and the extracted provider
+logic when the provider has non-trivial parsing or safety behavior.
 
 ## Adding An Operation
 

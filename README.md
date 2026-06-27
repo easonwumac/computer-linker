@@ -236,6 +236,8 @@ node examples/minimal-mcp-client.mjs
 ```
 
 More client-specific recipes are in [docs/client-recipes.md](docs/client-recipes.md).
+For a fuller command-by-command usage guide, see
+[docs/user-manual.md](docs/user-manual.md).
 
 ### Agent Instructions
 
