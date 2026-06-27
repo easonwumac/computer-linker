@@ -48,7 +48,13 @@ function collectExportPaths(value, paths = []) {
 }
 
 function runNpm(args, options = {}) {
-  const env = options.env ? { ...process.env, ...options.env } : process.env;
+  const env = {
+    ...process.env,
+    ...(options.env ?? {}),
+  };
+  if (options.forceRealRun) {
+    env.npm_config_dry_run = "false";
+  }
   if (process.env.npm_execpath) {
     return execFileSync(process.execPath, [process.env.npm_execpath, ...args], {
       cwd: options.cwd,
@@ -72,7 +78,7 @@ function runInstalledBin(consumerDir, binName, args, options = {}) {
   const suffix = process.platform === "win32" ? ".cmd" : "";
   const binPath = join(consumerDir, "node_modules", ".bin", `${binName}${suffix}`);
   assert(existsSync(binPath), `installed package did not create ${binName} bin`);
-  return runNpm(["exec", "--", binName, ...args], { cwd: consumerDir, env: options.env });
+  return runNpm(["exec", "--", binName, ...args], { cwd: consumerDir, env: options.env, forceRealRun: true });
 }
 
 const packOutput = runNpm(["pack", "--dry-run", "--json"]);
@@ -228,7 +234,7 @@ try {
   const consumerDir = join(installRoot, "consumer");
   mkdirSync(packDestination, { recursive: true });
   mkdirSync(consumerDir, { recursive: true });
-  const actualPackOutput = runNpm(["pack", "--json", "--pack-destination", packDestination]);
+  const actualPackOutput = runNpm(["pack", "--json", "--pack-destination", packDestination], { forceRealRun: true });
   const [actualPack] = parsePackJson(actualPackOutput);
   assert(actualPack?.filename, "npm pack did not create an installable package archive");
   const tarball = join(packDestination, actualPack.filename);
@@ -238,7 +244,7 @@ try {
     private: true,
     type: "module",
   }, null, 2));
-  runNpm(["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball], { cwd: consumerDir });
+  runNpm(["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball], { cwd: consumerDir, forceRealRun: true });
 
   const installedHelp = runInstalledBin(consumerDir, "computer-linker", ["help"]);
   assert(installedHelp.includes("computer-linker start <workspace-path>"), "installed CLI bin help did not run correctly");
