@@ -7,7 +7,7 @@ ChatGPT cannot reach a server that only listens on `localhost` from your
 computer. For cloud-hosted ChatGPT clients, expose Computer Linker through an
 HTTPS URL. Cloudflare custom hostnames should be saved as `publicBaseUrl`
 before OAuth client setup; Tailscale Funnel URLs are detected and saved by
-`start C:\Projects\my-app --tunnel tailscale`.
+`here --tunnel tailscale` or `start C:\Projects\my-app --tunnel tailscale`.
 
 ## 1. Install
 
@@ -26,8 +26,11 @@ Pass the folder to `start`. Computer Linker creates the config, owner token,
 and workspace entry automatically before the server starts:
 
 ```powershell
-computer-linker start C:\Projects\my-app
+cd C:\Projects\my-app
+computer-linker here
 ```
+
+From another folder, use `computer-linker start C:\Projects\my-app`.
 
 If you want to configure without starting the server yet, use `setup`:
 
@@ -42,10 +45,10 @@ Permission meaning:
 - `shell`: run package scripts, commands, and managed shell processes
 - `codex`: invoke the local `codex` CLI in this workspace
 
-`start <folder>` and `setup <folder>` default to normal development access:
-file edits plus approved project commands. Use `--read-only` when ChatGPT
-should inspect without editing or running project commands. Add `--write`,
-`--shell`, or `--codex` separately only when you need finer control.
+`here`, `start <folder>`, and `setup <folder>` default to normal development
+access: file edits plus approved project commands. Use `--read-only` when
+ChatGPT should inspect without editing or running project commands. Add
+`--write`, `--shell`, or `--codex` separately only when you need finer control.
 
 When `start` or `setup` enables `--shell` or `--codex`, Computer Linker adds a
 default execution policy. The default policy allows common project commands
@@ -61,13 +64,15 @@ in the workspace but are not OS-level filesystem sandboxes.
 Cloudflare Quick Tunnel:
 
 ```powershell
-computer-linker start C:\Projects\my-app --tunnel cloudflare
+cd C:\Projects\my-app
+computer-linker here --tunnel cloudflare
 ```
 
 Tailscale Funnel:
 
 ```powershell
-computer-linker start C:\Projects\my-app --tunnel tailscale
+cd C:\Projects\my-app
+computer-linker here --tunnel tailscale
 ```
 
 You do not need to know `https://<machine>.<tailnet>.ts.net` before setup.
@@ -81,7 +86,8 @@ OpenAI Secure MCP Tunnel:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
-computer-linker start C:\Projects\my-app --tunnel openai --tunnel-id tunnel_...
+cd C:\Projects\my-app
+computer-linker here --tunnel openai --tunnel-id tunnel_...
 ```
 
 This mode does not create a public MCP URL and does not need `publicBaseUrl`.

@@ -4,8 +4,11 @@ Use this plan before sharing an alpha build or when dogfooding a local
 checkout. It keeps the first test isolated from your real Computer Linker
 config.
 
-Commands below assume this checkout and use `npm run dev --`. When testing an
-installed package instead, replace `npm run dev --` with `computer-linker`.
+Commands below assume this checkout and use `npm run dev --`. Because that
+runner executes from the source checkout, use `start <path>` when the target
+folder is elsewhere. When testing an installed package instead, replace
+`npm run dev --` with `computer-linker`; installed-package checks can also run
+`computer-linker here` from inside the target folder.
 
 ## 1. Build Gate
 
@@ -64,8 +67,8 @@ Expected:
 
 - `config validate` does not report `blocked`
 - `workspace list` shows the `app` scope named from the checkout folder
-- first-run `setup` / `start <folder>` does not leave the bootstrap `current`
-  scope in the config
+- first-run `here`, `setup`, or `start <folder>` does not leave the bootstrap
+  `current` scope in the config
 - `status` says `doctor --fix` removes the bootstrap `current` scope instead
   of implying it will only add an execution policy
 - new workspaces are read-only unless you explicitly add `--write`
@@ -86,6 +89,14 @@ Tailscale Funnel variant:
 npm run dev -- start C:\Projects\my-app --tunnel tailscale
 ```
 
+Installed-package `here` variant:
+
+```powershell
+Push-Location C:\Projects\my-app
+computer-linker here --tunnel tailscale
+Pop-Location
+```
+
 Expected:
 
 - start auto-creates the config, owner token, and workspace entry
@@ -102,6 +113,15 @@ OpenAI Secure MCP Tunnel variant:
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
 npm run dev -- start C:\Projects\my-app --tunnel openai --tunnel-id tunnel_...
+```
+
+Installed-package `here` variant:
+
+```powershell
+$env:CONTROL_PLANE_API_KEY = "sk-..."
+Push-Location C:\Projects\my-app
+computer-linker here --tunnel openai --tunnel-id tunnel_...
+Pop-Location
 ```
 
 Expected:
@@ -252,6 +272,9 @@ Or:
 $env:CONTROL_PLANE_API_KEY = "sk-..."
 npm run dev -- start C:\Projects\my-app --tunnel openai --tunnel-id tunnel_...
 ```
+
+When testing the installed package instead of the source checkout, run
+`computer-linker here --tunnel ...` from inside `C:\Projects\my-app`.
 
 Expected:
 

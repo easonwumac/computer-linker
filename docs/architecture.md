@@ -60,6 +60,47 @@ The previous prototype name was LocalPort. New installs expose only the
 HTTP auth compatibility aliases while the product moves to `COMPUTER_LINKER_*`
 and `x-computer-linker-token`.
 
+## Implementation Module Map
+
+The codebase should stay organized around product boundaries instead of client
+or tunnel brands:
+
+- CLI orchestration: `src/cli.ts`
+  - Parses commands, prints human help, starts setup/server/tunnel flows, and
+    keeps compatibility commands behind focused help topics.
+  - Daily setup entrypoints are `computer-linker here` for the current folder
+    and `computer-linker start <workspace-path>` for explicit paths.
+- Config and scope model: `src/config.ts`, `src/config-diagnostics.ts`,
+  `src/workspaces.ts`, `src/permissions.ts`, `src/capability-policy.ts`
+  - Own config load/write, machine identity, folder scopes, permission
+    presets, command policy defaults, and diagnostics.
+- MCP and HTTP transport: `src/server.ts`, `src/mcp-surface.ts`,
+  `src/api.ts`, `src/oauth-provider.ts`, `src/http-auth.ts`
+  - Own protocol adapters, authentication, public MCP-only behavior, OAuth
+    metadata, and JSON API responses.
+- Operation contract and dispatch: `src/computer-contract.ts`,
+  `src/computer-operation-registry.ts`, `src/workspace-operations.ts`
+  - Own the stable `computer_operation` envelope, operation metadata, aliases,
+    policy checks, and provider dispatch.
+- Providers: `src/search.ts`, `src/processes.ts`, `src/codex-runs.ts`,
+  `src/screenshot.ts`, `src/platform-shell.ts`, `src/sensitive-files.ts`
+  - Own concrete local behavior for files/search, commands, managed processes,
+    Codex, screenshots, shell selection, and sensitive file blocking.
+- Client helpers: `src/client.ts`, `src/client-smoke.ts`, `src/chatgpt.ts`
+  - Own reusable MCP client setup/smoke guidance. ChatGPT helpers are thin
+    compatibility exports over generic client guidance.
+- Tunnels and public exposure: `src/tunnels.ts`
+  - Own provider detection, process start/status, public URL discovery, and
+    OpenAI tunnel-client installation/verification.
+- Audit and release tooling: `src/audit.ts`, `scripts/*.mjs`
+  - Own operation history, public-release checks, package smoke, alpha
+    evidence, npm publish automation, and public mirror generation.
+
+When adding a feature, first decide whether it is a CLI command, a protocol
+contract change, a provider operation, a tunnel/exposure concern, or release
+tooling. Keep new client-specific behavior thin and route it through the
+generic MCP contract when possible.
+
 `get_computer_info` is the public MCP introspection entrypoint. The local
 `/api/v1/capabilities` endpoint and compatibility `get_capabilities` tool
 expose the fuller implementation diagnostics for local tools, config, security,
@@ -209,10 +250,11 @@ Workspace config can add an optional `policy` block per scope. Command,
 package, managed process, and Codex execution check `allowedCommands` and
 `deniedCommands` wildcard patterns before launch, cap runtime with
 `maxRuntimeSeconds`, and bound command stdout/stderr with `maxOutputBytes`.
-`computer-linker start <folder>` and `computer-linker setup <folder>` attach
-a default execution policy when `--shell` or `--codex` is enabled. Manual
-`workspace add/update` flows keep policy management explicit. Absent policy
-keeps the existing permission-flag behavior.
+`computer-linker here`, `computer-linker start <folder>`, and
+`computer-linker setup <folder>` attach a default execution policy when
+`--shell` or `--codex` is enabled. Manual `workspace add/update` flows keep
+policy management explicit. Absent policy keeps the existing permission-flag
+behavior.
 Config diagnostics and security diagnostics warn when shell or Codex execution
 is enabled without an `allowedCommands` policy, because those operations remain
 cwd-bound local execution rather than a filesystem sandbox.
@@ -422,9 +464,9 @@ surface for the same config file used by the MCP server:
   local MCP/API URLs, security findings, tool availability, release readiness,
   and next actions.
 - `computer-linker doctor --fix` applies deterministic local config repairs.
-- `computer-linker setup` and `computer-linker start <folder>` initialize
-  machine identity, owner token, workspace scopes, permissions, and default
-  command policy.
+- `computer-linker here`, `computer-linker setup`, and
+  `computer-linker start <folder>` initialize machine identity, owner token,
+  workspace scopes, permissions, and default command policy.
 - `computer-linker config ...` shows and edits config values such as
   `publicBaseUrl` and per-workspace execution policy.
 - `computer-linker process list/read/stop` talks to the running local HTTP
@@ -474,10 +516,11 @@ Computer Linker treats tunnel providers as local CLIs rather than hidden service
 Each provider implements `detect`, `status`, `expose`, `getPublicUrl`, and
 `stop`. The product-mode CLI entrypoint is `computer-linker start`, which starts
 local HTTP mode by default and starts a tunnel only when `--tunnel` is explicit.
-When a tunnel is selected, `computer-linker start --tunnel ...` and
-`computer-linker expose ...` enable `publicMcpOnly` before the HTTP server
-listens so public-host requests expose `/mcp` only; local `/api/v1` and
-`/healthz` remain available for CLI smoke checks.
+When a tunnel is selected, `computer-linker here --tunnel ...`,
+`computer-linker start --tunnel ...`, and `computer-linker expose ...` enable
+`publicMcpOnly` before the HTTP server listens so public-host requests expose
+`/mcp` only; local `/api/v1` and `/healthz` remain available for CLI smoke
+checks.
 Tailscale product-mode startup uses Funnel by default once selected;
 `computer-linker expose <provider>` remains as a lower-level compatibility
 entrypoint:
@@ -509,10 +552,11 @@ such as Desktop for executables unless a path is explicitly provided with
 `computer-linker start` and `computer-linker expose` require an owner token
 before starting a tunnel. Loopback
 HTTP mode can run without a token for local-only development, and `init`,
-`setup`, `start <folder>`, or `config token rotate` can generate the token
-before exposure. Tunnel mode must not publish a loopback-only unauthenticated
-server to the network. The direct bearer owner-token compatibility path reads
-current config on each `/mcp` request, so token changes take effect immediately
+`setup`, `here`, `start <folder>`, or `config token rotate` can generate the
+token before exposure. Tunnel mode must not publish a loopback-only
+unauthenticated server to the network. The direct bearer owner-token
+compatibility path reads current config on each `/mcp` request, so token changes
+take effect immediately
 for clients that send `Authorization: Bearer ...`. OAuth discovery and provider
 state are created when HTTP mode starts; restart the server after token-state
 changes for full OAuth client setup.

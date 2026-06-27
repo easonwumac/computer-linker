@@ -5,6 +5,25 @@ All notable changes to Computer Linker will be documented in this file.
 This project follows a small pre-1.0 changelog: breaking contract changes are
 called out even when the package version is still `0.x`.
 
+## 0.1.10 - 2026-06-27
+
+### Added
+
+- Added `computer-linker here` as the short daily startup command for exposing
+  the current folder, equivalent to `computer-linker start .`.
+- Added a step-by-step getting started tutorial for install checks, local MCP
+  clients, public tunnels, agent instructions, daily commands, and
+  troubleshooting.
+- Added an implementation module map to the architecture docs so CLI, config,
+  MCP transport, operation dispatch, providers, client helpers, tunnels, and
+  release tooling have clearer boundaries.
+
+### Changed
+
+- README, client recipes, ChatGPT compatibility setup, manual test docs, and
+  CLI help now lead with `here` for current-folder setup while keeping
+  `start <folder>` for explicit paths and existing no-argument server startup.
+
 ## 0.1.9 - 2026-06-27
 
 ### Added

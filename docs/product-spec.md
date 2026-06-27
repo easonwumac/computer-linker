@@ -803,10 +803,11 @@ The human management surface is CLI-first:
 The product should not rely on a local browser dashboard for setup or
 operations. The JSON API remains a protocol surface for MCP clients,
 automation, and smoke checks rather than a human-facing management UI.
-The default CLI help should stay short and focused on first-run start, tunnel
-selection, client setup, status, and quickstart preview. Self-test, smoke,
-repair, service/config/API, history, and compatibility commands remain available
-through advanced or focused help topics rather than the first-run surface.
+The default CLI help should stay short and focused on first-run `here`,
+explicit-path start, tunnel selection, client setup, status, and quickstart
+preview. Self-test, smoke, repair, service/config/API, history, and
+compatibility commands remain available through advanced or focused help topics
+rather than the first-run surface.
 
 Required management actions:
 

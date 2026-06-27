@@ -591,7 +591,7 @@ function preflightNextActions({ failures, missingToolCalls, recordCommand }) {
     actions.push("Send one request from the external MCP client through the configured tunnel, then rerun this preflight.");
   }
   if (failedIds.has("mcp-only-public-surface")) {
-    actions.push("Start Computer Linker with `start <workspace-path> --tunnel ...` or rerun setup with a tunnel so publicMcpOnly is enabled.");
+    actions.push("Start Computer Linker with `here --tunnel ...` inside the folder, use `start <workspace-path> --tunnel ...` from elsewhere, or rerun setup with a tunnel so publicMcpOnly is enabled.");
   }
   if (failedIds.has("evidence-target")) {
     actions.push("Start a tunnel and send one external request so preflight can detect the tunnel id or public URL, or pass --tunnel-or-url explicitly.");

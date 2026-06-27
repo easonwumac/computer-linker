@@ -182,7 +182,8 @@ const sourceInitOutput = execFileSync(process.execPath, ["dist/cli.js", "init"],
 });
 assert(helpOutput.includes("Computer Linker"), "CLI help did not start successfully");
 assert(bareCliOutput === helpOutput, "bare CLI invocation must print help instead of starting a server");
-assert(helpOutput.includes("computer-linker start <workspace-path>"), "default CLI help must lead with one-command local setup");
+assert(helpOutput.includes("computer-linker here"), "default CLI help must expose the current-folder shortcut");
+assert(helpOutput.includes("computer-linker start <workspace-path>"), "default CLI help must keep the explicit path setup command");
 assert(helpOutput.includes("computer-linker start <workspace-path> --tunnel openai|tailscale|cloudflare"), "default CLI help must collapse tunnel providers into one first-run command");
 assert(helpOutput.includes("computer-linker check"), "default CLI help must expose the productized install check");
 assert(helpOutput.includes("computer-linker quickstart C:\\Projects\\my-app"), "default CLI help must include the quickstart preview without exposing the full option matrix");
@@ -252,6 +253,7 @@ try {
   runNpm(["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball], { cwd: consumerDir, forceRealRun: true });
 
   const installedHelp = runInstalledBin(consumerDir, "computer-linker", ["help"]);
+  assert(installedHelp.includes("computer-linker here"), "installed CLI bin help did not expose the current-folder shortcut");
   assert(installedHelp.includes("computer-linker start <workspace-path>"), "installed CLI bin help did not run correctly");
   assert(installedHelp.includes("computer-linker quickstart C:\\Projects\\my-app"), "installed CLI bin help did not expose quickstart preview");
   const installedVersion = runInstalledBin(consumerDir, "computer-linker", ["--version"]);

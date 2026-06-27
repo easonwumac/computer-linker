@@ -8,8 +8,11 @@ connection details. Use `--show-token` only on a trusted local screen.
 Start Computer Linker:
 
 ```powershell
-computer-linker start C:\Projects\my-app
+cd C:\Projects\my-app
+computer-linker here
 ```
+
+From another folder, use `computer-linker start C:\Projects\my-app`.
 
 Configure the client:
 
@@ -30,7 +33,8 @@ Create the tunnel in OpenAI Platform, then start Computer Linker:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
-computer-linker start C:\Projects\my-app --tunnel openai --tunnel-id tunnel_...
+cd C:\Projects\my-app
+computer-linker here --tunnel openai --tunnel-id tunnel_...
 ```
 
 In the client, choose Tunnel mode and select or paste the `tunnel_...` id. Do
@@ -47,7 +51,8 @@ computer-linker history --view connections
 ## Tailscale Funnel
 
 ```powershell
-computer-linker start C:\Projects\my-app --tunnel tailscale
+cd C:\Projects\my-app
+computer-linker here --tunnel tailscale
 ```
 
 Computer Linker detects the Funnel HTTPS origin and saves it as
@@ -63,13 +68,15 @@ computer-linker client setup --show-token
 Quick tunnel:
 
 ```powershell
-computer-linker start C:\Projects\my-app --tunnel cloudflare
+cd C:\Projects\my-app
+computer-linker here --tunnel cloudflare
 ```
 
 Owned hostname:
 
 ```powershell
-computer-linker start C:\Projects\my-app --url https://mcp.your-domain.com --tunnel cloudflare
+cd C:\Projects\my-app
+computer-linker here --url https://mcp.your-domain.com --tunnel cloudflare
 ```
 
 Configure the client with `https://mcp.your-domain.com/mcp` and the bearer

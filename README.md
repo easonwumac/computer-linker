@@ -19,7 +19,8 @@ Install the CLI, expose one folder, and keep the server running:
 ```powershell
 npm install -g @easonwumac/computer-linker
 computer-linker check
-computer-linker start C:\Projects\my-app
+cd C:\Projects\my-app
+computer-linker here
 ```
 
 Leave that terminal running. In another terminal, copy the MCP client settings
@@ -30,11 +31,12 @@ computer-linker client setup
 computer-linker diagnose client
 ```
 
-`start <folder>` creates config, owner token, and a workspace entry when
-needed. The workspace name defaults to the folder name. By default it enables
-file edits plus approved project commands. Use `--read-only` for inspection
-only or `--full-trust` only for folders where Codex and screen capture are
-intended.
+`here` exposes the current folder. From another folder, use
+`computer-linker start C:\Projects\my-app` instead. Both commands create
+config, owner token, and a workspace entry when needed. The workspace name
+defaults to the folder name. By default it enables file edits plus approved
+project commands. Use `--read-only` for inspection only or `--full-trust` only
+for folders where Codex and screen capture are intended.
 
 From this source checkout, use the same flow through the development runner:
 
@@ -47,7 +49,7 @@ npm run dev -- start C:\Projects\my-app
 Use `client setup --show-token` only on a trusted local setup screen when the
 client needs the bearer token.
 
-What `start <folder>` does:
+What `here` and `start <folder>` do:
 
 - creates config, owner token, and workspace entry when needed
 - uses the folder name as the workspace name by default
@@ -56,7 +58,7 @@ What `start <folder>` does:
 - runs a startup check against health, JSON API, MCP initialize, tools/list,
   `get_computer_info`, `computer_operation`, and operation history
 
-`start <folder>` and `setup <folder>` default to normal coding access: file
+`here`, `start <folder>`, and `setup <folder>` default to normal coding access: file
 edits plus approved project commands. Use `--read-only` for inspection-only
 access, or `--full-trust` only where Codex and screen capture are intended. Add
 `--codex` or `--screen` only for folders where those abilities are intended.
@@ -82,8 +84,8 @@ use `computer-linker help advanced` for service, config, API, and compatibility
 commands. ChatGPT-specific setup exports are compatibility helpers under
 `computer-linker help chatgpt`; prefer the generic MCP client commands first.
 
-`start` is local-only unless you pass `--tunnel cloudflare`, `--tunnel
-tailscale`, or `--tunnel openai`.
+`here` and `start <folder>` are local-only unless you pass `--tunnel
+cloudflare`, `--tunnel tailscale`, or `--tunnel openai`.
 
 ## Expose To Cloud Clients
 
@@ -96,7 +98,8 @@ permission, then run:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
-computer-linker start C:\Projects\my-app --tunnel openai --tunnel-id tunnel_...
+cd C:\Projects\my-app
+computer-linker here --tunnel openai --tunnel-id tunnel_...
 ```
 
 In ChatGPT connector settings, choose the tunnel option and select or paste the
@@ -118,7 +121,8 @@ your Desktop for executables. To use a pinned binary instead, set
 Tailscale Funnel:
 
 ```powershell
-computer-linker start C:\Projects\my-app --tunnel tailscale
+cd C:\Projects\my-app
+computer-linker here --tunnel tailscale
 ```
 
 You do not need to type `https://<machine>.<tailnet>.ts.net` up front.
@@ -130,13 +134,15 @@ Funnel as enabled; plain Tailscale DNS or Serve remains tailnet-only.
 Cloudflare quick tunnel:
 
 ```powershell
-computer-linker start C:\Projects\my-app --tunnel cloudflare
+cd C:\Projects\my-app
+computer-linker here --tunnel cloudflare
 ```
 
 Cloudflare hostname you already own:
 
 ```powershell
-computer-linker start C:\Projects\my-app --url https://mcp.your-domain.com --tunnel cloudflare
+cd C:\Projects\my-app
+computer-linker here --url https://mcp.your-domain.com --tunnel cloudflare
 ```
 
 Tunnel commands enable `publicMcpOnly` automatically. Public-host requests to
@@ -310,10 +316,11 @@ computer-linker workspace remove app
 When `--id` or `--name` is omitted, Computer Linker derives it from the folder
 name. Direct `workspace add` scopes default to read-only with screen capture
 disabled. Add `--write`, `--shell`, `--codex`, or `--screen` separately only
-where needed. For daily setup, prefer `computer-linker start <folder>`; it
-creates a normal coding workspace and default execution policy automatically.
-Advanced `workspace add/update` flows leave policy management explicit through
-`config policy`.
+where needed. For daily setup, prefer `computer-linker here` inside the folder,
+or `computer-linker start <folder>` from somewhere else; both create a normal
+coding workspace and default execution policy automatically. Advanced
+`workspace add/update` flows leave policy management explicit through `config
+policy`.
 
 The config lives at:
 
@@ -539,8 +546,9 @@ The stricter release and publish rules live in
 Computer Linker is not a remote desktop, a cloud service, or a ChatGPT-specific
 app. It is a local MCP program that exposes approved computer abilities.
 
-See [docs/product-spec.md](docs/product-spec.md) for the product spec and
-[docs/architecture.md](docs/architecture.md) for implementation notes. See
+See [docs/getting-started.md](docs/getting-started.md) for the step-by-step
+tutorial, [docs/product-spec.md](docs/product-spec.md) for the product spec,
+and [docs/architecture.md](docs/architecture.md) for implementation notes. See
 [docs/release-checklist.md](docs/release-checklist.md) for the alpha release
 checklist, [docs/manual-test-plan.md](docs/manual-test-plan.md) for dogfooding,
 and [SECURITY.md](SECURITY.md) for the current security model. Public

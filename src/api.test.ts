@@ -774,6 +774,10 @@ try {
     assert.equal(controlCapabilities.body.data.startup.kind, "computer-linker-startup-readiness");
     assert.equal(controlCapabilities.body.data.startup.localApiUrl, "http://127.0.0.1:3959/api/v1");
     assert.ok(controlCapabilities.body.data.startup.modes.some((mode: { id: string; command: string }) => (
+      mode.id === "here" &&
+      mode.command === "computer-linker here"
+    )));
+    assert.ok(controlCapabilities.body.data.startup.modes.some((mode: { id: string; command: string }) => (
       mode.id === "start" &&
       mode.command === "computer-linker start"
     )));

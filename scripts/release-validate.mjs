@@ -82,6 +82,7 @@ for (const path of [
   "CONTRIBUTING.md",
   "LICENSE",
   "SECURITY.md",
+  "docs/getting-started.md",
   "docs/release-checklist.md",
   "docs/alpha-evidence.example.json",
   "docs/agent-instructions.md",
@@ -166,8 +167,13 @@ assert(changelog.includes("Package metadata now positions Computer Linker as a g
 assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.computer-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
 assert(changelog.includes("npm run public:release-ready"), "CHANGELOG must mention the final public release readiness command");
 assert(changelog.includes("Local npm release wrapper commands"), "CHANGELOG must mention local npm release automation");
+assert(changelog.includes("Added `computer-linker here` as the short daily startup command"), "CHANGELOG must mention the current-folder startup shortcut");
+assert(changelog.includes("step-by-step getting started tutorial"), "CHANGELOG must mention the getting started tutorial");
+assert(changelog.includes("implementation module map"), "CHANGELOG must mention the architecture module map");
 const readme = readText("README.md");
 assert(readme.includes("Leave that terminal running. In another terminal"), "README Quick Start must explain that start keeps running and follow-up commands use another terminal");
+assert(readme.includes("computer-linker here"), "README Quick Start must document the current-folder startup shortcut");
+assert(readme.includes("docs/getting-started.md"), "README must link the step-by-step tutorial");
 assert(readme.includes("computer-linker check"), "README Quick Start must document the productized install check");
 assert(readme.includes("`quickstart --json` exposes `commands.check`"), "README must document the quickstart JSON check command contract");
 assert(readme.includes("Call computer_operation with dotted ops from computerOperationRegistry"), "README agent instructions must direct agents to the generic computer_operation registry");
@@ -190,10 +196,21 @@ assert(readme.includes("push -u origin main --follow-tags"), "README public mirr
 assert(!readme.includes("public:snapshot -- --output ../computer-linker-public --remote <github-owner>/<public-repo>"), "README public snapshot quick path must rely on the default output directory");
 
 const productSpec = readText("docs/product-spec.md");
-assert(productSpec.includes("focused on first-run start, tunnel\nselection, client setup, status, and quickstart preview"), "product spec must match the concise default help contract");
+assert(productSpec.includes("focused on first-run `here`,\nexplicit-path start, tunnel selection, client setup, status, and quickstart\npreview"), "product spec must match the concise default help contract");
 assert(productSpec.includes("installed CLI check using a temporary config and workspace"), "product spec must describe check as the installed CLI smoke command");
-assert(productSpec.includes("Self-test, smoke,\nrepair, service/config/API, history, and compatibility commands remain available\nthrough advanced or focused help topics"), "product spec must keep detailed management commands out of first-run help");
+assert(productSpec.includes("Self-test, smoke, repair, service/config/API, history, and\ncompatibility commands remain available through advanced or focused help topics"), "product spec must keep detailed management commands out of first-run help");
 assert(!productSpec.includes("install self-test, status, repair, tunnel, and history flow"), "product spec must not require self-test/repair/history in default help");
+
+const gettingStarted = readText("docs/getting-started.md");
+assert(gettingStarted.includes("computer-linker here"), "getting started tutorial must lead with the current-folder startup shortcut");
+assert(gettingStarted.includes("computer-linker start C:\\Projects\\my-app"), "getting started tutorial must document explicit-path startup");
+assert(gettingStarted.includes("computer-linker client setup --show-token"), "getting started tutorial must document trusted local token reveal");
+assert(gettingStarted.includes("get_computer_info") && gettingStarted.includes("computer_operation"), "getting started tutorial must explain the primary MCP tools");
+
+const architecture = readText("docs/architecture.md");
+assert(architecture.includes("Implementation Module Map"), "architecture docs must include the implementation module map");
+assert(architecture.includes("Daily setup entrypoints are `computer-linker here`"), "architecture docs must document the here/start CLI boundary");
+assert(architecture.includes("Operation contract and dispatch"), "architecture docs must describe operation contract module boundaries");
 
 const releaseChecklist = readText("docs/release-checklist.md");
 assert(releaseChecklist.includes("public:mirror -- --remote <github-owner>/<public-repo>"), "release checklist public mirror command must use the one-command --remote path");
@@ -360,6 +377,7 @@ assert(packageSmokeScript.includes("installed quickstart must expose the check c
 assert(packageSmokeScript.includes("installed quickstart must preserve selfTest as a compatibility alias"), "package smoke must verify installed quickstart preserves the selfTest compatibility alias");
 assert(packageSmokeScript.includes("installed quickstart must explain that follow-up commands run in another terminal"), "package smoke must verify installed quickstart terminal handoff guidance");
 assert(packageSmokeScript.includes("default CLI help must include generic MCP client setup"), "package smoke must verify default help exposes generic client setup");
+assert(packageSmokeScript.includes("default CLI help must expose the current-folder shortcut"), "package smoke must verify default help exposes the current-folder shortcut");
 assert(packageSmokeScript.includes("default CLI help must expose the productized install check"), "package smoke must verify default help exposes the productized install check");
 assert(packageSmokeScript.includes("default CLI help must collapse tunnel providers into one first-run command"), "package smoke must verify default help keeps tunnel setup concise");
 assert(packageSmokeScript.includes("default CLI help must include the quickstart preview without exposing the full option matrix"), "package smoke must verify default help exposes quickstart as a preview");

@@ -388,7 +388,7 @@ function chatGptSetupWizard(
         ? undefined
         : urls.detectedPublicUrl
           ? `Optional: run \`computer-linker config set-public-url ${urls.detectedPublicUrl}\` to save it for OAuth and stable reuse.`
-          : "For first setup, run `computer-linker start <workspace-path> --tunnel tailscale`; for Cloudflare/custom hostnames, pass `--url https://... --tunnel cloudflare`; for ChatGPT Tunnel mode, use `computer-linker start <workspace-path> --tunnel openai --tunnel-id tunnel_...`.",
+          : "For first setup, run `computer-linker here --tunnel tailscale` inside the folder; for Cloudflare/custom hostnames, pass `--url https://... --tunnel cloudflare`; for ChatGPT Tunnel mode, use `computer-linker here --tunnel openai --tunnel-id tunnel_...`. From another folder, use `computer-linker start <workspace-path> ...`.",
     },
     {
       id: "mcp_url",
@@ -445,7 +445,7 @@ export function chatGptUrl(config: LocalPortConfig, includeSecret = false, optio
 
   if (!mcpServerUrl) {
     warnings.push("No public HTTPS MCP URL is configured.");
-    nextActions.push("For first setup, run `computer-linker start <workspace-path> --tunnel tailscale` to auto-save a Funnel URL; for Cloudflare/custom hostnames, pass `--url https://... --tunnel cloudflare`; for ChatGPT Tunnel mode, use `computer-linker start <workspace-path> --tunnel openai --tunnel-id tunnel_...`.");
+    nextActions.push("For first setup, run `computer-linker here --tunnel tailscale` inside the folder to auto-save a Funnel URL; for Cloudflare/custom hostnames, pass `--url https://... --tunnel cloudflare`; for ChatGPT Tunnel mode, use `computer-linker here --tunnel openai --tunnel-id tunnel_...`. From another folder, use `computer-linker start <workspace-path> ...`.");
   } else if (!mcpServerUrl.startsWith("https://")) {
     warnings.push("ChatGPT requires an https:// MCP URL.");
     nextActions.push("Use an HTTPS tunnel origin, then run `computer-linker config set-public-url https://...`.");
@@ -743,7 +743,7 @@ function modePermissionCheck(config: LocalPortConfig, mode: ChatGptVerifyMode): 
 function chatGptNextActions(blockingReasons: string[], warnings: string[], mode: ChatGptVerifyMode): string[] {
   const actions = new Set<string>();
   if (blockingReasons.some((reason) => reason.includes("public-base-url"))) {
-    actions.add("For first setup, run `computer-linker start <workspace-path> --tunnel tailscale` to auto-save a Funnel URL; for Cloudflare/custom hostnames, pass `--url https://... --tunnel cloudflare`; for OpenAI Secure MCP Tunnel, use `computer-linker start <workspace-path> --tunnel openai --tunnel-id tunnel_...`.");
+    actions.add("For first setup, run `computer-linker here --tunnel tailscale` inside the folder to auto-save a Funnel URL; for Cloudflare/custom hostnames, pass `--url https://... --tunnel cloudflare`; for OpenAI Secure MCP Tunnel, use `computer-linker here --tunnel openai --tunnel-id tunnel_...`. From another folder, use `computer-linker start <workspace-path> ...`.");
   }
   if (blockingReasons.some((reason) => reason.includes("auth"))) {
     actions.add("Run `computer-linker init` to generate an owner token before exposing the MCP server.");

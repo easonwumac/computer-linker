@@ -5,12 +5,15 @@ import { createRequire } from "node:module";
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { loadConfig, writeConfig } from "./config.js";
 
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
 const sourcePackageJson = require("../package.json") as { version: string };
+const sourceTsxLoaderUrl = pathToFileURL(require.resolve("tsx")).href;
+const sourceCliPath = join(process.cwd(), "src", "cli.ts");
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
 const originalWorkspaceLinkerConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalControlPlaneApiKey = process.env.CONTROL_PLANE_API_KEY;
@@ -25,6 +28,7 @@ const workspaceRoot = join(root, "workspace");
 const updatedRoot = join(root, "updated");
 const tailscaleRoot = join(root, "dev_7_3");
 const oneCommandRoot = join(root, "one-command");
+const hereRoot = join(root, "here-project");
 const freshRoot = join(root, "fresh-project");
 const codexRoot = join(root, "codex-project");
 const pathOnlyAddRoot = join(root, "path-only-add");
@@ -49,6 +53,7 @@ try {
   await mkdir(updatedRoot, { recursive: true });
   await mkdir(tailscaleRoot, { recursive: true });
   await mkdir(oneCommandRoot, { recursive: true });
+  await mkdir(hereRoot, { recursive: true });
   await mkdir(freshRoot, { recursive: true });
   await mkdir(codexRoot, { recursive: true });
   await mkdir(pathOnlyAddRoot, { recursive: true });
@@ -466,6 +471,7 @@ try {
   assert.equal(doctorJson.startup.ready, true);
   assert.equal(doctorJson.startup.localMcpUrl, "http://127.0.0.1:3939/mcp");
   assert.equal(doctorJson.startup.localApiUrl, "http://127.0.0.1:3939/api/v1");
+  assert.ok(doctorJson.startup.modes.some((mode) => mode.id === "here" && mode.command === "computer-linker here"));
   assert.ok(doctorJson.startup.modes.some((mode) => mode.id === "start" && mode.command === "computer-linker start"));
   assert.ok(doctorJson.startup.modes.some((mode) => mode.id === "tunnel-cloudflare" && mode.command === "computer-linker start <workspace-path> --tunnel cloudflare"));
   assert.ok(doctorJson.startup.modes.some((mode) => mode.id === "tunnel-tailscale" && mode.command === "computer-linker start <workspace-path> --tunnel tailscale"));
@@ -474,7 +480,8 @@ try {
   assert.ok(doctorJson.startup.modes.some((mode) => mode.id === "service" && mode.persistent));
   assert.match(doctorJson.startup.service.profileBundleCommand, /--output-dir \.\/service-profile$/);
   assert.match(doctorJson.startup.service.installDryRunCommand, /service install --dry-run --platform/);
-  assert.ok(doctorJson.startup.nextActions.some((action) => action.includes("computer-linker start")));
+  assert.ok(doctorJson.startup.nextActions.some((action) => action.includes("computer-linker here")));
+  assert.ok(doctorJson.startup.nextActions.some((action) => action.includes("computer-linker start <workspace-path>")));
   assert.match(doctorJson.service.profileCommand, /^computer-linker service profile --platform /);
   assert.match(doctorJson.service.profileBundleCommand, /--output-dir \.\/service-profile$/);
   assert.match(doctorJson.service.installDryRunCommand, /service install --dry-run --platform/);
@@ -1969,6 +1976,7 @@ try {
   const startHelpText = (await runCliOutput("start", "--help")).stdout;
   assert.match(startHelpText, /Computer Linker start/);
   assert.match(startHelpText, /computer-linker start <workspace-path>/);
+  assert.match(startHelpText, /Use `computer-linker here` when you are already inside the folder to expose/);
   assert.match(startHelpText, /Creates config, owner token, and a workspace entry/);
   assert.match(startHelpText, /--full-trust\s+Writes, approved commands, Codex operations, and screen capture/);
   assert.match(startHelpText, /--tunnel openai\|tailscale\|cloudflare/);
@@ -1980,12 +1988,16 @@ try {
   assert.match(quickstartHelpText, /Does not read or write config/);
   assert.doesNotMatch(quickstartHelpText, /Unknown quickstart option/);
   const helpText = (await runCliOutput("help")).stdout;
+  assert.match(helpText, /computer-linker here/);
   assert.match(helpText, /computer-linker start <workspace-path>/);
   assert.match(helpText, /computer-linker start <workspace-path> --tunnel openai\|tailscale\|cloudflare/);
   assert.match(helpText, /Optional install check: computer-linker check/);
-  assert.match(helpText, /Start local: computer-linker start C:\\Projects\\my-app/);
+  assert.match(helpText, /In your project folder: computer-linker here/);
   assert.match(helpText, /Connect client: computer-linker client setup/);
   assert.match(helpText, /Check state: computer-linker status/);
+  assert.match(helpText, /computer-linker here --tunnel cloudflare/);
+  assert.match(helpText, /computer-linker here --tunnel tailscale/);
+  assert.match(helpText, /computer-linker here --tunnel openai --tunnel-id tunnel_\.\.\./);
   assert.match(helpText, /computer-linker start C:\\Projects\\my-app --tunnel cloudflare/);
   assert.match(helpText, /computer-linker start C:\\Projects\\my-app --tunnel tailscale/);
   assert.match(helpText, /computer-linker start C:\\Projects\\my-app --tunnel openai --tunnel-id tunnel_\.\.\./);
@@ -1993,6 +2005,7 @@ try {
   assert.match(helpText, /computer-linker check/);
   assert.match(helpText, /computer-linker client setup/);
   assert.match(helpText, /computer-linker quickstart C:\\Projects\\my-app/);
+  assert.match(helpText, /computer-linker help here/);
   assert.match(helpText, /computer-linker help check/);
   assert.match(helpText, /computer-linker help start/);
   assert.match(helpText, /computer-linker help client setup/);
@@ -2014,16 +2027,18 @@ try {
     npm_lifecycle_event: "dev",
     npm_lifecycle_script: "tsx src/cli.ts",
   }, "help")).stdout;
+  assert.match(npmDevHelpText, /npm run dev -- here/);
   assert.match(npmDevHelpText, /npm run dev -- start <workspace-path>/);
   assert.match(npmDevHelpText, /npm run dev -- check/);
   assert.match(npmDevHelpText, /npm run dev -- client setup/);
   assert.match(npmDevHelpText, /npm run dev -- quickstart C:\\Projects\\my-app/);
   assert.doesNotMatch(npmDevHelpText, /npm run dev -- --version/);
-  assert.match(npmDevHelpText, /Details: npm run dev -- help check \| npm run dev -- help start \| npm run dev -- help client setup \| npm run dev -- help advanced/);
+  assert.match(npmDevHelpText, /Details: npm run dev -- help here \| npm run dev -- help check \| npm run dev -- help start \| npm run dev -- help client setup \| npm run dev -- help advanced/);
   assert.doesNotMatch(npmDevHelpText, /computer-linker start <workspace-path>/);
   const advancedHelpText = (await runCliOutput("help", "advanced")).stdout;
   assert.match(advancedHelpText, /Advanced Usage:/);
   assert.match(advancedHelpText, /computer-linker --version/);
+  assert.match(advancedHelpText, /computer-linker here \[--tunnel cloudflare\|tailscale\|openai\]/);
   assert.match(advancedHelpText, /computer-linker quickstart \[workspace-path\]/);
   assert.match(advancedHelpText, /computer-linker check \[--json\]/);
   assert.match(advancedHelpText, /computer-linker self-test \[--json\]/);
@@ -2050,8 +2065,13 @@ try {
   assert.equal((await runCliOutput("help", "init")).stdout, initHelpText);
   const serveHelpText = (await runCliOutput("serve", "--help")).stdout;
   assert.match(serveHelpText, /Computer Linker serve/);
-  assert.match(serveHelpText, /prefer `computer-linker start <folder>`/);
+  assert.match(serveHelpText, /prefer `computer-linker here` or `computer-linker start <folder>`/);
   assert.equal((await runCliOutput("help", "serve")).stdout, serveHelpText);
+  const hereHelpText = (await runCliOutput("here", "--help")).stdout;
+  assert.match(hereHelpText, /Computer Linker here/);
+  assert.match(hereHelpText, /computer-linker here --tunnel tailscale/);
+  assert.match(hereHelpText, /For another folder/);
+  assert.equal((await runCliOutput("help", "here")).stdout, hereHelpText);
   assert.equal((await runCliOutput("help", "start")).stdout, startHelpText);
   assert.equal((await runCliOutput("help", "quickstart")).stdout, quickstartHelpText);
   const setupHelpText = (await runCliOutput("setup", "--help")).stdout;
@@ -2219,6 +2239,36 @@ try {
     screen: false,
   });
   assert.ok(oneCommandWorkspace?.policy?.allowedCommands?.includes("npm *"));
+  const herePort = await getFreePort();
+  writeConfig({
+    ...loadConfig(),
+    port: herePort,
+  });
+  const hereStart = await runCliUntilStdoutFrom(hereRoot, "tunnel: disabled", "here");
+  assert.match(hereStart.stdout, /Computer Linker auto setup/);
+  assert.match(hereStart.stdout, /workspace: created here-project \(here-project\)/);
+  assert.match(hereStart.stdout, /Computer Linker started/);
+  assert.match(hereStart.stdout, /startup check: ready \(\d+\/\d+\)/);
+  config = loadConfig();
+  const hereWorkspace = config.workspaces.find((workspace) => workspace.id === "here-project");
+  assert.equal(config.port, herePort);
+  assert.equal(hereWorkspace?.name, "here-project");
+  assert.equal(hereWorkspace?.path, hereRoot);
+  assert.deepEqual(hereWorkspace?.permissions, {
+    read: true,
+    write: true,
+    shell: true,
+    codex: false,
+    screen: false,
+  });
+  assert.ok(hereWorkspace?.policy?.allowedCommands?.includes("npm *"));
+  await assert.rejects(
+    () => runCliOutput("here", hereRoot),
+    /here does not accept a workspace path/,
+  );
+  const hereHelpRuntime = (await runCliOutputFrom(hereRoot, "here", "--help")).stdout;
+  assert.match(hereHelpRuntime, /Computer Linker here/);
+  assert.match(hereHelpRuntime, /Equivalent to `computer-linker start \.`/);
   const devStartPort = await getFreePort();
   writeConfig({
     ...loadConfig(),
@@ -2417,8 +2467,16 @@ async function runCliOutput(...args: string[]): Promise<{ stdout: string; stderr
 }
 
 async function runCliOutputWithEnv(env: NodeJS.ProcessEnv, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return runCliOutputWithEnvFrom(process.cwd(), env, ...args);
+}
+
+async function runCliOutputFrom(cwd: string, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return runCliOutputWithEnvFrom(cwd, {}, ...args);
+}
+
+async function runCliOutputWithEnvFrom(cwd: string, env: NodeJS.ProcessEnv, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
   return execFileAsync(process.execPath, sourceCliArgs(...args), {
-    cwd: process.cwd(),
+    cwd,
     timeout: 30000,
     env: {
       ...process.env,
@@ -2453,8 +2511,12 @@ async function runCliUntilReady(...args: string[]): Promise<{ stdout: string; st
 }
 
 async function runCliUntilStdout(marker: string, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return runCliUntilStdoutFrom(process.cwd(), marker, ...args);
+}
+
+async function runCliUntilStdoutFrom(cwd: string, marker: string, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
   const child = spawn(process.execPath, sourceCliArgs(...args), {
-    cwd: process.cwd(),
+    cwd,
     env: {
       ...process.env,
       LOCALPORT_CONFIG_DIR: process.env.LOCALPORT_CONFIG_DIR,
@@ -2496,7 +2558,7 @@ async function runCliUntilStdout(marker: string, ...args: string[]): Promise<{ s
 }
 
 function sourceCliArgs(...args: string[]): string[] {
-  return ["--import", "tsx", "src/cli.ts", ...args];
+  return ["--import", sourceTsxLoaderUrl, sourceCliPath, ...args];
 }
 
 async function getFreePort(): Promise<number> {

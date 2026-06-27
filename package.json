@@ -1,6 +1,6 @@
 {
   "name": "@easonwumac/computer-linker",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "One computer, one permissioned MCP linker for local workspaces.",
   "type": "module",
   "main": "dist/client.js",

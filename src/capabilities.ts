@@ -59,7 +59,7 @@ export interface StartupReadinessCheck {
 }
 
 export interface StartupReadinessMode {
-  id: "start" | "tunnel-cloudflare" | "tunnel-tailscale" | "tunnel-openai" | "stdio" | "service";
+  id: "here" | "start" | "tunnel-cloudflare" | "tunnel-tailscale" | "tunnel-openai" | "stdio" | "service";
   title: string;
   command: string;
   persistent: boolean;
@@ -373,6 +373,13 @@ export function startupReadiness(config: LocalPortConfig, service: ServiceStatus
   const uninstallDryRunCommand = `computer-linker service uninstall --dry-run --platform ${service.platform}`;
   const modes: StartupReadinessMode[] = [
     {
+      id: "here",
+      title: "Current-folder MCP server",
+      command: "computer-linker here",
+      persistent: false,
+      useWhen: "Daily foreground setup from inside the folder to expose. Creates or updates the workspace, then starts the local MCP/API server.",
+    },
+    {
       id: "start",
       title: "Local HTTP MCP server",
       command: "computer-linker start",
@@ -446,8 +453,9 @@ export function startupReadiness(config: LocalPortConfig, service: ServiceStatus
     },
   ];
   const nextActions = [
-    "Run `computer-linker start <workspace-path>` for one-command coding setup and startup.",
-    "Use `computer-linker start <workspace-path> --read-only` when the client should inspect without editing or running project commands.",
+    "Run `computer-linker here` inside a project folder for one-command coding setup and startup.",
+    "Run `computer-linker start <workspace-path>` from another folder when you need to expose an explicit path.",
+    "Use `computer-linker here --read-only` when the client should inspect without editing or running project commands.",
     "Run `computer-linker doctor --fix` to apply safe local config repairs.",
     `Run \`${profileBundleCommand}\` to generate persistent startup files for ${service.platform}.`,
     `Run \`${installDryRunCommand}\` before applying any OS service changes.`,
@@ -625,7 +633,7 @@ function doctorNextActions(
     actions.add("Generate or configure an owner token before exposing this machine.");
   }
   if (blockingReasons.some((reason) => reason.includes("tunnel provider"))) {
-    actions.add("Install cloudflared or tailscale, configure a trusted reverse proxy, or use `computer-linker start <workspace-path> --tunnel openai --tunnel-id tunnel_...` with CONTROL_PLANE_API_KEY.");
+    actions.add("Install cloudflared or tailscale, configure a trusted reverse proxy, or use `computer-linker here --tunnel openai --tunnel-id tunnel_...` with CONTROL_PLANE_API_KEY.");
   }
   if (securityFindings.some((finding) => finding.id === "public-base-url-missing")) {
     actions.add("Set publicBaseUrl to the stable tunnel origin before OAuth client setup.");

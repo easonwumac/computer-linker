@@ -34,7 +34,7 @@ import { serveHttp, serveStdio } from "./server.js";
 import { screenshotCapability } from "./screenshot.js";
 import { configuredOpenAiTunnelId, ensureOpenAiTunnelClientInstalled, exposeWithTunnel, listTunnelProcesses, refreshTunnelPublicUrl, startTunnelProcess, tunnelDiagnostics, type TailscaleMode, type TunnelProviderName, type TunnelProcessSnapshot } from "./tunnels.js";
 
-type Command = "init" | "serve" | "start" | "quickstart" | "status" | "check" | "self-test" | "expose" | "tunnel" | "service" | "workspace" | "process" | "screen" | "doctor" | "diagnose" | "history" | "profile" | "client" | "config" | "setup" | "help" | "version";
+type Command = "init" | "serve" | "start" | "here" | "quickstart" | "status" | "check" | "self-test" | "expose" | "tunnel" | "service" | "workspace" | "process" | "screen" | "doctor" | "diagnose" | "history" | "profile" | "client" | "config" | "setup" | "help" | "version";
 
 interface StatusFinding {
   id: string;
@@ -113,6 +113,9 @@ async function main(argv: string[]): Promise<void> {
     case "start":
       await start(args);
       return;
+    case "here":
+      await here(args);
+      return;
     case "quickstart":
       quickstart(args);
       return;
@@ -178,7 +181,7 @@ function normalizeCommand(command: string | undefined): Command {
   if (command === "serve") return "serve";
   if (command === "connect-profile") throw new Error("connect-profile was removed; use `computer-linker client chatgpt profile` only when ChatGPT asks for connector-specific fields.");
   if (command === "chatgpt") throw new Error("chatgpt was removed; use `computer-linker client chatgpt <subcommand>` only when ChatGPT asks for connector-specific fields.");
-  if (command === "init" || command === "start" || command === "quickstart" || command === "status" || command === "check" || command === "self-test" || command === "expose" || command === "tunnel" || command === "service" || command === "workspace" || command === "process" || command === "screen" || command === "doctor" || command === "diagnose" || command === "history" || command === "profile" || command === "client" || command === "config" || command === "setup") return command;
+  if (command === "init" || command === "start" || command === "here" || command === "quickstart" || command === "status" || command === "check" || command === "self-test" || command === "expose" || command === "tunnel" || command === "service" || command === "workspace" || command === "process" || command === "screen" || command === "doctor" || command === "diagnose" || command === "history" || command === "profile" || command === "client" || command === "config" || command === "setup") return command;
   if (command === "version" || command === "--version" || command === "-v") return "version";
   if (command === "help" || command === "--help" || command === "-h") return "help";
   throw new Error(`Unknown command: ${command}`);
@@ -3498,6 +3501,15 @@ async function start(args: string[]): Promise<void> {
   }
 }
 
+async function here(args: string[]): Promise<void> {
+  if (hasHelpFlag(args)) {
+    printHereHelp();
+    return;
+  }
+  assertHereHasNoWorkspacePath(args);
+  await start([".", ...args]);
+}
+
 function startupPublicMcpUrlLine(
   config: LocalPortConfig,
   tunnelProvider: TunnelProviderName | undefined,
@@ -3659,7 +3671,7 @@ function startNextActions(config: LocalPortConfig, options: StartOptions, tunnel
   }
   return [
     `Use ${invocationCommand("client", "setup")} to connect a local MCP client.`,
-    "For ChatGPT remote access, restart with `computer-linker start <workspace-path> --tunnel openai --tunnel-id tunnel_...`.",
+    "For remote access, restart inside the folder with `computer-linker here --tunnel openai --tunnel-id tunnel_...`; from another folder use `computer-linker start <workspace-path> --tunnel openai --tunnel-id tunnel_...`.",
     config.ownerToken ? "Keep this terminal running while the client is connected." : `Run ${invocationCommand("init")} before exposing this computer.`,
   ];
 }
@@ -3769,9 +3781,10 @@ type StartOptions = {
   permissionArgs: string[];
 };
 
+const startValueOptions = new Set(["--tunnel", "--mode", "--tunnel-timeout-ms", "--tunnel-id", "--tunnel-client", "--url", "--id", "--name"]);
+const startFlagOptions = new Set(["--no-tunnel", "--dev", "--coding", "--full-trust", "--write", "--shell", "--codex", "--screen", "--read-only", "--show-token"]);
+
 function parseStartOptions(args: string[]): StartOptions {
-  const valueOptions = new Set(["--tunnel", "--mode", "--tunnel-timeout-ms", "--tunnel-id", "--tunnel-client", "--url", "--id", "--name"]);
-  const flagOptions = new Set(["--no-tunnel", "--dev", "--coding", "--full-trust", "--write", "--shell", "--codex", "--screen", "--read-only", "--show-token"]);
   const positional: string[] = [];
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -3779,12 +3792,12 @@ function parseStartOptions(args: string[]): StartOptions {
       positional.push(arg);
       continue;
     }
-    if (valueOptions.has(arg)) {
+    if (startValueOptions.has(arg)) {
       index += 1;
       if (!args[index] || args[index].startsWith("--")) throw new Error(`start ${arg} requires a value`);
       continue;
     }
-    if (flagOptions.has(arg)) continue;
+    if (startFlagOptions.has(arg)) continue;
     throw new Error(`Unknown start option: ${arg}`);
   }
 
@@ -3837,6 +3850,22 @@ function parseStartOptions(args: string[]): StartOptions {
     tunnelTimeoutMs: readOptionalIntegerOption(args, "--tunnel-timeout-ms", "start --tunnel-timeout-ms") ?? 8000,
     permissionArgs: permissionFlags.canonicalArgs,
   };
+}
+
+function assertHereHasNoWorkspacePath(args: string[]): void {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (!arg.startsWith("--")) {
+      throw new Error("here does not accept a workspace path; run it inside the folder to expose or use `computer-linker start <workspace-path>` for another folder");
+    }
+    if (startValueOptions.has(arg)) {
+      index += 1;
+      if (!args[index] || args[index].startsWith("--")) throw new Error(`here ${arg} requires a value`);
+      continue;
+    }
+    if (startFlagOptions.has(arg)) continue;
+    throw new Error(`Unknown here option: ${arg}`);
+  }
 }
 
 function parseTunnelProvider(value: string, command: string): TunnelProviderName {
@@ -4286,6 +4315,10 @@ function printHelp(args: string[] = []): void {
     printServeHelp();
     return;
   }
+  if (topic === "here" && rest.length === 0) {
+    printHereHelp();
+    return;
+  }
   if ((topic === "chatgpt" || topic === "client-chatgpt") && rest.length === 0) {
     printChatGptHelp();
     return;
@@ -4406,7 +4439,7 @@ function printServeHelp(): void {
       "",
       "What it does:",
       "  Starts the MCP server without changing workspace config.",
-      "  For daily use, prefer `computer-linker start <folder>` so setup and server start happen together.",
+      "  For daily use, prefer `computer-linker here` or `computer-linker start <folder>` so setup and server start happen together.",
     ],
   );
 }
@@ -4417,6 +4450,7 @@ function printCoreHelp(): void {
       "Computer Linker",
       "",
       "Usage:",
+      "  computer-linker here",
       "  computer-linker start <workspace-path>",
       "  computer-linker start <workspace-path> --tunnel openai|tailscale|cloudflare",
       "  computer-linker check",
@@ -4426,11 +4460,16 @@ function printCoreHelp(): void {
       "",
       "First run:",
       "  1. Optional install check: computer-linker check",
-      "  2. Start local: computer-linker start C:\\Projects\\my-app",
+      "  2. In your project folder: computer-linker here",
       "  3. Connect client: computer-linker client setup",
       "  4. Check state: computer-linker status",
       "",
       "Cloud client:",
+      "  computer-linker here --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker here --tunnel tailscale",
+      "  computer-linker here --tunnel cloudflare",
+      "",
+      "From another folder:",
       "  computer-linker start C:\\Projects\\my-app --tunnel openai --tunnel-id tunnel_...",
       "  computer-linker start C:\\Projects\\my-app --tunnel tailscale",
       "  computer-linker start C:\\Projects\\my-app --tunnel cloudflare",
@@ -4439,13 +4478,50 @@ function printCoreHelp(): void {
       "  computer-linker quickstart C:\\Projects\\my-app",
       "",
       "Notes:",
-      "  <workspace-path> is the folder to expose.",
-      "  start creates config, token, and a workspace entry when needed, then runs a local startup check.",
+      "  here exposes the current folder; start <workspace-path> exposes another folder.",
+      "  here and start <workspace-path> create config, token, and a workspace entry when needed, then run a local startup check.",
       "  Workspace names default to the folder name.",
-      "  By default, start allows file edits and approved project commands for normal development work.",
+      "  By default, here and start allow file edits and approved project commands for normal development work.",
       "  Use --read-only to inspect only; use --full-trust only when Codex and screen capture are intended.",
       "  Tokens stay hidden by default; use client setup --show-token only on a trusted local setup screen.",
-      "  Details: computer-linker help check | computer-linker help start | computer-linker help client setup | computer-linker help advanced",
+      "  Details: computer-linker help here | computer-linker help check | computer-linker help start | computer-linker help client setup | computer-linker help advanced",
+    ],
+  );
+}
+
+function printHereHelp(): void {
+  printCliHelp(
+    [
+      "Computer Linker here",
+      "",
+      "Usage:",
+      "  computer-linker here",
+      "  computer-linker here --read-only",
+      "  computer-linker here --full-trust",
+      "  computer-linker here --tunnel openai --tunnel-id tunnel_...",
+      "  computer-linker here --tunnel tailscale",
+      "  computer-linker here --tunnel cloudflare",
+      "",
+      "What it does:",
+      "  Exposes the current folder and starts the local HTTP MCP server.",
+      "  Equivalent to `computer-linker start .`, with a clearer daily-use name.",
+      "  Uses the current folder name as the workspace name unless --name is provided.",
+      "  A new workspace defaults to coding mode: file edits plus approved project commands.",
+      "",
+      "Common options:",
+      "  --read-only    Read/search/history only.",
+      "  --full-trust   Writes, approved commands, Codex operations, and screen capture.",
+      "  --tunnel openai|tailscale|cloudflare",
+      "  --name <name>  Override the workspace display name.",
+      "  --id <id>      Override the stable workspace id.",
+      "",
+      "Examples:",
+      "  computer-linker here",
+      "  computer-linker here --read-only",
+      "  computer-linker here --tunnel tailscale",
+      "",
+      "For another folder, use:",
+      "  computer-linker start C:\\Projects\\my-app",
     ],
   );
 }
@@ -4466,6 +4542,7 @@ function printStartHelp(): void {
       "",
       "What it does:",
       "  Creates config, owner token, and a workspace entry when needed.",
+      "  Use `computer-linker here` when you are already inside the folder to expose.",
       "  Uses the folder name as the workspace name unless --name is provided.",
       "  Starts the local HTTP MCP server, runs a local startup check, and keeps running until you stop it.",
       "  A new workspace defaults to coding mode: file edits plus approved project commands.",
@@ -4674,7 +4751,7 @@ function printSetupHelp(): void {
       "What it does:",
       "  Creates or updates config, owner token, public MCP-only mode, and one workspace entry without starting the server.",
       "  Workspace names default to the folder name.",
-      "  For one-command daily use, prefer `computer-linker start <workspace-path>`.",
+      "  For one-command daily use, prefer `computer-linker here` inside the folder or `computer-linker start <workspace-path>` from elsewhere.",
       "  New setup entries default to coding mode: file edits plus approved project commands.",
       "  Use --read-only to inspect only; use --full-trust only when Codex and screen capture are intended.",
       "",
@@ -4708,7 +4785,7 @@ function printExposeHelp(): void {
       "",
       "What it does:",
       "  Starts an HTTP MCP server and opens a tunnel to it.",
-      "  `start <workspace-path> --tunnel ...` is the simpler development path.",
+      "  `here --tunnel ...` or `start <workspace-path> --tunnel ...` is the simpler development path.",
       "",
       "More help:",
       "  computer-linker expose help tailscale",
@@ -5237,6 +5314,7 @@ function printAdvancedHelp(): void {
       "Advanced Usage:",
       "  computer-linker init [--show-token]",
       "  computer-linker --version",
+      "  computer-linker here [--tunnel cloudflare|tailscale|openai] [--read-only|--full-trust]",
       "  computer-linker quickstart [workspace-path] [--tunnel cloudflare|tailscale|openai] [--tunnel-id tunnel_...] [--url https://...] [--write] [--shell] [--codex] [--screen] [--read-only|--full-trust] [--json]",
       "  computer-linker serve      Start the stdio MCP server",
       "  computer-linker serve --transport http",
@@ -5316,6 +5394,7 @@ function printChatGptHelp(): void {
       "  computer-linker client chatgpt files ./chatgpt-config [--mode safe|coding|full] [--url https://...] [--show-token]",
       "",
       "For OpenAI Secure MCP Tunnel, start with:",
+      "  computer-linker here --tunnel openai --tunnel-id tunnel_...",
       "  computer-linker start <workspace-path> --tunnel openai --tunnel-id tunnel_...",
     ],
   );
