@@ -180,7 +180,9 @@ Expected:
 - `diagnose client` reports setup readiness, MCP smoke result, connection
   history count, blockers, and next actions
 - `examples/minimal-mcp-client.mjs` can initialize `/mcp`, list tools, call
-  `get_computer_info`, run read-only `computer_operation`, and read history
+  `get_computer_info`, run read-only `computer_operation` `file.tree`, and read
+  history. The owner token is provided through `COMPUTER_LINKER_TOKEN`, not a
+  positional command argument.
 - `process list` reports currently managed background command/Codex processes
   or `none` while the local HTTP server is running
 - `screen status` reports provider support, permission status, and

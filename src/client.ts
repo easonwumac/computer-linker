@@ -180,7 +180,7 @@ export class WorkspaceLinkerClient {
   private readonly ownerToken?: string;
 
   constructor(options: WorkspaceLinkerClientOptions) {
-    this.baseUrl = new URL(options.baseUrl.replace(/\/+$/, "") + "/");
+    this.baseUrl = normalizeComputerLinkerApiBaseUrl(options.baseUrl);
     this.fetchImpl = options.fetch ?? fetch;
     this.ownerToken = options.ownerToken;
   }
@@ -726,6 +726,31 @@ export class WorkspaceLinkerClient {
 }
 
 export { WorkspaceLinkerClient as ComputerLinkerClient };
+
+function normalizeComputerLinkerApiBaseUrl(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(
+      "ComputerLinkerClient baseUrl must be an absolute JSON API URL, such as http://127.0.0.1:3939/api/v1.",
+    );
+  }
+
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const lastSegment = path.split("/").filter(Boolean).at(-1);
+  if (lastSegment === "mcp") {
+    throw new Error(
+      "ComputerLinkerClient baseUrl points to the MCP endpoint (/mcp). " +
+        "The SDK uses the JSON API; pass http://127.0.0.1:3939/api/v1 or the origin URL, or use an MCP client for /mcp.",
+    );
+  }
+
+  url.search = "";
+  url.hash = "";
+  url.pathname = path === "/" ? "/api/v1/" : `${path}/`;
+  return url;
+}
 
 function connectReadinessStatus(
   blockingReasons: string[],

@@ -235,6 +235,9 @@ $env:COMPUTER_LINKER_TOKEN = "<ownerToken>"
 node examples/minimal-mcp-client.mjs
 ```
 
+The minimal example reads the bearer token from environment variables. It does
+not accept the owner token as a positional command argument.
+
 More client-specific recipes are in [docs/client-recipes.md](docs/client-recipes.md).
 For a fuller command-by-command usage guide, see
 [docs/user-manual.md](docs/user-manual.md).
@@ -261,7 +264,7 @@ Start with these before reaching for the full registry:
 | Intent | `computer_operation` input |
 | --- | --- |
 | Project overview | `{ "scope": "app", "op": "code.context", "target": ".", "options": { "maxDepth": 2, "maxEntries": 100 } }` |
-| List files | `{ "scope": "app", "op": "file.list", "target": ".", "options": { "maxEntries": 50 } }` |
+| List tree | `{ "scope": "app", "op": "file.tree", "target": ".", "options": { "maxDepth": 1, "maxEntries": 50 } }` |
 | Search text | `{ "scope": "app", "op": "file.search", "target": ".", "input": { "query": "TODO" }, "options": { "maxResults": 20 } }` |
 | Read file | `{ "scope": "app", "op": "file.read", "target": "README.md", "options": { "maxBytes": 65536 } }` |
 | Review changes | `{ "scope": "app", "op": "git.diff", "target": ".", "options": { "maxBytes": 65536 } }` |

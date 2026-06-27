@@ -705,7 +705,7 @@ function smokeNextActions(blockingReasons: string[], warnings: string[], publicM
     actions.add("Set publicBaseUrl or rerun with `--url https://...`; use `--allow-http` only for local testing.");
   }
   if (blockingReasons.some((reason) => reason.includes("auth"))) {
-    actions.add("Run `computer-linker init` or pass `--token <ownerToken>` for the smoke test.");
+    actions.add("Run `computer-linker init`, set COMPUTER_LINKER_TOKEN, or pass `--token <ownerToken>` only for CI/non-interactive smoke tests.");
   }
   if (blockingReasons.some((reason) => reason.includes("api-capabilities"))) {
     actions.add(publicMode

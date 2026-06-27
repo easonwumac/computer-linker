@@ -2022,7 +2022,7 @@ async function clientSmoke(args: string[]): Promise<void> {
   const timeoutMs = readOptionalIntegerOption(args, "--timeout-ms", "client smoke --timeout-ms");
   const report = await runWorkspaceLinkerMcpClientSmoke(loadConfig(), {
     url: readOption(args, "--url"),
-    token: readOption(args, "--token"),
+    token: readClientTokenOption(args),
     includeSecret: args.includes("--show-token"),
     allowHttp: args.includes("--allow-http"),
     timeoutMs,
@@ -2106,7 +2106,7 @@ async function diagnoseClient(args: string[]): Promise<void> {
   }) as McpClientSetupCliReport;
   const smoke = await runWorkspaceLinkerMcpClientSmoke(config, {
     url: smokeUrl,
-    token: readOption(args, "--token"),
+    token: readClientTokenOption(args),
     includeSecret: args.includes("--show-token"),
     allowHttp: target === "local" || args.includes("--allow-http"),
     timeoutMs,
@@ -2238,7 +2238,7 @@ async function chatGptClient(args: string[], commandPrefix: string): Promise<voi
     const timeoutMs = readOptionalIntegerOption(rest, "--timeout-ms", `${commandPrefix} smoke --timeout-ms`);
     const report = await chatGptSmoke(loadConfig(), {
       url: readOption(rest, "--url"),
-      token: readOption(rest, "--token"),
+      token: readClientTokenOption(rest),
       includeSecret: rest.includes("--show-token"),
       allowHttp: rest.includes("--allow-http"),
       timeoutMs,
@@ -4699,6 +4699,7 @@ function printClientSmokeHelp(): void {
       "What it does:",
       "  Runs a small MCP client smoke test against the configured or provided MCP URL.",
       "  Use --allow-http only for trusted local loopback tests.",
+      "  Token lookup uses config first, then COMPUTER_LINKER_TOKEN. Use --token only for CI or non-interactive automation.",
       "",
       "Example:",
       "  computer-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp",
@@ -5387,6 +5388,7 @@ function printChatGptHelp(): void {
       "ChatGPT is one MCP client, not the product axis. Prefer the generic setup commands first:",
       "  computer-linker client setup",
       "  computer-linker client smoke [--url https://.../mcp] [--token token] [--allow-http]",
+      "  Prefer config or COMPUTER_LINKER_TOKEN for auth; --token is a CI/automation fallback.",
       "",
       "Use these only when ChatGPT asks for connector-specific fields or files:",
       "  computer-linker client chatgpt url [--show-token] [--json]",
@@ -5408,6 +5410,24 @@ function readOption(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
   if (index === -1) return undefined;
   return args[index + 1];
+}
+
+function readClientTokenOption(args: string[]): string | undefined {
+  return readOption(args, "--token") ??
+    firstNonBlankEnvironmentValue([
+      "COMPUTER_LINKER_TOKEN",
+      "COMPUTER_LINKER_OWNER_TOKEN",
+      "WORKSPACE_LINKER_TOKEN",
+      "WORKSPACE_LINKER_OWNER_TOKEN",
+    ]);
+}
+
+function firstNonBlankEnvironmentValue(names: string[]): string | undefined {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return undefined;
 }
 
 function readRepeatedOptions(args: string[], name: string, command: string): string[] {

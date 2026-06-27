@@ -1040,7 +1040,7 @@ function externalSmokePrompt(scope) {
     "Run a read-only Computer Linker alpha smoke test.",
     "Use only the Computer Linker MCP tools exposed by this connector.",
     "1. Call get_computer_info.",
-    `2. Call computer_operation with {"scope":"${jsonStringLiteralContent(scope)}","op":"file.list","target":".","options":{"maxEntries":5}}.`,
+    `2. Call computer_operation with {"scope":"${jsonStringLiteralContent(scope)}","op":"file.tree","target":".","options":{"maxDepth":1,"maxEntries":5}}.`,
     "3. Call get_operation_history with {\"view\":\"connections\",\"limit\":20}.",
     "Then summarize whether all three calls succeeded.",
     "Do not include owner tokens, bearer headers, API keys, private file contents, or screenshots in your answer.",
@@ -1053,7 +1053,7 @@ function externalMissingPrompt(scope, missingTools) {
     toolLines.push("Call get_computer_info.");
   }
   if (missingTools.includes("computer_operation")) {
-    toolLines.push(`Call computer_operation with {"scope":"${jsonStringLiteralContent(scope)}","op":"file.list","target":".","options":{"maxEntries":5}}.`);
+    toolLines.push(`Call computer_operation with {"scope":"${jsonStringLiteralContent(scope)}","op":"file.tree","target":".","options":{"maxDepth":1,"maxEntries":5}}.`);
   }
   if (missingTools.includes("get_operation_history")) {
     toolLines.push("Call get_operation_history with {\"view\":\"connections\",\"limit\":20}.");

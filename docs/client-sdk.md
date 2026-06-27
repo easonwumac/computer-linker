@@ -25,7 +25,12 @@ const result = await client.computerOperation<{ ok: boolean; data?: unknown }>({
 if (result.ok) console.log(result.data);
 ```
 
-The SDK talks to the JSON API under `/api/v1`. Treat that API as a local or
+The SDK talks to the JSON API under `/api/v1`. You may pass the origin only,
+such as `http://127.0.0.1:3939`, and the SDK normalizes it to `/api/v1`.
+Passing an MCP URL such as `http://127.0.0.1:3939/mcp` fails immediately with
+an actionable error; use an MCP client for `/mcp`.
+
+Treat the JSON API as a local or
 trusted-private automation surface. Public tunnels created by `computer-linker
 start --tunnel ...` and `computer-linker expose ...` default to MCP-only, so
 public hosts expose `/mcp` but return 404 for `/api` and `/healthz`.

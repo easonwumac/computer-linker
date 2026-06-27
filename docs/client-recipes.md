@@ -17,7 +17,7 @@ From another folder, use `computer-linker start C:\Projects\my-app`.
 Configure the client:
 
 - URL: `http://127.0.0.1:3939/mcp`
-- Auth: `Authorization: Bearer <ownerToken>`
+- Auth: bearer header printed by `computer-linker client setup --show-token`
 - Agent instructions: [agent-instructions.md](agent-instructions.md)
 
 Verify:
@@ -93,7 +93,8 @@ node examples/minimal-mcp-client.mjs
 ```
 
 The example initializes MCP, lists tools, calls `get_computer_info`, and runs a
-read-only `computer_operation`.
+read-only `computer_operation`. It reads the bearer token from environment
+variables and rejects positional token arguments.
 
 ## Agent Prompt
 

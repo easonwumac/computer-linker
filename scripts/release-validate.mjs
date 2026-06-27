@@ -208,6 +208,7 @@ assert(readme.includes("node examples/minimal-mcp-client.mjs"), "README must doc
 assert(readme.includes("docs/api-compatibility.md"), "README must link the API compatibility policy");
 assert(readme.includes("docs/agent-instructions.md"), "README must link reusable agent instructions");
 assert(readme.includes("docs/client-recipes.md"), "README must link MCP client recipes");
+assert(readme.includes("does\nnot accept the owner token as a positional command argument"), "README minimal client guidance must avoid positional token arguments");
 assert(readme.includes("Sensitive file content is blocked by default"), "README must document default sensitive file protection");
 assert(readme.includes('"op": "file.read"'), "README useful first operations must include a generic file.read example");
 assert(!readme.includes('"workspaceId": "app", "op": "read"'), "README must not recommend legacy workspaceId/read examples in the agent instructions");
@@ -228,6 +229,16 @@ assert(docsIndex.includes("Getting Started") && docsIndex.includes("Developer Gu
 const developerGuide = readText("docs/developer-guide.md");
 assert(developerGuide.includes("ensureWorkspaceRootDirectory"), "developer guide must explain shared workspace root helpers");
 assert(developerGuide.includes("Adding An Operation"), "developer guide must document the operation extension workflow");
+
+const minimalMcpClient = readText("examples/minimal-mcp-client.mjs");
+assert(!/\?\?\s*process\.argv\[3\]/.test(minimalMcpClient), "minimal MCP client must not silently accept owner tokens as positional arguments");
+assert(minimalMcpClient.includes("Do not pass the owner token as a command argument"), "minimal MCP client must reject positional token arguments with actionable guidance");
+assert(minimalMcpClient.includes('op: "file.tree"'), "minimal MCP client must demonstrate a registry-consistent bounded read-only operation");
+assert(minimalMcpClient.includes("maxDepth: 1") && minimalMcpClient.includes("maxEntries: 20"), "minimal MCP client must use options valid for file.tree");
+assert(minimalMcpClient.includes("scope,\n      view: \"last\""), "minimal MCP client history read must pass the selected scope");
+
+const clientSdkDocs = readText("docs/client-sdk.md");
+assert(clientSdkDocs.includes("Passing an MCP URL such as `http://127.0.0.1:3939/mcp` fails immediately"), "client SDK docs must clarify MCP URL fail-fast behavior");
 
 const productSpec = readText("docs/product-spec.md");
 assert(productSpec.includes("focused on first-run `here`,\nexplicit-path start, tunnel selection, client setup, status, and quickstart\npreview"), "product spec must match the concise default help contract");

@@ -12,8 +12,14 @@ const token =
   process.env.COMPUTER_LINKER_TOKEN ??
   process.env.COMPUTER_LINKER_OWNER_TOKEN ??
   process.env.WORKSPACE_LINKER_TOKEN ??
-  process.env.WORKSPACE_LINKER_OWNER_TOKEN ??
-  process.argv[3];
+  process.env.WORKSPACE_LINKER_OWNER_TOKEN;
+
+if (process.argv[3]) {
+  throw new Error(
+    "Do not pass the owner token as a command argument. " +
+      "Set COMPUTER_LINKER_TOKEN in the environment, or run `computer-linker client setup --show-token` on a trusted local screen.",
+  );
+}
 
 const client = new Client({
   name: "computer-linker-minimal-client",
@@ -52,20 +58,21 @@ try {
     name: "computer_operation",
     arguments: {
       scope,
-      op: "file.list",
+      op: "file.tree",
       target: ".",
       input: {},
-      options: { maxEntries: 5 },
+      options: { maxDepth: 1, maxEntries: 20 },
     },
   }));
   if (operation?.ok !== true) {
-    throw new Error(`computer_operation file.list failed: ${operation?.error?.message ?? "unknown error"}`);
+    throw new Error(`computer_operation file.tree failed: ${operation?.error?.message ?? "unknown error"}`);
   }
-  console.log("file.list: ok");
+  console.log("file.tree: ok");
 
   const history = toolData(await client.callTool({
     name: "get_operation_history",
     arguments: {
+      scope,
       view: "last",
       limit: 5,
     },
@@ -93,9 +100,8 @@ function readableScope(computerInfo) {
     typeof scope.id === "string" &&
     (
       scope.permissions?.read === true ||
-      scope.allowedOperations?.includes("file.list") ||
-      scope.allowedOperations?.includes("read") ||
-      scope.allowedOperations?.includes("search_text")
+      scope.capabilityPolicy?.capabilities?.includes("fs:read") ||
+      scope.capabilityPolicy?.capabilities?.includes("search:read")
     )
   ))?.id;
 }

@@ -181,11 +181,69 @@ try {
     server.close();
   }
 
+  await assertClientBaseUrlValidation();
+  await assertMinimalMcpClientExample();
   await assertClientContractShape();
 } finally {
   if (originalConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalConfigDir;
   await rm(root, { recursive: true, force: true });
+}
+
+async function assertClientBaseUrlValidation(): Promise<void> {
+  const requests: string[] = [];
+  const fetchMock: typeof fetch = async (input) => {
+    requests.push(String(input));
+    return new Response(JSON.stringify({
+      ok: true,
+      data: {
+        kind: "computer-linker-computer-info",
+        machineName: "url-test",
+        scopes: [],
+      },
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const originClient = new ComputerLinkerClient({
+    baseUrl: "https://computer-linker.example.com",
+    fetch: fetchMock,
+  });
+  await originClient.getComputerInfo();
+  assert.equal(requests.at(-1), "https://computer-linker.example.com/api/v1/control");
+
+  const trailingApiClient = new ComputerLinkerClient({
+    baseUrl: "https://computer-linker.example.com/api/v1/",
+    fetch: fetchMock,
+  });
+  await trailingApiClient.getComputerInfo();
+  assert.equal(requests.at(-1), "https://computer-linker.example.com/api/v1/control");
+
+  await assert.rejects(
+    async () => new ComputerLinkerClient({ baseUrl: "http://127.0.0.1:3939/mcp" }).getComputerInfo(),
+    /baseUrl points to the MCP endpoint.*JSON API.*\/api\/v1/s,
+  );
+  await assert.rejects(
+    async () => new ComputerLinkerClient({ baseUrl: "not a url" }).getComputerInfo(),
+    /baseUrl must be an absolute JSON API URL/,
+  );
+}
+
+async function assertMinimalMcpClientExample(): Promise<void> {
+  const example = await readFile(join(process.cwd(), "examples", "minimal-mcp-client.mjs"), "utf8");
+  assert.doesNotMatch(example, /\?\?\s*process\.argv\[3\]/);
+  assert.match(example, /Do not pass the owner token as a command argument/);
+  assert.doesNotMatch(example, /op:\s*"file\.list"[\s\S]*maxEntries/);
+  assert.match(example, /op:\s*"file\.tree"/);
+  assert.match(example, /options:\s*\{\s*maxDepth:\s*1,\s*maxEntries:\s*20\s*\}/);
+  assert.match(example, /name:\s*"get_computer_info"/);
+  assert.match(example, /name:\s*"computer_operation"/);
+  assert.match(example, /name:\s*"get_operation_history"/);
+  assert.match(example, /scope,\s*\n\s*view:\s*"last"/);
+  assert.doesNotMatch(example, /allowedOperations\?\.includes\("read"\)/);
+  assert.doesNotMatch(example, /allowedOperations\?\.includes\("search_text"\)/);
 }
 
 async function assertClientContractShape(): Promise<void> {

@@ -2110,6 +2110,8 @@ try {
   const clientSmokeHelpText = (await runCliOutput("client", "smoke", "--help")).stdout;
   assert.match(clientSmokeHelpText, /Computer Linker client smoke/);
   assert.match(clientSmokeHelpText, /Use --allow-http only for trusted local loopback tests/);
+  assert.match(clientSmokeHelpText, /COMPUTER_LINKER_TOKEN/);
+  assert.match(clientSmokeHelpText, /--token only for CI or non-interactive automation/);
   const clientDiagnoseHelpText = (await runCliOutput("client", "diagnose", "--help")).stdout;
   assert.match(clientDiagnoseHelpText, /Computer Linker client diagnose/);
   assert.match(clientDiagnoseHelpText, /computer-linker diagnose client/);
