@@ -25,25 +25,45 @@ try {
   const implicit = loadConfig();
   assert.match(implicit.machineId ?? "", /^machine_/);
   assert.equal(implicit.ownerToken, undefined);
-  const implicitRaw = JSON.parse(await readFile(configPath(), "utf8")) as { machineId?: string; ownerToken?: string };
+  assert.deepEqual(implicit.workspaces[0].permissions, {
+    read: true,
+    write: false,
+    shell: false,
+    codex: false,
+    screen: false,
+  });
+  const implicitDiagnostics = configDiagnostics(implicit);
+  assert.ok(implicitDiagnostics.some((finding) => finding.id === "bootstrap-current-read-only" && finding.workspaceId === "current"));
+  const implicitRaw = JSON.parse(await readFile(configPath(), "utf8")) as { machineId?: string; ownerToken?: string; workspaces: Array<{ permissions: { write: boolean; shell: boolean } }> };
   assert.equal(implicitRaw.machineId, implicit.machineId);
   assert.equal(implicitRaw.ownerToken, undefined);
+  assert.equal(implicitRaw.workspaces[0].permissions.write, false);
+  assert.equal(implicitRaw.workspaces[0].permissions.shell, false);
   assert.equal(loadConfig().machineId, implicit.machineId);
 
   await rm(configPath(), { force: true });
   const writtenPath = writeDefaultConfig();
   assert.equal(writtenPath, configPath());
 
-  const rawConfig = JSON.parse(await readFile(writtenPath, "utf8")) as { machineId?: string; ownerToken?: string };
+  const rawConfig = JSON.parse(await readFile(writtenPath, "utf8")) as { machineId?: string; ownerToken?: string; workspaces: Array<{ permissions: { write: boolean; shell: boolean } }> };
   assert.match(rawConfig.machineId ?? "", /^machine_/);
   assert.equal(typeof rawConfig.ownerToken, "string");
   assert.ok((rawConfig.ownerToken ?? "").length >= 32);
+  assert.equal(rawConfig.workspaces[0].permissions.write, false);
+  assert.equal(rawConfig.workspaces[0].permissions.shell, false);
 
   const loaded = loadConfig();
   assert.equal(loaded.machineId, rawConfig.machineId);
   assert.equal(loaded.ownerToken, rawConfig.ownerToken);
   assert.equal(loaded.host, "127.0.0.1");
   assert.equal(loaded.port, 3939);
+  assert.deepEqual(loaded.workspaces[0].permissions, {
+    read: true,
+    write: false,
+    shell: false,
+    codex: false,
+    screen: false,
+  });
 
   await writeFile(configPath(), JSON.stringify({
     machineName: "legacy",
@@ -89,6 +109,21 @@ try {
   assert.ok(diagnostics.some((finding) => finding.id === "workspace-execution-policy-missing" && finding.workspaceId === "runner"));
   assert.ok(diagnostics.some((finding) => finding.id === "workspace-path-missing-on-disk" && finding.workspaceId === "missing" && finding.severity === "critical"));
   assert.ok(diagnostics.some((finding) => finding.id === "workspace-path-duplicate" && finding.workspaceId === "runner-readonly" && finding.severity === "warning"));
+
+  const legacyBootstrapDiagnostics = configDiagnostics({
+    machineName: "diagnostics",
+    host: "127.0.0.1",
+    ownerToken: "token",
+    workspaces: [
+      {
+        id: "current",
+        name: "Current directory",
+        path: process.cwd(),
+        permissions: { read: true, write: true, shell: true, codex: false },
+      },
+    ],
+  });
+  assert.ok(legacyBootstrapDiagnostics.some((finding) => finding.id === "bootstrap-current-legacy-unsafe" && finding.severity === "warning"));
 
   const safeRoot = join(root, "safe");
   await mkdir(safeRoot);

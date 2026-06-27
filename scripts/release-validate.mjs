@@ -202,6 +202,7 @@ assert(changelog.includes("CLI quick reference, agent playbook, and SDK quicksta
 assert(changelog.includes("learning-paths guide"), "CHANGELOG must mention the learning paths guide");
 assert(changelog.includes("SDK computer helper contract is now split into `src/client-computer-helpers.ts`"), "CHANGELOG must mention the SDK helper module split");
 assert(changelog.includes("CLI help and version output now live in `src/cli-help.ts`"), "CHANGELOG must mention the CLI help module split");
+assert(changelog.includes("Fresh bootstrap config created by direct low-level startup now exposes only a\n  read-only `current` scope"), "CHANGELOG must mention safe bootstrap default config");
 assert(changelog.includes("Capability discovery now separates primary MCP/JSON API recommendations"), "CHANGELOG must mention primary/compatibility discovery split");
 assert(changelog.includes("Public MCP-only routing now treats forwarded public requests as public"), "CHANGELOG must mention public MCP-only spoofed host hardening");
 assert(changelog.includes("Owner-token authentication now uses timing-safe comparison"), "CHANGELOG must mention owner-token auth hardening");
@@ -242,6 +243,7 @@ assert(readme.includes("npm run public:release-ready"), "README must document th
 assert(readme.includes("npm run release:publish -- --create-tag --push --otp <code>"), "README must document the local npm release publish wrapper");
 assert(readme.includes("npm run release -- --otp <code>"), "README must document the one-command npm release path");
 assert(readme.includes("current shell has not picked it up yet"), "README must document Windows user-level NODE_AUTH_TOKEN release hydration");
+assert(readme.includes("Direct low-level startup with no existing config creates only a read-only\nbootstrap `current` scope"), "README must document the safe bootstrap default scope");
 assert(readme.includes("npm run release:verify"), "README must document the local npm release verification wrapper");
 assert(readme.includes("push -u origin main --follow-tags"), "README public mirror push command must include the release tag");
 assert(!readme.includes("public:snapshot -- --output ../computer-linker-public --remote <github-owner>/<public-repo>"), "README public snapshot quick path must rely on the default output directory");
@@ -268,6 +270,7 @@ assert(architecture.includes("registry `networkAccess`"), "architecture docs mus
 assert(architecture.includes("`discovery.primary` and `discovery.compatibility`"), "architecture docs must explain primary/compatibility discovery split");
 assert(architecture.includes("src/client-computer-helpers.ts"), "architecture docs must include the SDK helper module boundary");
 assert(architecture.includes("src/cli-help.ts"), "architecture docs must include the CLI help module boundary");
+assert(architecture.includes("bootstrap config exposes the current directory as\nread-only"), "architecture docs must document the safe bootstrap default scope");
 assert(agentInstructionsDoc.includes("Do not treat `network:false` as a network sandbox"), "agent instructions must warn clients about network:false semantics");
 
 const apiCompatibility = readText("docs/api-compatibility.md");
@@ -598,6 +601,13 @@ const capabilityPolicySource = readText("src/capability-policy.ts");
 assert(capabilityPolicySource.includes("networkAccess: operationNetworkAccessPolicy"), "operation capability policy must expose machine-readable networkAccess semantics");
 assert(capabilityPolicySource.includes("networkBlockedByComputerLinker: false"), "networkAccess must avoid implying Computer Linker blocks host network access");
 assert(capabilityPolicySource.includes("network:false is a legacy non-grant marker"), "capability policy notes must clarify network:false semantics");
+const permissionsSource = readText("src/permissions.ts");
+assert(permissionsSource.includes("export function isSafeBootstrapDefaultWorkspace"), "permissions must expose a safe bootstrap workspace predicate");
+assert(permissionsSource.includes("export function isLegacyUnsafeBootstrapDefaultWorkspace"), "permissions must keep a legacy unsafe bootstrap predicate for migration");
+assert(permissionsSource.includes("write: false") && permissionsSource.includes("shell: false"), "default config must keep bootstrap write and shell disabled");
+const configDiagnosticsSource = readText("src/config-diagnostics.ts");
+assert(configDiagnosticsSource.includes("bootstrap-current-read-only"), "config diagnostics must identify safe read-only bootstrap scopes");
+assert(configDiagnosticsSource.includes("bootstrap-current-legacy-unsafe"), "config diagnostics must warn on legacy unsafe bootstrap scopes");
 const cliSource = readText("src/cli.ts");
 const cliHelpSource = readText("src/cli-help.ts");
 assert(cliSource.includes("agent instructions:"), "client setup text output must print copy-pasteable agent instructions");

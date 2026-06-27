@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { expandHomePath } from "./permissions.js";
+import { expandHomePath, isBootstrapDefaultWorkspace, isSafeBootstrapDefaultWorkspace } from "./permissions.js";
 import type { LocalPortConfig, WorkspacePolicy } from "./permissions.js";
 import { loadConfig } from "./config.js";
 import { configPath, generateOwnerToken, writeConfig, writeDefaultConfig } from "./config.js";
@@ -595,6 +595,9 @@ function statusAuthSummary(report: CliStatusReport): string {
 
 function statusWorkspaceSummary(workspaces: CliStatusReport["workspaces"]["items"]): string {
   if (workspaces.length === 0) return "none configured";
+  if (workspaces.length === 1 && isSafeBootstrapDefaultWorkspace(workspaces[0])) {
+    return "bootstrap read-only current directory";
+  }
   const writeCount = workspaces.filter((workspace) => workspace.permissions.write).length;
   const commandCount = workspaces.filter((workspace) => workspace.permissions.shell || workspace.permissions.codex).length;
   const parts = [`${workspaces.length} configured`];
@@ -2880,18 +2883,6 @@ function setupMcpOnlyUsage(): string {
     "       computer-linker setup <https-url> [workspace-path] [--write] [--screen] [--show-token]",
     "Legacy: computer-linker setup mcp-only <https-url|workspace-path> [workspace-path] [...]",
   ].join("\n");
-}
-
-function isBootstrapDefaultWorkspace(workspace: LocalPortConfig["workspaces"][number]): boolean {
-  return workspace.id === "current" &&
-    workspace.name === "Current directory" &&
-    resolve(expandHomePath(workspace.path)) === resolve(process.cwd()) &&
-    workspace.permissions.read === true &&
-    workspace.permissions.write === true &&
-    workspace.permissions.shell === true &&
-    workspace.permissions.codex === false &&
-    Boolean(workspace.permissions.screen) === false &&
-    !workspace.policy;
 }
 
 function removeBootstrapDefaultWorkspacesAfterExplicitSetup(workspaces: WorkspaceConfigEntry[]): {

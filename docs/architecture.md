@@ -43,8 +43,12 @@ display name changes. Inside that connector, the model calls
 `get_computer_info`, chooses one reported scope, and then sends stable
 `computer_operation` envelopes.
 
-When no config file exists, Computer Linker writes a loopback-only default config on
-first load so the `machineId` is durable even before explicit initialization.
+When no config file exists, Computer Linker writes a loopback-only default
+config on first load so the `machineId` is durable even before explicit
+initialization. That bootstrap config exposes the current directory as
+read-only: write, shell, Codex, and screen permissions stay disabled until the
+user runs the product setup path such as `computer-linker here` or
+`computer-linker start <folder>`.
 `computer-linker init` adds an owner token to that existing config when needed.
 `computer-linker config token rotate` replaces the owner token for routine
 credential rotation; `--show-token` is required before the raw token is printed.

@@ -64,14 +64,36 @@ export function defaultConfig(): LocalPortConfig {
         path: process.cwd(),
         permissions: {
           read: true,
-          write: true,
-          shell: true,
+          write: false,
+          shell: false,
           codex: false,
           screen: false,
         },
       },
     ],
   };
+}
+
+export function isBootstrapDefaultWorkspace(workspace: ExposedPathConfig): boolean {
+  return isSafeBootstrapDefaultWorkspace(workspace) || isLegacyUnsafeBootstrapDefaultWorkspace(workspace);
+}
+
+export function isSafeBootstrapDefaultWorkspace(workspace: ExposedPathConfig): boolean {
+  return isBootstrapCurrentDirectoryBase(workspace) &&
+    workspace.permissions.read === true &&
+    workspace.permissions.write === false &&
+    workspace.permissions.shell === false &&
+    workspace.permissions.codex === false &&
+    Boolean(workspace.permissions.screen) === false;
+}
+
+export function isLegacyUnsafeBootstrapDefaultWorkspace(workspace: ExposedPathConfig): boolean {
+  return isBootstrapCurrentDirectoryBase(workspace) &&
+    workspace.permissions.read === true &&
+    workspace.permissions.write === true &&
+    workspace.permissions.shell === true &&
+    workspace.permissions.codex === false &&
+    Boolean(workspace.permissions.screen) === false;
 }
 
 export function expandHomePath(path: string): string {
@@ -81,6 +103,13 @@ export function expandHomePath(path: string): string {
   }
 
   return path;
+}
+
+function isBootstrapCurrentDirectoryBase(workspace: ExposedPathConfig): boolean {
+  return workspace.id === "current" &&
+    workspace.name === "Current directory" &&
+    resolve(expandHomePath(workspace.path)) === resolve(process.cwd()) &&
+    !workspace.policy;
 }
 
 export function normalizeConfig(config: LocalPortConfig): LocalPortConfig {

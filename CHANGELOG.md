@@ -31,6 +31,10 @@ called out even when the package version is still `0.x`.
   values, including bearer headers, `sk-...` API keys, env-style token/key
   assignments, password assignments, and database URLs with inline
   credentials.
+- Fresh bootstrap config created by direct low-level startup now exposes only a
+  read-only `current` scope. Normal coding access remains on `here` and
+  `start <folder>`, which create explicit workspaces with default execution
+  policy.
 
 ## 0.1.11 - 2026-06-27
 

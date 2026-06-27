@@ -593,6 +593,30 @@ try {
     /Unknown status option: --bad/,
   );
 
+  const beforeFreshBootstrapConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
+  process.env.COMPUTER_LINKER_CONFIG_DIR = join(root, "fresh-bootstrap-config");
+  try {
+    const freshBootstrapStatusOutput = (await runCliOutput("status")).stdout;
+    assert.match(freshBootstrapStatusOutput, /workspaces: bootstrap read-only current directory/);
+    const freshBootstrapStatusJson = JSON.parse((await runCliOutput("status", "--json")).stdout) as {
+      workspaces: { total: number; items: Array<{ id: string; permissions: { write: boolean; shell: boolean } }> };
+      readiness: { configWarningCount: number; securityWarningCount: number };
+    };
+    assert.equal(freshBootstrapStatusJson.workspaces.total, 1);
+    assert.equal(freshBootstrapStatusJson.workspaces.items[0].id, "current");
+    assert.equal(freshBootstrapStatusJson.workspaces.items[0].permissions.write, false);
+    assert.equal(freshBootstrapStatusJson.workspaces.items[0].permissions.shell, false);
+    assert.equal(freshBootstrapStatusJson.readiness.configWarningCount, 0);
+    assert.equal(freshBootstrapStatusJson.readiness.securityWarningCount, 0);
+    const freshBootstrapDoctorJson = JSON.parse((await runCliOutput("doctor", "--json")).stdout) as {
+      configDiagnostics: { findings: Array<{ id: string; workspaceId?: string }> };
+    };
+    assert.ok(freshBootstrapDoctorJson.configDiagnostics.findings.some((finding) => finding.id === "bootstrap-current-read-only" && finding.workspaceId === "current"));
+  } finally {
+    if (beforeFreshBootstrapConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
+    else process.env.COMPUTER_LINKER_CONFIG_DIR = beforeFreshBootstrapConfigDir;
+  }
+
   const beforeBootstrapStatusConfig = loadConfig();
   writeConfig({
     machineName: "cli-test",

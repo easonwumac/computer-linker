@@ -1,5 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { isLegacyUnsafeBootstrapDefaultWorkspace, isSafeBootstrapDefaultWorkspace } from "./permissions.js";
 import type { LocalPortConfig } from "./permissions.js";
 
 export type ConfigDiagnosticSeverity = "info" | "warning" | "critical";
@@ -46,6 +47,26 @@ export function configDiagnostics(config: LocalPortConfig): ConfigDiagnostic[] {
   }
 
   for (const workspace of config.workspaces) {
+    if (isSafeBootstrapDefaultWorkspace(workspace)) {
+      findings.push({
+        id: "bootstrap-current-read-only",
+        severity: "info",
+        title: "Bootstrap current-directory scope is read-only",
+        detail: "Direct server startup created a read-only current-directory scope. Use `computer-linker start <folder>` or `computer-linker here` for normal coding access.",
+        workspaceId: workspace.id,
+        path: workspace.path,
+      });
+    } else if (isLegacyUnsafeBootstrapDefaultWorkspace(workspace)) {
+      findings.push({
+        id: "bootstrap-current-legacy-unsafe",
+        severity: "warning",
+        title: "Legacy bootstrap current-directory scope has write and shell access",
+        detail: "Older bootstrap config exposed the current directory with write and shell access. Add an explicit folder with `computer-linker start <folder>`, then run `computer-linker doctor --fix`.",
+        workspaceId: workspace.id,
+        path: workspace.path,
+      });
+    }
+
     const workspaceId = workspace.id?.trim();
     if (!workspaceId) {
       findings.push({

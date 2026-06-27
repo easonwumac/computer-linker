@@ -473,6 +473,10 @@ findings, and `releaseReadiness`.
 scope after explicit scopes exist, remove exact duplicate folder scopes that
 have the same permissions and policy, and add missing default execution policy
 fields for shell/Codex scopes.
+Direct low-level startup with no existing config creates only a read-only
+bootstrap `current` scope. Use `computer-linker here` or
+`computer-linker start <folder>` when you want normal coding access with write
+and approved command permissions.
 `config validate` prints the config/security/release-readiness subset and exits
 non-zero when the release status is blocked.
 `diagnose client` runs client setup checks, a minimal MCP SDK flow, and redacted
