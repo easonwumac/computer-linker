@@ -1,0 +1,247 @@
+import { randomUUID } from "node:crypto";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { executableCommand, shellCommand } from "./platform-shell.js";
+
+const defaultMaxOutputBytes = 128 * 1024;
+
+export interface ManagedProcessSnapshot {
+  processId: string;
+  kind: "shell" | "codex";
+  workspaceId: string;
+  workspaceRoot: string;
+  cwd: string;
+  commandPreview: string;
+  pid?: number;
+  startedAt: string;
+  endedAt?: string;
+  status: "running" | "exited";
+  exitCode: number | null;
+  signal?: string;
+  timedOut: boolean;
+  stdout: string;
+  stderr: string;
+}
+
+interface ManagedProcess extends ManagedProcessSnapshot {
+  child: ChildProcess;
+  timer?: NodeJS.Timeout;
+  maxOutputBytes: number;
+}
+
+const processes = new Map<string, ManagedProcess>();
+
+export function startManagedProcess(input: {
+  kind: ManagedProcessSnapshot["kind"];
+  workspaceId: string;
+  workspaceRoot: string;
+  cwd: string;
+  command: string;
+  args?: string[];
+  commandPreview: string;
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+  stdin?: string;
+}): ManagedProcessSnapshot {
+  const processId = `proc_${randomUUID()}`;
+  const detached = process.platform !== "win32";
+  const command = input.args
+    ? executableCommand(input.command, input.args)
+    : shellCommand(input.command);
+  const child = spawn(command.command, command.args, {
+    cwd: input.cwd,
+    stdio: ["pipe", "pipe", "pipe"],
+    detached,
+    windowsVerbatimArguments: command.windowsVerbatimArguments,
+  });
+  const managed: ManagedProcess = {
+    child,
+    processId,
+    kind: input.kind,
+    workspaceId: input.workspaceId,
+    workspaceRoot: input.workspaceRoot,
+    cwd: input.cwd,
+    commandPreview: input.commandPreview,
+    pid: child.pid,
+    startedAt: new Date().toISOString(),
+    status: "running",
+    exitCode: null,
+    timedOut: false,
+    stdout: "",
+    stderr: "",
+    maxOutputBytes: input.maxOutputBytes ?? defaultMaxOutputBytes,
+  };
+  processes.set(processId, managed);
+  child.stdin.end(input.stdin ?? "");
+
+  child.stdout.on("data", (chunk: Buffer) => {
+    managed.stdout = appendBounded(managed.stdout, chunk.toString("utf8"), managed.maxOutputBytes);
+  });
+  child.stderr.on("data", (chunk: Buffer) => {
+    managed.stderr = appendBounded(managed.stderr, chunk.toString("utf8"), managed.maxOutputBytes);
+  });
+  child.on("exit", (code, signal) => {
+    if (managed.timer) clearTimeout(managed.timer);
+    managed.status = "exited";
+    managed.exitCode = code;
+    managed.signal = signal ?? undefined;
+    managed.endedAt = new Date().toISOString();
+  });
+
+  if (input.timeoutMs && input.timeoutMs > 0) {
+    managed.timer = setTimeout(() => {
+      if (managed.status !== "running") return;
+      managed.timedOut = true;
+      void stopProcess(managed, "SIGTERM");
+    }, input.timeoutMs);
+    managed.timer.unref();
+  }
+
+  return snapshot(managed);
+}
+
+export function listManagedProcesses(input: {
+  workspaceId: string;
+  workspaceRoot: string;
+  kinds?: ManagedProcessSnapshot["kind"][];
+}): ManagedProcessSnapshot[] {
+  return [...processes.values()]
+    .filter((process) => process.workspaceId === input.workspaceId && process.workspaceRoot === input.workspaceRoot)
+    .filter((process) => !input.kinds || input.kinds.includes(process.kind))
+    .map(snapshot)
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+}
+
+export function listAllManagedProcesses(): ManagedProcessSnapshot[] {
+  return [...processes.values()]
+    .map(snapshot)
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+}
+
+export function readManagedProcess(input: {
+  processId: string;
+  workspaceId: string;
+  workspaceRoot: string;
+  kinds?: ManagedProcessSnapshot["kind"][];
+}): ManagedProcessSnapshot {
+  return snapshot(getProcessForWorkspace(input));
+}
+
+export async function stopManagedProcess(input: {
+  processId: string;
+  workspaceId: string;
+  workspaceRoot: string;
+  signal?: string;
+  kinds?: ManagedProcessSnapshot["kind"][];
+}): Promise<ManagedProcessSnapshot> {
+  const process = getProcessForWorkspace(input);
+  return stopProcess(process, normalizeSignal(input.signal));
+}
+
+export async function stopManagedProcessById(processId: string, signal?: string): Promise<ManagedProcessSnapshot> {
+  const process = processes.get(processId);
+  if (!process) throw new Error(`Unknown process: ${processId}`);
+  return stopProcess(process, normalizeSignal(signal));
+}
+
+export async function stopAllManagedProcesses(signal = "SIGTERM"): Promise<ManagedProcessSnapshot[]> {
+  const normalizedSignal = normalizeSignal(signal);
+  return Promise.all([...processes.values()].map((process) => stopProcess(process, normalizedSignal)));
+}
+
+function getProcessForWorkspace(input: {
+  processId: string;
+  workspaceId: string;
+  workspaceRoot: string;
+  kinds?: ManagedProcessSnapshot["kind"][];
+}): ManagedProcess {
+  const process = processes.get(input.processId);
+  if (
+    !process ||
+    process.workspaceId !== input.workspaceId ||
+    process.workspaceRoot !== input.workspaceRoot ||
+    (input.kinds && !input.kinds.includes(process.kind))
+  ) {
+    throw new Error(`Unknown process for workspace: ${input.processId}`);
+  }
+  return process;
+}
+
+async function stopProcess(process: ManagedProcess, signal: NodeJS.Signals): Promise<ManagedProcessSnapshot> {
+  if (process.status !== "running") return snapshot(process);
+  terminateProcessGroup(process, signal);
+  await waitForExit(process, 500);
+  if (signal !== "SIGKILL" && (process.status === "running" || isUnixProcessGroup(process))) {
+    terminateProcessGroup(process, "SIGKILL");
+    await waitForExit(process, 500);
+  }
+  return snapshot(process);
+}
+
+function snapshot(process: ManagedProcess): ManagedProcessSnapshot {
+  return {
+    processId: process.processId,
+    kind: process.kind,
+    workspaceId: process.workspaceId,
+    workspaceRoot: process.workspaceRoot,
+    cwd: process.cwd,
+    commandPreview: process.commandPreview,
+    pid: process.pid,
+    startedAt: process.startedAt,
+    endedAt: process.endedAt,
+    status: process.status,
+    exitCode: process.exitCode,
+    signal: process.signal,
+    timedOut: process.timedOut,
+    stdout: process.stdout,
+    stderr: process.stderr,
+  };
+}
+
+function appendBounded(current: string, next: string, maxOutputBytes: number): string {
+  let output = current + next;
+  while (Buffer.byteLength(output, "utf8") > maxOutputBytes) {
+    output = output.slice(Math.max(1, output.length - maxOutputBytes));
+  }
+  return output;
+}
+
+function normalizeSignal(signal: string | undefined): NodeJS.Signals {
+  if (signal === "SIGKILL" || signal === "SIGINT" || signal === "SIGTERM") return signal;
+  return "SIGTERM";
+}
+
+function terminateProcessGroup(process: ManagedProcess, signal: NodeJS.Signals): void {
+  if (globalThis.process.platform === "win32" && process.pid) {
+    const result = spawnSync("taskkill", ["/pid", String(process.pid), "/t", "/f"], { stdio: "ignore" });
+    if (result.status === 0) return;
+  }
+  if (isUnixProcessGroup(process)) {
+    try {
+      globalThis.process.kill(-process.pid, signal);
+      return;
+    } catch {
+      // Fall back to killing the shell process below.
+    }
+  }
+  process.child.kill(signal);
+}
+
+function isUnixProcessGroup(process: ManagedProcess): process is ManagedProcess & { pid: number } {
+  return Boolean(process.pid && process.child.spawnargs.length && globalThis.process.platform !== "win32");
+}
+
+async function waitForExit(process: ManagedProcess, timeoutMs: number): Promise<boolean> {
+  if (process.status !== "running") return true;
+  return new Promise<boolean>((resolve) => {
+    const onExit = () => {
+      clearTimeout(timeout);
+      resolve(true);
+    };
+    const timeout = setTimeout(() => {
+      process.child.off("exit", onExit);
+      resolve(false);
+    }, timeoutMs);
+    process.child.once("exit", onExit);
+    timeout.unref();
+  });
+}

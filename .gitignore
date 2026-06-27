@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.computer-linker-alpha-evidence.json
+.computer-linker/
+.computer-linker-test/
+.workspace-linker-alpha-evidence.json
+.workspace-linker/
+.workspace-linker-test/
+.localport/

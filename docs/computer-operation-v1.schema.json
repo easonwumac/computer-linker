@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/easonwumac/computer-linker/schemas/computer-operation-v1.schema.json",
+  "title": "Computer Linker computer_operation v1",
+  "description": "Stable request and result envelope for Computer Linker computer_operation.",
+  "type": "object",
+  "required": ["request", "result"],
+  "properties": {
+    "request": {
+      "$ref": "#/$defs/ComputerOperationRequest"
+    },
+    "result": {
+      "oneOf": [
+        { "$ref": "#/$defs/ComputerOperationSuccess" },
+        { "$ref": "#/$defs/ComputerOperationFailure" }
+      ]
+    }
+  },
+  "$defs": {
+    "JsonObject": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "ComputerOperationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "op"],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Configured scope id or name."
+        },
+        "op": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable dotted operation name such as code.context, file.read, git.diff, package.run, command.run, codex.run, or history.last."
+        },
+        "target": {
+          "type": "string",
+          "description": "Primary operation target, such as a path, process id, command working directory, display id, or session id."
+        },
+        "input": {
+          "$ref": "#/$defs/JsonObject",
+          "default": {}
+        },
+        "options": {
+          "$ref": "#/$defs/JsonObject",
+          "default": {}
+        }
+      }
+    },
+    "ComputerOperationSuccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "operationId", "scope", "op", "startedAt", "durationMs", "data"],
+      "properties": {
+        "ok": { "const": true },
+        "operationId": {
+          "type": "string",
+          "pattern": "^op_[0-9a-fA-F-]{36}$"
+        },
+        "scope": { "type": "string" },
+        "op": { "type": "string" },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "data": true,
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+    "ComputerOperationFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "operationId", "scope", "op", "startedAt", "durationMs", "error"],
+      "properties": {
+        "ok": { "const": false },
+        "operationId": {
+          "type": "string",
+          "pattern": "^op_[0-9a-fA-F-]{36}$"
+        },
+        "scope": { "type": "string" },
+        "op": { "type": "string" },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error": {
+          "$ref": "#/$defs/ComputerOperationError"
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+    "ComputerOperationError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "enum": [
+            "invalid_request",
+            "unknown_scope",
+            "unknown_operation",
+            "permission_denied",
+            "path_out_of_scope",
+            "unsupported_platform",
+            "provider_unavailable",
+            "timeout",
+            "process_not_found",
+            "os_permission_required",
+            "execution_failed"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "details": {
+          "$ref": "#/$defs/JsonObject"
+        }
+      }
+    }
+  }
+}

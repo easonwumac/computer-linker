@@ -1,0 +1,54 @@
+{
+  "kind": "computer-linker-alpha-evidence",
+  "schemaVersion": 1,
+  "testedAt": "2026-06-24T00:00:00.000Z",
+  "package": {
+    "name": "computer-linker",
+    "version": "0.1.0"
+  },
+  "git": {
+    "head": "replace-with-tested-git-head",
+    "shortHead": "replace-head"
+  },
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v22.x"
+  },
+  "target": {
+    "client": "External MCP client",
+    "exposure": "openai",
+    "tunnelOrUrl": "redacted-tunnel-id-or-public-origin",
+    "mcpPath": "/mcp",
+    "scope": "app"
+  },
+  "checks": [
+    {
+      "id": "external-mcp-tool-flow",
+      "status": "pass",
+      "evidence": "External MCP client called get_computer_info, computer_operation, and get_operation_history successfully."
+    },
+    {
+      "id": "tunnel-transport",
+      "status": "pass",
+      "evidence": "Tunnel exposure connected from outside 127.0.0.1 and reached the local MCP server."
+    },
+    {
+      "id": "mcp-only-public-surface",
+      "status": "pass",
+      "evidence": "Public exposure allowed /mcp and did not expose /api/v1 or /healthz."
+    },
+    {
+      "id": "operation-history-reviewed",
+      "status": "pass",
+      "evidence": "history --view connections and history --view last showed the expected external MCP session and no secret payloads."
+    },
+    {
+      "id": "client-instructions-usable",
+      "status": "pass",
+      "evidence": "README Agent Instructions produced the expected first operations in the external client."
+    }
+  ],
+  "redactionConfirmed": true,
+  "notes": "Do not store owner tokens, API keys, bearer headers, screenshots, or private file contents in this evidence file."
+}

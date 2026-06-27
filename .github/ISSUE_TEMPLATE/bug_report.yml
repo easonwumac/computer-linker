@@ -1,0 +1,95 @@
+name: Bug report
+description: Report a reproducible Computer Linker problem.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste owner tokens, OAuth tokens, API keys, tunnel IDs, private hostnames, full config files, command output with secrets, or private file contents.
+        For vulnerabilities, follow SECURITY.md instead of opening a detailed public issue.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Package version, git commit, or tarball artifact.
+      placeholder: "0.1.0 or commit SHA"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: "node --version"
+    validations:
+      required: true
+  - type: dropdown
+    id: exposure
+    attributes:
+      label: Server exposure mode
+      options:
+        - Loopback only
+        - Tailscale Funnel
+        - Cloudflare
+        - OpenAI Secure MCP Tunnel
+        - Custom reverse proxy
+        - Stdio/local client only
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: permission
+    attributes:
+      label: Workspace permission mode
+      options:
+        - read-only
+        - write
+        - shell
+        - codex
+        - full
+        - mcp-only
+        - not sure
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Include commands and redacted output only.
+      placeholder: |
+        1. Run ...
+        2. Connect ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Redact tokens, paths, private hostnames, and file contents.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostics
+      description: Include `computer-linker status`, `computer-linker doctor`, or `computer-linker config validate` output after redaction when relevant.
+      render: text
