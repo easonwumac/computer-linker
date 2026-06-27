@@ -174,7 +174,8 @@ contracts, available commands, and the currently configured or detected public
 URL.
 
 `client chatgpt verify` is the ChatGPT-specific readiness gate. It checks the HTTPS
-public base URL, `/mcp` URL, owner-token auth, the minimal four-tool surface,
+public base URL, `/mcp` URL, owner-token auth, the default three-tool MCP
+surface (`get_computer_info`, `computer_operation`, `get_operation_history`),
 workspace availability, security findings, tunnel hints, and whether workspace
 permissions match the intended mode:
 

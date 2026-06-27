@@ -253,6 +253,12 @@ assert(gettingStarted.includes("computer-linker start C:\\Projects\\my-app"), "g
 assert(gettingStarted.includes("computer-linker client setup --show-token"), "getting started tutorial must document trusted local token reveal");
 assert(gettingStarted.includes("get_computer_info") && gettingStarted.includes("computer_operation"), "getting started tutorial must explain the primary MCP tools");
 
+const chatGptSetupDocs = readText("docs/chatgpt-setup.md");
+assert(!/four-tool|four tool|4-tool/i.test(chatGptSetupDocs), "ChatGPT setup docs must not describe the default MCP surface as four-tool");
+for (const tool of ["get_computer_info", "computer_operation", "get_operation_history"]) {
+  assert(chatGptSetupDocs.includes(tool), `ChatGPT setup docs must mention default MCP tool ${tool}`);
+}
+
 const architecture = readText("docs/architecture.md");
 assert(architecture.includes("Implementation Module Map"), "architecture docs must include the implementation module map");
 assert(architecture.includes("Daily setup entrypoints are `computer-linker here`"), "architecture docs must document the here/start CLI boundary");
