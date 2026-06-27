@@ -73,6 +73,9 @@ access, or `--full-trust` only where Codex and screen capture are intended. Add
 `--codex` or `--screen` only for folders where those abilities are intended.
 When shell or Codex access is enabled, Computer Linker also creates a default
 execution policy with command allowlists and runtime/output limits.
+Those host processes are not network sandboxes; `networkAccess` reports that
+Computer Linker does not block host network access. Use OS, container,
+firewall, proxy, or network-layer controls when network isolation matters.
 File content reads and text searches block common sensitive files by default,
 including `.env*`, private keys, credential JSON files, and cloud CLI credential
 directories. Keep real secrets outside exposed folders.

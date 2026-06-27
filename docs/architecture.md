@@ -190,11 +190,17 @@ clients can pick valid operations without reimplementing permission rules.
 more semantic contract for clients, with capabilities such as `git:read`,
 `git:write`, `package:run`, `process:manage`, `codex:readOnly`,
 `codex:write`, `screen:capture`, `network:false`, and `maxRuntimeSeconds`.
+`network:false` is a legacy non-grant marker: it means Computer Linker does
+not grant network as a capability, not that it blocks network access. Check
+`capabilityPolicy.networkAccess` and registry `networkAccess` for the
+machine-readable distinction. Shell, package, process, and Codex host
+processes may still use the host network unless an external OS, container,
+firewall, proxy, or network-layer policy blocks them.
 Clients can also call `explain_operation` inside an opened workspace to
 preflight one operation and receive its required permission, missing permission
 when blocked, required capabilities, missing capabilities, catalog entry, and
-safety boundary metadata. `allowedOperations` is the intersection of the legacy
-workspace permission flag and the derived capability policy.
+safety boundary and network metadata. `allowedOperations` is the intersection
+of the legacy workspace permission flag and the derived capability policy.
 Workspace ids are unique. When exposed paths overlap, direct path matching uses
 the deepest matching configured path; explicit workspace opens by id, name, or
 exact configured path remain exact.
@@ -217,7 +223,7 @@ registry with `workspace_operation_registry` or
 `operation_registry` plus `contract: "workspace"`; that legacy registry is
 built through `registerOperation(...)` and combines operation category,
 permission, schema, run/audit metadata, examples, boundary metadata, required
-capabilities, and runtime limits in one list. Internally,
+capabilities, network access semantics, and runtime limits in one list. Internally,
 `runWorkspaceOperation` resolves the registry entry first and calls its
 registered runner, so the registry is part of the execution path rather than
 only documentation. Older operation groups still share the legacy dispatcher,

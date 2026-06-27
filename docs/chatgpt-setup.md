@@ -57,7 +57,9 @@ such as `npm *`, `pnpm *`, `yarn *`, `bun *`, `node *`, `npx *`, and `git *`;
 
 Use `computer-linker status` for a quick check and `computer-linker doctor`
 before exposing any workspace with `shell` or `codex`; those operations start
-in the workspace but are not OS-level filesystem sandboxes.
+in the workspace but are not OS-level filesystem or network sandboxes. The
+`networkAccess` fields in discovery tell clients whether host processes may
+use the network; Computer Linker does not block that network path by itself.
 
 ## 3. Choose A Tunnel
 

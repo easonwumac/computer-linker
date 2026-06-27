@@ -18,6 +18,7 @@ export interface ComputerOperationRegistryEntry {
   category: "file" | "code" | "git" | "package" | "command" | "process" | "codex" | "history" | "screen";
   permission: PublicWorkspaceOperationRegistryEntry["permission"];
   capabilities: PublicWorkspaceOperationRegistryEntry["capabilities"];
+  networkAccess: PublicWorkspaceOperationRegistryEntry["networkAccess"];
   boundary: PublicWorkspaceOperationRegistryEntry["boundary"];
   description: string;
   target?: string;
@@ -205,6 +206,7 @@ export const computerOperationRegistry: ComputerOperationRegistryEntry[] = compu
     category: definition.category,
     permission: backend.permission,
     capabilities: backend.capabilities,
+    networkAccess: backend.networkAccess,
     boundary: backend.boundary,
     description: definition.description,
     target: definition.target,

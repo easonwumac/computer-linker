@@ -103,6 +103,9 @@ try {
     assert.equal(workspaces.body.data.workspaces[0].allowedOperations.includes("write"), false);
     assert.ok(workspaces.body.data.workspaces[0].capabilityPolicy.capabilities.includes("history:read"));
     assert.ok(workspaces.body.data.workspaces[0].capabilityPolicy.capabilities.includes("network:false"));
+    assert.equal(workspaces.body.data.workspaces[0].capabilityPolicy.networkAccess.mode, "not-required");
+    assert.equal(workspaces.body.data.workspaces[0].capabilityPolicy.networkAccess.hostNetworkMayBeUsed, false);
+    assert.equal(workspaces.body.data.workspaces[0].capabilityPolicy.networkAccess.networkBlockedByComputerLinker, false);
     assert.equal(workspaces.body.data.workspaces[0].allowedOperations.includes("command"), false);
     assert.ok(workspaces.body.data.workspaces.find((workspace: { id: string }) => workspace.id === "runner").allowedOperations.includes("package_run"));
 
@@ -125,12 +128,28 @@ try {
     assert.equal(capabilities.body.data.workspaces[0].capabilityPolicy.capabilities.includes("fs:write"), false);
     assert.ok(capabilities.body.data.workspaces.find((workspace: { id: string }) => workspace.id === "writer").capabilityPolicy.capabilities.includes("git:write"));
     const runnerCapabilities = capabilities.body.data.workspaces.find((workspace: { id: string }) => workspace.id === "runner") as {
-      capabilityPolicy: { capabilities: string[] };
+      capabilityPolicy: {
+        capabilities: string[];
+        networkAccess: {
+          mode: string;
+          hostNetworkMayBeUsed: boolean;
+          networkBlockedByComputerLinker: boolean;
+          externalNetworkControlsRequired: boolean;
+          note: string;
+        };
+      };
       allowedOperations: string[];
     };
     assert.ok(runnerCapabilities.capabilityPolicy.capabilities.includes("screen:capture"));
+    assert.equal(runnerCapabilities.capabilityPolicy.networkAccess.mode, "host-process-may-use-network");
+    assert.equal(runnerCapabilities.capabilityPolicy.networkAccess.hostNetworkMayBeUsed, true);
+    assert.equal(runnerCapabilities.capabilityPolicy.networkAccess.networkBlockedByComputerLinker, false);
+    assert.equal(runnerCapabilities.capabilityPolicy.networkAccess.externalNetworkControlsRequired, true);
+    assert.match(runnerCapabilities.capabilityPolicy.networkAccess.note, /does not grant or block their network access/);
     assert.ok(capabilities.body.data.capabilityPolicy.supportedCapabilities.includes("process:manage"));
     assert.ok(capabilities.body.data.capabilityPolicy.supportedCapabilities.includes("screen:capture"));
+    assert.equal(capabilities.body.data.capabilityPolicy.networkSemantics.legacyCapability, "network:false");
+    assert.equal(capabilities.body.data.capabilityPolicy.networkSemantics.networkBlockedByComputerLinker, false);
     assert.equal(capabilities.body.data.capabilityPolicy.source, "derived-from-workspace-permissions");
     assert.equal(capabilities.body.data.mcpToolSurface.active, "generic");
     assert.deepEqual(capabilities.body.data.mcpTools, [
@@ -163,6 +182,24 @@ try {
     assert.equal(genericFileRead.backendOperation, "read");
     assert.equal(genericFileRead.target, "path");
     assert.ok(genericFileRead.options.includes("maxBytes"));
+    assert.equal(genericFileRead.networkAccess.mode, "not-required");
+    assert.equal(genericFileRead.networkAccess.hostNetworkMayBeUsed, false);
+    const genericFileSearch = capabilities.body.data.computerOperationRegistry.find((entry: { op: string }) => entry.op === "file.search");
+    assert.equal(genericFileSearch.networkAccess.mode, "not-required");
+    const genericCommandRun = capabilities.body.data.computerOperationRegistry.find((entry: { op: string }) => entry.op === "command.run");
+    assert.equal(genericCommandRun.networkAccess.mode, "host-process-may-use-network");
+    assert.equal(genericCommandRun.networkAccess.hostNetworkMayBeUsed, true);
+    assert.equal(genericCommandRun.networkAccess.networkBlockedByComputerLinker, false);
+    assert.equal(genericCommandRun.networkAccess.externalNetworkControlsRequired, true);
+    assert.match(genericCommandRun.networkAccess.note, /does not block host network access/);
+    assert.equal(genericCommandRun.capabilities.includes("network:false"), false);
+    const genericPackageRun = capabilities.body.data.computerOperationRegistry.find((entry: { op: string }) => entry.op === "package.run");
+    assert.equal(genericPackageRun.networkAccess.mode, "host-process-may-use-network");
+    assert.equal(genericPackageRun.capabilities.includes("network:false"), false);
+    const genericCodexRun = capabilities.body.data.computerOperationRegistry.find((entry: { op: string }) => entry.op === "codex.run");
+    assert.equal(genericCodexRun.networkAccess.mode, "host-process-may-use-network");
+    assert.equal(genericCodexRun.networkAccess.networkBlockedByComputerLinker, false);
+    assert.equal(genericCodexRun.capabilities.includes("network:false"), false);
     const genericScreenList = capabilities.body.data.computerOperationRegistry.find((entry: { op: string }) => entry.op === "screen.list");
     assert.equal(genericScreenList.backendOperation, "screen_list");
     assert.ok(genericScreenList.capabilities.includes("screen:capture"));
@@ -730,7 +767,15 @@ try {
     assert.ok(capabilities.body.data.operationRegistry.some((operation: { operation: string; capabilities: string[]; limits?: { maxRuntimeSeconds?: number } }) => (
       operation.operation === "codex_review" &&
       operation.capabilities.includes("codex:readOnly") &&
+      !operation.capabilities.includes("network:false") &&
       operation.limits?.maxRuntimeSeconds === 3600
+    )));
+    assert.ok(capabilities.body.data.operationRegistry.some((operation: { operation: string; networkAccess: { mode: string; hostNetworkMayBeUsed: boolean; networkBlockedByComputerLinker: boolean; note: string } }) => (
+      operation.operation === "codex" &&
+      operation.networkAccess.mode === "host-process-may-use-network" &&
+      operation.networkAccess.hostNetworkMayBeUsed === true &&
+      operation.networkAccess.networkBlockedByComputerLinker === false &&
+      /does not block host network access/.test(operation.networkAccess.note)
     )));
     assert.ok(capabilities.body.data.operationRegistry.some((operation: { operation: string; capabilities: string[] }) => (
       operation.operation === "git_stage" &&
@@ -747,6 +792,15 @@ try {
       operation.operation === "command" &&
       operation.permission === "shell" &&
       operation.requiredFields.includes("command")
+    )));
+    assert.ok(capabilities.body.data.operationRegistry.some((operation: { operation: string; capabilities: string[]; networkAccess: { mode: string; hostNetworkMayBeUsed: boolean; networkBlockedByComputerLinker: boolean; note: string } }) => (
+      operation.operation === "command" &&
+      operation.capabilities.includes("shell:run") &&
+      !operation.capabilities.includes("network:false") &&
+      operation.networkAccess.mode === "host-process-may-use-network" &&
+      operation.networkAccess.hostNetworkMayBeUsed === true &&
+      operation.networkAccess.networkBlockedByComputerLinker === false &&
+      /does not block host network access/.test(operation.networkAccess.note)
     )));
     assert.ok(capabilities.body.data.operationCatalog.some((operation: { operation: string; permission: string; requiredFields: string[]; optionalFields: string[] }) => (
       operation.operation === "package_run" &&

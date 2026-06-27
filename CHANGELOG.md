@@ -24,6 +24,9 @@ called out even when the package version is still `0.x`.
   roots without creating missing directories.
 - npm package metadata now describes Computer Linker as a local MCP server for
   controlled computer operations instead of foregrounding workspace terminology.
+- Capability discovery now exposes explicit `networkAccess` semantics so
+  shell, package, process, and Codex operations are not mistaken for
+  Computer Linker-enforced network sandboxes.
 - README, getting started, architecture, product spec, release checklist, and
   readiness checks now describe the same CI and documentation structure.
 

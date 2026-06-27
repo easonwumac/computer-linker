@@ -20,6 +20,7 @@ export interface CapabilityPolicy {
   version: 1;
   source: "derived-from-workspace-permissions";
   capabilities: CapabilityName[];
+  networkAccess: NetworkAccessPolicy;
   limits: {
     maxRuntimeSeconds: number;
     maxFileBytes: number;
@@ -32,7 +33,20 @@ export interface CapabilityPolicy {
 export interface OperationCapabilityPolicy {
   operation: WorkspaceOperationName;
   capabilities: CapabilityName[];
+  networkAccess: NetworkAccessPolicy;
   limits?: Partial<CapabilityPolicy["limits"]>;
+}
+
+export type NetworkAccessMode = "not-required" | "host-process-may-use-network" | "mixed";
+
+export interface NetworkAccessPolicy {
+  mode: NetworkAccessMode;
+  requiredByComputerLinker: boolean;
+  networkNotGrantedByComputerLinker: boolean;
+  networkBlockedByComputerLinker: boolean;
+  hostNetworkMayBeUsed: boolean;
+  externalNetworkControlsRequired: boolean;
+  note: string;
 }
 
 const DEFAULT_LIMITS: CapabilityPolicy["limits"] = {
@@ -72,10 +86,11 @@ export function workspaceCapabilityPolicy(permissions: PathPermissions): Capabil
     version: 1,
     source: "derived-from-workspace-permissions",
     capabilities: [...capabilities],
+    networkAccess: workspaceNetworkAccessPolicy(permissions),
     limits: DEFAULT_LIMITS,
     notes: [
       "This policy is derived from the current read/write/shell/codex workspace permissions.",
-      "network:false means Computer Linker does not grant network access as a first-class capability; shell, package, and Codex processes may still use the host network if the underlying tools do.",
+      "network:false is a legacy non-grant marker. It is not a network-blocking guarantee; check networkAccess for machine-readable semantics.",
       "maxRuntimeSeconds is the upper bound accepted by Computer Linker for shell, process, package, and Codex timeouts.",
     ],
   };
@@ -87,20 +102,22 @@ export function operationCapabilityPolicy(operation: WorkspaceOperationName): Op
   return {
     operation,
     capabilities,
+    networkAccess: operationNetworkAccessPolicy(operation),
     limits: Object.keys(limits).length > 0 ? limits : undefined,
   };
 }
 
 function operationCapabilities(operation: WorkspaceOperationName): CapabilityName[] {
-  if (operation === "batch") return ["network:false"];
+  if (operation === "batch") return [];
   if (operation === "history" || operation === "history_insight") return ["history:read", "network:false"];
   if (operation === "find_files" || operation === "search_text" || operation === "search_symbols") return ["search:read", "fs:read", "network:false"];
   if (operation.startsWith("git_") || operation === "repo_status" || operation === "git_changes" || operation === "git_diff" || operation === "git_log" || operation === "git_show" || operation === "change_summary") {
     return gitOperationCapabilities(operation);
   }
-  if (operation === "package_run" || operation === "package_start") return ["package:run", "process:manage", "network:false"];
-  if (operation === "command") return ["shell:run", "network:false"];
-  if (operation === "process_start" || operation === "process_list" || operation === "process_read" || operation === "process_stop") return ["process:manage", "network:false"];
+  if (operation === "package_run" || operation === "package_start") return ["package:run", "process:manage"];
+  if (operation === "command") return ["shell:run"];
+  if (operation === "process_start") return ["process:manage"];
+  if (operation === "process_list" || operation === "process_read" || operation === "process_stop") return ["process:manage", "network:false"];
   if (operation === "codex" || operation === "codex_start" || operation === "codex_plan" || operation === "codex_review" || operation === "codex_fix" || operation === "codex_test" || operation === "codex_continue" || operation === "codex_runs") {
     return codexOperationCapabilities(operation);
   }
@@ -122,9 +139,11 @@ function gitOperationCapabilities(operation: WorkspaceOperationName): Capability
 
 function codexOperationCapabilities(operation: WorkspaceOperationName): CapabilityName[] {
   if (operation === "codex_plan" || operation === "codex_review" || operation === "codex_test" || operation === "codex_runs") {
-    return ["codex:readOnly", "process:manage", "network:false"];
+    return operation === "codex_runs"
+      ? ["codex:readOnly", "process:manage", "network:false"]
+      : ["codex:readOnly", "process:manage"];
   }
-  return ["codex:write", "process:manage", "network:false"];
+  return ["codex:write", "process:manage"];
 }
 
 function operationLimits(operation: WorkspaceOperationName): Partial<CapabilityPolicy["limits"]> {
@@ -135,4 +154,93 @@ function operationLimits(operation: WorkspaceOperationName): Partial<CapabilityP
     return { maxRuntimeSeconds: DEFAULT_LIMITS.maxRuntimeSeconds };
   }
   return {};
+}
+
+export function legacyNetworkCapabilitySemantics(): {
+  legacyCapability: "network:false";
+  meaning: string;
+  networkNotGrantedByComputerLinker: true;
+  networkBlockedByComputerLinker: false;
+  externalNetworkControlsRequiredForIsolation: true;
+} {
+  return {
+    legacyCapability: "network:false",
+    meaning: "Computer Linker does not grant network access as a first-class capability. This marker is not a network isolation or firewall guarantee.",
+    networkNotGrantedByComputerLinker: true,
+    networkBlockedByComputerLinker: false,
+    externalNetworkControlsRequiredForIsolation: true,
+  };
+}
+
+function workspaceNetworkAccessPolicy(permissions: PathPermissions): NetworkAccessPolicy {
+  if (permissions.shell || permissions.codex) {
+    return hostProcessNetworkAccessPolicy(
+      "This scope can start shell, package, process, or Codex host processes. Computer Linker does not grant or block their network access; use OS, container, firewall, proxy, or network-layer policy if isolation is required.",
+    );
+  }
+  return localOperationNetworkAccessPolicy("Configured read/write/search/history operations do not require network access from Computer Linker.");
+}
+
+function operationNetworkAccessPolicy(operation: WorkspaceOperationName): NetworkAccessPolicy {
+  if (operation === "batch") {
+    return {
+      mode: "mixed",
+      requiredByComputerLinker: false,
+      networkNotGrantedByComputerLinker: true,
+      networkBlockedByComputerLinker: false,
+      hostNetworkMayBeUsed: true,
+      externalNetworkControlsRequired: true,
+      note: "Batch network behavior depends on child operations. Computer Linker does not block host network access for shell, package, process, or Codex children.",
+    };
+  }
+  if (operation === "command") {
+    return hostProcessNetworkAccessPolicy("Shell commands run as host processes. Computer Linker bounds cwd, runtime, output, and policy patterns, but does not block host network access.");
+  }
+  if (operation === "package_run" || operation === "package_start") {
+    return hostProcessNetworkAccessPolicy("Package scripts run as host processes. Computer Linker checks the configured command policy, but does not block host network access.");
+  }
+  if (operation === "process_start") {
+    return hostProcessNetworkAccessPolicy("Managed processes run as host processes. Computer Linker tracks and can stop them, but does not block host network access.");
+  }
+  if (isCodexExecutionOperation(operation)) {
+    return hostProcessNetworkAccessPolicy("Codex runs as a host process and may invoke tools. Computer Linker bounds cwd, runtime, output, and policy patterns, but does not block host network access.");
+  }
+  if (operation === "process_list" || operation === "process_read" || operation === "process_stop") {
+    return localOperationNetworkAccessPolicy("This operation manages Computer Linker process records and does not itself require network access.");
+  }
+  return localOperationNetworkAccessPolicy("This operation does not require network access from Computer Linker.");
+}
+
+function localOperationNetworkAccessPolicy(note: string): NetworkAccessPolicy {
+  return {
+    mode: "not-required",
+    requiredByComputerLinker: false,
+    networkNotGrantedByComputerLinker: true,
+    networkBlockedByComputerLinker: false,
+    hostNetworkMayBeUsed: false,
+    externalNetworkControlsRequired: false,
+    note,
+  };
+}
+
+function hostProcessNetworkAccessPolicy(note: string): NetworkAccessPolicy {
+  return {
+    mode: "host-process-may-use-network",
+    requiredByComputerLinker: false,
+    networkNotGrantedByComputerLinker: true,
+    networkBlockedByComputerLinker: false,
+    hostNetworkMayBeUsed: true,
+    externalNetworkControlsRequired: true,
+    note,
+  };
+}
+
+function isCodexExecutionOperation(operation: WorkspaceOperationName): boolean {
+  return operation === "codex" ||
+    operation === "codex_start" ||
+    operation === "codex_plan" ||
+    operation === "codex_review" ||
+    operation === "codex_fix" ||
+    operation === "codex_test" ||
+    operation === "codex_continue";
 }

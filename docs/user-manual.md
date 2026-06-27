@@ -213,6 +213,11 @@ If OpenAI tunnel mode returns an organization-context 401, check the API key's
 Platform organization, Tunnels Read + Use permission, and ChatGPT workspace
 association.
 
+Shell, package, process, and Codex operations run as host processes. Computer
+Linker checks scope, command policy, runtime, and output bounds, but it does
+not block host network access; use OS, container, firewall, proxy, or network
+controls when network isolation matters.
+
 For low-level server diagnostics:
 
 ```powershell

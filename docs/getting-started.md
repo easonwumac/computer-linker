@@ -199,6 +199,11 @@ computer-linker workspace list
 computer-linker config policy <workspace-id> --json
 ```
 
+Shell, package, process, and Codex operations run as host processes. Computer
+Linker checks scope, command policy, runtime, and output bounds, but it does
+not block host network access; use OS, container, firewall, proxy, or network
+controls when network isolation matters.
+
 If you need the low-level server mode, use:
 
 ```powershell

@@ -233,6 +233,12 @@ const developerGuide = readText("docs/developer-guide.md");
 assert(developerGuide.includes("ensureWorkspaceRootDirectory"), "developer guide must explain shared workspace root helpers");
 assert(developerGuide.includes("Adding An Operation"), "developer guide must document the operation extension workflow");
 
+const architecture = readText("docs/architecture.md");
+const agentInstructionsDoc = readText("docs/agent-instructions.md");
+assert(architecture.includes("`network:false` is a legacy non-grant marker"), "architecture docs must clarify network:false is not network isolation");
+assert(architecture.includes("registry `networkAccess`"), "architecture docs must mention registry networkAccess semantics");
+assert(agentInstructionsDoc.includes("Do not treat `network:false` as a network sandbox"), "agent instructions must warn clients about network:false semantics");
+
 const minimalMcpClient = readText("examples/minimal-mcp-client.mjs");
 assert(!/\?\?\s*process\.argv\[3\]/.test(minimalMcpClient), "minimal MCP client must not silently accept owner tokens as positional arguments");
 assert(minimalMcpClient.includes("Do not pass the owner token as a command argument"), "minimal MCP client must reject positional token arguments with actionable guidance");
@@ -261,7 +267,6 @@ for (const tool of ["get_computer_info", "computer_operation", "get_operation_hi
   assert(chatGptSetupDocs.includes(tool), `ChatGPT setup docs must mention default MCP tool ${tool}`);
 }
 
-const architecture = readText("docs/architecture.md");
 assert(architecture.includes("Implementation Module Map"), "architecture docs must include the implementation module map");
 assert(architecture.includes("Daily setup entrypoints are `computer-linker here`"), "architecture docs must document the here/start CLI boundary");
 assert(architecture.includes("Operation contract and dispatch"), "architecture docs must describe operation contract module boundaries");
@@ -481,6 +486,10 @@ assert(clientSmokeSource.includes("localHttpSmoke"), "generic MCP client smoke m
 const computerContractSource = readText("src/computer-contract.ts");
 assert(computerContractSource.includes("agentInstructions: genericAgentInstructions"), "client setup must expose copy-pasteable generic agent instructions");
 assert(computerContractSource.includes("Do not call workspace_operation, read, ls, grep, glob, or create_file"), "generic agent instructions must keep compatibility tools opt-in");
+const capabilityPolicySource = readText("src/capability-policy.ts");
+assert(capabilityPolicySource.includes("networkAccess: operationNetworkAccessPolicy"), "operation capability policy must expose machine-readable networkAccess semantics");
+assert(capabilityPolicySource.includes("networkBlockedByComputerLinker: false"), "networkAccess must avoid implying Computer Linker blocks host network access");
+assert(capabilityPolicySource.includes("network:false is a legacy non-grant marker"), "capability policy notes must clarify network:false semantics");
 const cliSource = readText("src/cli.ts");
 assert(cliSource.includes("agent instructions:"), "client setup text output must print copy-pasteable agent instructions");
 assert(!cliSource.includes('case "connect-profile"'), "CLI must not keep connect-profile as a top-level ChatGPT shortcut");
@@ -500,6 +509,7 @@ const computerOperationRegistrySource = readText("src/computer-operation-registr
 for (const op of ["code.context", "code.search_symbols", "git.diff", "package.run", "process.start", "codex.stop"]) {
   assert(computerOperationRegistrySource.includes(`"${op}"`), `computer_operation registry must expose ${op}`);
 }
+assert(computerOperationRegistrySource.includes("networkAccess: backend.networkAccess"), "computer_operation registry must forward networkAccess semantics");
 
 if (tagBuild || args.has("--require-release-tag")) {
   const expectedTag = `v${packageJson.version}`;

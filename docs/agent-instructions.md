@@ -68,6 +68,11 @@ Do not call compatibility tools such as `list_workspaces`, `open_workspace`, or
 Do not assume shell or write access. Computer Linker may expose read-only,
 coding, or full-trust scopes.
 
+Do not treat `network:false` as a network sandbox. For shell, package, process,
+or Codex operations, inspect `networkAccess`; those host processes may use the
+host network unless an external OS, container, firewall, proxy, or network
+policy blocks them.
+
 Default `get_computer_info` redacts full local folder roots. Choose scopes by
 `id` and `name`; do not require absolute local paths before operating. Request
 `include:["roots"]` only when the user explicitly needs local owner diagnostics.

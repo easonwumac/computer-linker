@@ -4,7 +4,7 @@ import { opendir, readFile, stat } from "node:fs/promises";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 import { errorMessage, previewCommand, readAuditEvents, writeAuditEvent, type AuditEvent, type AuditEventInput, type AuditReplayTemplate } from "./audit.js";
 import { readCodexRunRecords, writeCodexRunRecord } from "./codex-runs.js";
-import { operationCapabilityPolicy, workspaceCapabilityPolicy, type CapabilityName, type CapabilityPolicy } from "./capability-policy.js";
+import { operationCapabilityPolicy, workspaceCapabilityPolicy, type CapabilityName, type CapabilityPolicy, type NetworkAccessPolicy } from "./capability-policy.js";
 import { historyInsightFromEvents } from "./history-insights.js";
 import { assertPermission, type PathPermissions, type WorkspacePolicy } from "./permissions.js";
 import { executableCommand, shellCommand } from "./platform-shell.js";
@@ -662,6 +662,7 @@ export interface WorkspaceOperationRegistryEntry extends WorkspaceOperationCatal
   audit: WorkspaceOperationAuditRegistration;
   safetyNote: string;
   capabilities: CapabilityName[];
+  networkAccess: NetworkAccessPolicy;
   limits?: Partial<CapabilityPolicy["limits"]>;
 }
 
@@ -707,6 +708,7 @@ export interface WorkspaceOperationRegistrationInput {
   description: string;
   safetyNote: string;
   capabilities: CapabilityName[];
+  networkAccess: NetworkAccessPolicy;
   limits?: Partial<CapabilityPolicy["limits"]>;
 }
 
@@ -726,6 +728,7 @@ export function registerOperation(input: WorkspaceOperationRegistrationInput): W
     audit: input.audit,
     safetyNote: input.safetyNote,
     capabilities: input.capabilities,
+    networkAccess: input.networkAccess,
     limits: input.limits,
   };
 }
@@ -764,6 +767,7 @@ export function buildWorkspaceOperationRegistry(
       description: entry.description,
       safetyNote: safety.note,
       capabilities: policy.capabilities,
+      networkAccess: policy.networkAccess,
       limits: policy.limits,
     });
   });
@@ -1216,6 +1220,7 @@ function explainOperation(workspace: Workspace, operationName: string): Record<s
     },
     requiredCapabilities: registryEntry.capabilities,
     missingCapabilities: missingCapabilityList,
+    networkAccess: registryEntry.networkAccess,
     catalog: registryEntry,
     registry: registryEntry,
     safety,

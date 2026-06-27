@@ -652,7 +652,9 @@ Examples:
 - `process:manage`
 - `codex:run`
 - `screen:capture`
-- `network:false`
+- `network:false` as a legacy non-grant marker, not a network isolation promise
+- `networkAccess` with `networkBlockedByComputerLinker`,
+  `hostNetworkMayBeUsed`, and `externalNetworkControlsRequired`
 - `maxRuntimeSeconds`
 - `maxOutputBytes`
 - `allowedRoots`
@@ -665,6 +667,8 @@ Default policy should be conservative:
 - no public exposure without owner token.
 - file access limited to configured scopes.
 - command, Codex, and screenshot disabled unless explicitly enabled.
+- network isolation is outside Computer Linker unless an external OS,
+  container, firewall, proxy, or network-layer policy is configured.
 - first-run product setup with an explicit folder should remove the bootstrap
   `current` scope and expose only the requested folder.
 - when product setup enables command or Codex execution, attach a default

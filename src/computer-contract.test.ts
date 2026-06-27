@@ -36,12 +36,50 @@ try {
     ],
   });
   const defaultComputerInfo = getComputerInfo() as {
-    scopes: Array<{ id: string; displayPath: string; roots?: string[]; pathPrivacy: { rootsRedacted: boolean } }>;
+    scopes: Array<{
+      id: string;
+      displayPath: string;
+      roots?: string[];
+      pathPrivacy: { rootsRedacted: boolean };
+      capabilityPolicy: {
+        networkAccess: {
+          mode: string;
+          hostNetworkMayBeUsed: boolean;
+          networkBlockedByComputerLinker: boolean;
+        };
+      };
+    }>;
+    operationRegistry: Array<{
+      op: string;
+      capabilities: string[];
+      networkAccess: {
+        mode: string;
+        hostNetworkMayBeUsed: boolean;
+        networkBlockedByComputerLinker: boolean;
+        note: string;
+      };
+    }>;
   };
   assert.equal(defaultComputerInfo.scopes[0].id, "app");
   assert.equal(defaultComputerInfo.scopes[0].displayPath, "workspace");
   assert.equal(defaultComputerInfo.scopes[0].pathPrivacy.rootsRedacted, true);
+  assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.mode, "not-required");
+  assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.hostNetworkMayBeUsed, false);
+  assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.networkBlockedByComputerLinker, false);
   assert.equal(defaultComputerInfo.scopes[0].roots, undefined);
+  const commandRun = defaultComputerInfo.operationRegistry.find((operation) => operation.op === "command.run");
+  assert.equal(commandRun?.networkAccess.mode, "host-process-may-use-network");
+  assert.equal(commandRun?.networkAccess.hostNetworkMayBeUsed, true);
+  assert.equal(commandRun?.networkAccess.networkBlockedByComputerLinker, false);
+  assert.match(commandRun?.networkAccess.note ?? "", /does not block host network access/);
+  assert.equal(commandRun?.capabilities.includes("network:false"), false);
+  const codexRun = defaultComputerInfo.operationRegistry.find((operation) => operation.op === "codex.run");
+  assert.equal(codexRun?.networkAccess.mode, "host-process-may-use-network");
+  assert.equal(codexRun?.networkAccess.networkBlockedByComputerLinker, false);
+  assert.equal(codexRun?.capabilities.includes("network:false"), false);
+  const fileSearch = defaultComputerInfo.operationRegistry.find((operation) => operation.op === "file.search");
+  assert.equal(fileSearch?.networkAccess.mode, "not-required");
+  assert.equal(fileSearch?.networkAccess.hostNetworkMayBeUsed, false);
   assert.equal(JSON.stringify(defaultComputerInfo).includes(root), false);
 
   const detailedComputerInfo = getComputerInfo({ include: ["roots"] }) as {

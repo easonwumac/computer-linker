@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { arch, cpus, platform, release, totalmem, type } from "node:os";
 import { basename } from "node:path";
-import { workspaceCapabilityPolicy } from "./capability-policy.js";
+import { legacyNetworkCapabilitySemantics, workspaceCapabilityPolicy } from "./capability-policy.js";
 import { computerOperationContract, publicComputerOperationRegistry } from "./computer-operation-registry.js";
 import { configDiagnostics, type ConfigDiagnostic } from "./config-diagnostics.js";
 import { loadConfig } from "./config.js";
@@ -234,6 +234,7 @@ export function getLocalPortCapabilities(): unknown {
         "screen:capture",
         "network:false",
       ],
+      networkSemantics: legacyNetworkCapabilitySemantics(),
       guidance: "Use workspace.capabilityPolicy and computerOperationRegistry[].capabilities before selecting package, process, Git write, shell, screen, or Codex operations.",
     },
     codingCapabilities: {
