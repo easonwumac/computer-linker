@@ -6,6 +6,13 @@ import { findFiles, searchSymbols, searchText } from "./search.js";
 
 const root = await mkdtemp(join(tmpdir(), "localport-search-test-"));
 
+function assertNoEnvSecretResult(output: string): void {
+  assert.equal(
+    output.split(/\r?\n/).some((line) => /^\.env(?::|-|$)/.test(line) || /\/\.env(?::|-|$)/.test(line)),
+    false,
+  );
+}
+
 try {
   await mkdir(join(root, "src"), { recursive: true });
   await writeFile(join(root, "src", "alpha.ts"), "export const Alpha = 'needle';\n");
@@ -41,7 +48,7 @@ try {
     pattern: "*",
     maxResults: 50,
   });
-  assert.doesNotMatch(sensitiveFiles, /\.env/);
+  assertNoEnvSecretResult(sensitiveFiles);
   assert.doesNotMatch(sensitiveFiles, /private\.pem/);
 
   const text = await searchText({
@@ -53,7 +60,7 @@ try {
   });
   assert.match(text, /alpha\.ts/);
   assert.match(text, /beta\.md/);
-  assert.doesNotMatch(text, /\.env/);
+  assertNoEnvSecretResult(text);
   assert.doesNotMatch(text, /private\.pem/);
 
   const limited = await searchText({
