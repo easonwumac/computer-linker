@@ -8,7 +8,7 @@ import { computerOperationContract, publicComputerOperationRegistry, type Comput
 import { computerOperationAuditFields, getComputerInfo, getMcpClientSetup, getOperationHistory, runComputerOperation } from "./computer-contract.js";
 import { loadConfig } from "./config.js";
 import { historyInsight } from "./history-insights.js";
-import { isAuthorizedLocalPortRequest } from "./http-auth.js";
+import { checkAuthorizedLocalPortRequest, waitForAuthBackoff } from "./http-auth.js";
 import { PermissionDeniedError } from "./permissions.js";
 import { parseChatGptProfileMode } from "./profile.js";
 import { listTunnelProcesses } from "./tunnels.js";
@@ -26,15 +26,24 @@ import {
 } from "./workspace-operations.js";
 
 export function registerApiRoutes(app: express.Express): void {
-  app.use("/api/v1", (req, res, next) => {
-    if (!isAuthorizedLocalPortRequest(req, loadConfig().ownerToken)) {
+  app.use("/api/v1", async (req, res, next) => {
+    const auth = checkAuthorizedLocalPortRequest(req, loadConfig().ownerToken);
+    if (!auth.authorized) {
+      await waitForAuthBackoff(auth);
       writeAuthFailureEvent({
         surface: "api",
         method: req.method,
         requestPath: requestPath(req),
         remoteAddress: req.ip,
+        detail: auth.detail,
       });
-      res.status(401).json({ ok: false, error: "Unauthorized" });
+      if (auth.throttled) {
+        res.setHeader("x-computer-linker-auth-backoff-ms", String(auth.backoffMs));
+      }
+      res.status(auth.throttled ? 429 : 401).json({
+        ok: false,
+        error: auth.throttled ? "Too many invalid authentication attempts" : "Unauthorized",
+      });
       return;
     }
     next();

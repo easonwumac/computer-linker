@@ -42,6 +42,9 @@ called out even when the package version is still `0.x`.
 - Public MCP-only routing now treats forwarded public requests as public even
   when a proxy supplies a local-looking `Host` header, while preserving true
   loopback diagnostics.
+- Owner-token authentication now uses timing-safe comparison for direct bearer
+  and compatibility token headers, adds bounded repeated-failure backoff, and
+  keeps provided token values out of auth-failure audit records.
 - README, getting started, architecture, product spec, release checklist, and
   readiness checks now describe the same CI and documentation structure.
 

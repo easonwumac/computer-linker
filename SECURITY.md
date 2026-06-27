@@ -38,6 +38,10 @@ Include:
   scopes.
 - Do not expose HTTP mode outside loopback without an owner token and an
   appropriate tunnel or network access-control layer.
+- Direct owner-token authentication uses timing-safe comparison for bearer and
+  compatibility token headers. Repeated failed owner-token attempts from the
+  same remote address receive a small bounded backoff and are recorded in audit
+  history without storing the provided token value.
 - Public tunnel startup enables MCP-only exposure by default. Public-host or
   forwarded requests can reach `/mcp`; local management routes such as
   `/api/v1` and `/healthz` are only treated as local diagnostics when the TCP

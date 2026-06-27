@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { mcpAuthRouter, getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/sdk/server/auth/router.js";
-import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { checkResourceAllowed, resourceUrlFromServerUrl } from "@modelcontextprotocol/sdk/shared/auth-utils.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import express from "express";
 import type { Request, Response } from "express";
 import * as z from "zod";
@@ -15,7 +15,7 @@ import { workspaceCapabilityPolicy } from "./capability-policy.js";
 import { getLocalPortCapabilities } from "./capabilities.js";
 import { computerOperationAuditFields, getComputerInfo, getOperationHistory, runComputerOperation } from "./computer-contract.js";
 import { loadConfig, oauthStatePath } from "./config.js";
-import { isAuthorizedLocalPortRequest } from "./http-auth.js";
+import { checkAuthorizedLocalPortRequest, recordLocalPortAuthFailure, waitForAuthBackoff } from "./http-auth.js";
 import { mcpToolSurface } from "./mcp-surface.js";
 import { LocalPortOAuthProvider } from "./oauth-provider.js";
 import { workspaceLinkerVersion } from "./package-metadata.js";
@@ -66,6 +66,8 @@ const createOnlyAnnotations = {
   idempotentHint: false,
   openWorldHint: false,
 };
+
+type AuthenticatedRequest = Request & { auth?: AuthInfo };
 
 const looseObjectOutputSchema = z.object({}).passthrough();
 const permissionOutputSchema = z.object({
@@ -605,14 +607,6 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
         { statePath: oauthStatePath() },
       )
     : undefined;
-  const bearerAuth = oauthProvider
-    ? requireBearerAuth({
-        verifier: oauthProvider,
-        requiredScopes: ["computer-linker"],
-        resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceServerUrl),
-      })
-    : undefined;
-
   if (oauthProvider) {
     app.use(
       mcpAuthRouter({
@@ -633,38 +627,55 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
   registerApiRoutes(app);
 
   app.all("/mcp", async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
     let authType: SessionAuthType | undefined;
     const currentOwnerToken = loadConfig().ownerToken;
-    if (isAuthorizedLocalPortRequest(req, currentOwnerToken)) {
+    const ownerTokenAuth = checkAuthorizedLocalPortRequest(req, currentOwnerToken, { recordFailure: false });
+    if (ownerTokenAuth.authorized) {
       // Owner token compatibility path for clients that support custom headers.
-      authType = currentOwnerToken ? "owner-token" : "loopback";
-    } else if (bearerAuth) {
+      authType = ownerTokenAuth.authType ?? (currentOwnerToken ? "owner-token" : "loopback");
+    } else if (oauthProvider) {
       try {
-        await new Promise<void>((resolve, reject) => {
-          bearerAuth(req, res, (error?: unknown) => {
-            if (error) reject(error);
-            else resolve();
-          });
-        });
+        authReq.auth = await verifyOAuthBearerRequest(req, oauthProvider);
       } catch (error) {
-        writeMcpAuthFailure(req, errorMessage(error));
-        if (!res.headersSent) sendJsonRpcError(res, 401, -32001, "Unauthorized");
-        return;
-      }
-      if (res.headersSent) {
-        writeMcpAuthFailure(req, "oauth middleware rejected request");
+        const authFailure = recordLocalPortAuthFailure(req, errorMessage(error));
+        await waitForAuthBackoff(authFailure);
+        writeMcpAuthFailure(req, authFailure.detail ?? "unauthorized");
+        if (authFailure.throttled) {
+          res.setHeader("x-computer-linker-auth-backoff-ms", String(authFailure.backoffMs));
+        }
+        setMcpWwwAuthenticateHeader(res, resourceServerUrl, authFailure.throttled ? "slow_down" : "invalid_token");
+        if (!res.headersSent) {
+          sendJsonRpcError(
+            res,
+            authFailure.throttled ? 429 : 401,
+            authFailure.throttled ? -32002 : -32001,
+            authFailure.throttled ? "Too many invalid authentication attempts" : "Unauthorized",
+          );
+        }
         return;
       }
 
-      if (!req.auth?.resource || !checkResourceAllowed({ requestedResource: req.auth.resource, configuredResource: resourceServerUrl })) {
+      if (!authReq.auth?.resource || !checkResourceAllowed({ requestedResource: authReq.auth.resource, configuredResource: resourceServerUrl })) {
         writeMcpAuthFailure(req, "oauth resource is not allowed");
+        setMcpWwwAuthenticateHeader(res, resourceServerUrl, "invalid_token");
         sendJsonRpcError(res, 401, -32001, "Unauthorized");
         return;
       }
       authType = "oauth";
     } else {
-      writeMcpAuthFailure(req, "unauthorized");
-      sendJsonRpcError(res, 401, -32001, "Unauthorized");
+      const authFailure = recordLocalPortAuthFailure(req, ownerTokenAuth.detail ?? "unauthorized");
+      await waitForAuthBackoff(authFailure);
+      writeMcpAuthFailure(req, authFailure.detail ?? "unauthorized");
+      if (authFailure.throttled) {
+        res.setHeader("x-computer-linker-auth-backoff-ms", String(authFailure.backoffMs));
+      }
+      sendJsonRpcError(
+        res,
+        authFailure.throttled ? 429 : 401,
+        authFailure.throttled ? -32002 : -32001,
+        authFailure.throttled ? "Too many invalid authentication attempts" : "Unauthorized",
+      );
       return;
     }
 
@@ -689,7 +700,7 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
             registerActiveSession({
               id: newSessionId,
               authType: authType ?? "owner-token",
-              clientId: req.auth?.clientId,
+              clientId: authReq.auth?.clientId,
               clientName: initializeClientName(req.body),
               userAgent: req.header("user-agent"),
               remoteAddress: req.ip,
@@ -815,6 +826,42 @@ function hostnameFromHostHeader(host: string): string | undefined {
   const colonCount = (host.match(/:/g) ?? []).length;
   if (colonCount === 1) return host.split(":")[0];
   return host;
+}
+
+async function verifyOAuthBearerRequest(req: Request, oauthProvider: LocalPortOAuthProvider): Promise<AuthInfo> {
+  const token = bearerTokenFromAuthorization(req.header("authorization"));
+  if (!token) throw new Error("Missing or invalid Authorization bearer token");
+
+  const authInfo = await oauthProvider.verifyAccessToken(token);
+  if (!authInfo.scopes.includes("computer-linker")) {
+    throw new Error("Insufficient OAuth scope");
+  }
+  if (typeof authInfo.expiresAt !== "number" || Number.isNaN(authInfo.expiresAt)) {
+    throw new Error("OAuth token has no expiration time");
+  }
+  if (authInfo.expiresAt < Date.now() / 1000) {
+    throw new Error("OAuth token has expired");
+  }
+  return authInfo;
+}
+
+function bearerTokenFromAuthorization(authorization: string | undefined): string | undefined {
+  if (typeof authorization !== "string") return undefined;
+  const [type, token, ...extra] = authorization.split(/\s+/);
+  if (extra.length > 0 || type?.toLowerCase() !== "bearer" || !token) return undefined;
+  return token;
+}
+
+function setMcpWwwAuthenticateHeader(res: Response, resourceServerUrl: URL, error: string): void {
+  res.setHeader(
+    "WWW-Authenticate",
+    [
+      `Bearer error="${error}"`,
+      'error_description="Unauthorized"',
+      'scope="computer-linker"',
+      `resource_metadata="${getOAuthProtectedResourceMetadataUrl(resourceServerUrl)}"`,
+    ].join(", "),
+  );
 }
 
 function initializeClientName(body: unknown): string | undefined {

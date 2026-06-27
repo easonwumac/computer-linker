@@ -16,6 +16,7 @@ const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
 const root = await mkdtemp(join(tmpdir(), "localport-mcp-test-"));
 const configRoot = join(root, "config");
 const workspaceRoot = join(root, "workspace");
+const invalidOwnerToken = "wrong-mcp-owner-token";
 
 try {
   process.env.LOCALPORT_CONFIG_DIR = configRoot;
@@ -101,12 +102,51 @@ async function runHttpMcpFlow(): Promise<void> {
   });
 
   try {
+    await assertHttpMcpAuthBackoff();
     await client.connect(transport);
     await assertMcpToolFlow(client);
   } finally {
     await client.close();
     server.close();
   }
+}
+
+async function assertHttpMcpAuthBackoff(): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await postMcpWithBearer(invalidOwnerToken);
+    assert.equal(response.status, 401);
+    assert.equal(response.body.jsonrpc, "2.0");
+    assert.equal(response.body.error.code, -32001);
+    assert.doesNotMatch(JSON.stringify(response.body), new RegExp(invalidOwnerToken));
+  }
+
+  const throttled = await postMcpWithBearer(invalidOwnerToken);
+  assert.equal(throttled.status, 429);
+  assert.equal(throttled.body.jsonrpc, "2.0");
+  assert.equal(throttled.body.error.code, -32002);
+  assert.match(String(throttled.headers.get("x-computer-linker-auth-backoff-ms")), /^[1-9]\d*$/);
+  assert.doesNotMatch(JSON.stringify(throttled.body), new RegExp(invalidOwnerToken));
+}
+
+async function postMcpWithBearer(token: string): Promise<{ status: number; body: any; headers: Headers }> {
+  const response = await fetch("http://127.0.0.1:3969/mcp", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "invalid-auth-test", version: "0.1.0" },
+      },
+    }),
+  });
+  return { status: response.status, body: await response.json(), headers: response.headers };
 }
 
 async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibility" = "generic"): Promise<void> {

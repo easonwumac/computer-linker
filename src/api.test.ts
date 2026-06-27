@@ -13,6 +13,7 @@ const configRoot = join(root, "config");
 const workspaceRoot = join(root, "workspace");
 const fakeBinRoot = join(root, "bin");
 const baseUrl = "http://127.0.0.1:3959";
+const invalidOwnerToken = "wrong-owner-token";
 
 try {
   process.env.LOCALPORT_CONFIG_DIR = configRoot;
@@ -91,6 +92,33 @@ try {
 
     const unauthenticatedControl = await postJson("/api/v1/control", { action: "get_capabilities" }, false);
     assert.equal(unauthenticatedControl.status, 401);
+
+    const invalidToken = await getJsonWithHeaders("/api/v1/workspaces", {
+      authorization: `Bearer ${invalidOwnerToken}`,
+    });
+    assert.equal(invalidToken.status, 401);
+    assert.equal(invalidToken.body.ok, false);
+    assert.doesNotMatch(JSON.stringify(invalidToken.body), new RegExp(invalidOwnerToken));
+
+    const validHeaderToken = await getJsonWithHeaders("/api/v1/health", {
+      "x-computer-linker-token": "test-token",
+    });
+    assert.equal(validHeaderToken.status, 200);
+    assert.equal(validHeaderToken.body.ok, true);
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const repeatedInvalid = await getJsonWithHeaders("/api/v1/workspaces", {
+        authorization: `Bearer ${invalidOwnerToken}`,
+      });
+      assert.equal(repeatedInvalid.status, 401);
+    }
+    const throttledInvalid = await getJsonWithHeaders("/api/v1/workspaces", {
+      authorization: `Bearer ${invalidOwnerToken}`,
+    });
+    assert.equal(throttledInvalid.status, 429);
+    assert.equal(throttledInvalid.body.ok, false);
+    assert.match(String(throttledInvalid.headers.get("x-computer-linker-auth-backoff-ms")), /^[1-9]\d*$/);
+    assert.doesNotMatch(JSON.stringify(throttledInvalid.body), new RegExp(invalidOwnerToken));
 
     const workspaces = await getJson("/api/v1/workspaces");
     assert.equal(workspaces.status, 200);
@@ -1512,6 +1540,8 @@ try {
       event.requestPath === "/api/v1/workspaces" &&
       event.success === false
     )));
+    assert.ok(authFailures.body.data.events.some((event: { detail?: string }) => event.detail?.includes("throttled")));
+    assert.doesNotMatch(JSON.stringify(authFailures.body.data), new RegExp(invalidOwnerToken));
 
     const historySessions = await control({
       action: "history_insight",
@@ -1602,6 +1632,11 @@ async function getJson(path: string, authenticated = true): Promise<{ status: nu
     headers: authenticated ? authHeaders() : undefined,
   });
   return { status: response.status, body: await response.json() };
+}
+
+async function getJsonWithHeaders(path: string, headers: Record<string, string>): Promise<{ status: number; body: any; headers: Headers }> {
+  const response = await fetch(`${baseUrl}${path}`, { headers });
+  return { status: response.status, body: await response.json(), headers: response.headers };
 }
 
 async function postJson(path: string, body: unknown, authenticated = true): Promise<{ status: number; body: any }> {

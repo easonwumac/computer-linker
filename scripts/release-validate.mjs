@@ -199,6 +199,7 @@ assert(changelog.includes("CLI quick reference, agent playbook, and SDK quicksta
 assert(changelog.includes("SDK computer helper contract is now split into `src/client-computer-helpers.ts`"), "CHANGELOG must mention the SDK helper module split");
 assert(changelog.includes("Capability discovery now separates primary MCP/JSON API recommendations"), "CHANGELOG must mention primary/compatibility discovery split");
 assert(changelog.includes("Public MCP-only routing now treats forwarded public requests as public"), "CHANGELOG must mention public MCP-only spoofed host hardening");
+assert(changelog.includes("Owner-token authentication now uses timing-safe comparison"), "CHANGELOG must mention owner-token auth hardening");
 assert(changelog.includes("Public release audit now blocks tracked or packed\n  `.computer-linker-alpha-evidence.json`"), "CHANGELOG must mention local alpha evidence release audit protection");
 assert(changelog.includes("npm run public:release-ready"), "CHANGELOG must mention the final public release readiness command");
 assert(changelog.includes("Local npm release wrapper commands"), "CHANGELOG must mention local npm release automation");
@@ -375,6 +376,12 @@ assert(serviceMode.includes("Installed Service Smoke Checklist"), "service mode 
 
 const securityPolicy = readText("SECURITY.md");
 assert(securityPolicy.includes("A local-looking `Host` header alone is not trusted"), "security policy must document public MCP-only host-header trust boundaries");
+assert(securityPolicy.includes("Direct owner-token authentication uses timing-safe comparison"), "security policy must document owner-token auth hardening");
+
+const httpAuthSource = readText("src/http-auth.ts");
+assert(httpAuthSource.includes("timingSafeEqual"), "HTTP auth must use timing-safe owner-token comparison");
+assert(httpAuthSource.includes("AUTH_FAILURE_THROTTLE_AFTER"), "HTTP auth must keep bounded repeated-failure throttling");
+assert(!httpAuthSource.includes("=== ownerToken"), "HTTP auth must not compare provided owner tokens with plain string equality");
 
 assert(schemaJson.title === "Computer Linker computer_operation v1", "computer_operation schema title changed unexpectedly");
 assert(schemaJson.$defs?.ComputerOperationRequest, "computer_operation schema must define ComputerOperationRequest");
