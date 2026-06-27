@@ -122,6 +122,13 @@ endpoints. The `toolReadiness` block separates required, recommended, and
 optional local tools so GPT-style clients can explain missing `rg`, `git`,
 `codex`, or package tooling without guessing platform-specific installation
 steps.
+Default `get_computer_info` scope entries intentionally do not include full
+absolute folder roots. They include stable ids, names, a non-absolute
+`displayPath`, permissions, policy, and `pathPrivacy` metadata so remote MCP
+clients can choose a scope without seeing local usernames or directory layout.
+Callers that explicitly need owner-level diagnostics can request
+`include: ["roots"]` or use local `get_capabilities` / `list_workspaces`
+surfaces, which still expose configured paths.
 
 `releaseReadiness` is the productization summary for CLI, API, smoke checks, and
 CI handoff. It combines Node runtime support, config diagnostics, security

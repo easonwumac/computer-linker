@@ -182,7 +182,11 @@ Rules:
 
 - `machineId` must be created once and stay stable.
 - `scope.id` is the stable target clients use.
-- `roots` are required for folder scopes.
+- `roots` are required in durable local config for folder scopes.
+- Default remote-oriented `get_computer_info` discovery must not reveal full
+  local roots. It returns scope id, name, type, permissions, `displayPath`, and
+  `pathPrivacy`; full `roots` require an explicit details request such as
+  `include: ["roots"]` or a local owner diagnostic surface.
 - no operation may silently fall back to unrestricted global access.
 - compatibility config may still store `workspaces`, but runtime should expose
   them as folder-backed scopes.

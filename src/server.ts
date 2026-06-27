@@ -104,7 +104,11 @@ const computerInfoOutputSchema = z.object({
     id: z.string(),
     name: z.string(),
     type: z.string(),
-    roots: z.array(z.string()),
+    displayPath: z.string(),
+    pathPrivacy: z.object({
+      rootsRedacted: z.boolean(),
+    }).passthrough(),
+    roots: z.array(z.string()).optional(),
     permissions: permissionOutputSchema,
     capabilityPolicy: capabilityPolicyOutputSchema,
     allowedOperations: z.array(z.string()),
@@ -214,7 +218,7 @@ export function createLocalPortMcpServer(): McpServer {
       outputSchema: computerInfoOutputSchema,
       annotations: readOnlyAnnotations,
     },
-    async () => auditedToolCall("get_computer_info", {}, async () => toolResponse(getComputerInfo())),
+    async (input) => auditedToolCall("get_computer_info", {}, async () => toolResponse(getComputerInfo(input))),
   );
 
   server.registerTool(

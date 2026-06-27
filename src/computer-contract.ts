@@ -33,6 +33,11 @@ export interface McpClientSetupOptions {
   includeSecrets?: boolean;
 }
 
+export interface ComputerInfoOptions {
+  include?: unknown;
+  includeRoots?: boolean;
+}
+
 export type ComputerOperationErrorCode =
   | "invalid_request"
   | "unknown_scope"
@@ -84,9 +89,10 @@ const genericAgentInstructions = [
   "If tunnel or connection behavior is unclear, inspect get_operation_history before changing anything.",
 ];
 
-export function getComputerInfo(): unknown {
+export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
   const config = loadConfig();
   const registry = new WorkspaceRegistry(config);
+  const includeRoots = shouldIncludeComputerInfoRoots(options);
   const capabilities = getLocalPortCapabilities() as {
     toolReadiness?: unknown;
     exposure?: { publicMcpUrl?: string | null };
@@ -114,16 +120,27 @@ export function getComputerInfo(): unknown {
       localUrl: capabilities.startup?.localMcpUrl ?? `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/mcp`,
       publicUrl: capabilities.exposure?.publicMcpUrl ?? null,
     },
-    scopes: registry.listDefinedWorkspaces().map((workspace) => ({
-      id: workspace.id,
-      name: workspace.name,
-      type: "folder",
-      roots: [workspace.path],
-      permissions: workspace.permissions,
-      policy: workspace.policy ?? {},
-      capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
-      allowedOperations: allowedWorkspaceOperations(workspace.permissions),
-    })),
+    scopes: registry.listDefinedWorkspaces().map((workspace) => {
+      const scope = {
+        id: workspace.id,
+        name: workspace.name,
+        type: "folder",
+        displayPath: displayWorkspacePath(workspace.path, workspace.name, workspace.id),
+        pathPrivacy: {
+          rootsRedacted: !includeRoots,
+          reason: includeRoots
+            ? "Full roots were explicitly requested by this caller."
+            : "Full local roots are redacted from default computer discovery to avoid leaking local usernames, directory layout, or project paths.",
+          fullRootsAvailableWith: { include: ["roots"] },
+          localDiagnostics: "Use local get_capabilities or list_workspaces diagnostics when the owner needs full configured paths.",
+        },
+        permissions: workspace.permissions,
+        policy: workspace.policy ?? {},
+        capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
+        allowedOperations: allowedWorkspaceOperations(workspace.permissions),
+      };
+      return includeRoots ? { ...scope, roots: [workspace.path] } : scope;
+    }),
     tools: {
       ...(capabilities.toolReadiness && typeof capabilities.toolReadiness === "object" ? capabilities.toolReadiness : {}),
       screenshot: screenshotCapability(),
@@ -146,6 +163,26 @@ export function getComputerInfo(): unknown {
       warnings: [],
     },
   };
+}
+
+function shouldIncludeComputerInfoRoots(options: ComputerInfoOptions): boolean {
+  if (options.includeRoots === true) return true;
+  const include = options.include;
+  if (typeof include === "string") {
+    return includeListIncludesRoots([include]);
+  }
+  if (!Array.isArray(include)) return false;
+  return includeListIncludesRoots(include);
+}
+
+function includeListIncludesRoots(include: unknown[]): boolean {
+  return include
+    .map((item) => String(item ?? "").trim().toLowerCase())
+    .some((item) => ["root", "roots", "path", "paths", "localroot", "localroots", "details", "debug"].includes(item));
+}
+
+function displayWorkspacePath(path: string, name: string, id: string): string {
+  return basename(path) || name || id;
 }
 
 export function getMcpClientSetup(options: McpClientSetupOptions = {}): unknown {

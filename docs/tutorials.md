@@ -143,6 +143,7 @@ Choose one returned scope.
 Use computer_operation with dotted operation names from computerOperationRegistry.
 Use get_operation_history when debugging recent activity.
 Prefer read/search/git inspection before write, command, Codex, or screen operations.
+Do not require absolute local roots; default get_computer_info redacts them.
 ```
 
 Typical first read-only operation:

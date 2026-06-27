@@ -144,6 +144,8 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   const computerInfoTool = tools.tools.find((tool) => tool.name === "get_computer_info");
   assert.ok(computerInfoTool);
   assert.equal(computerInfoTool.annotations?.readOnlyHint, true);
+  const computerInfoProperties = Object.keys((computerInfoTool.inputSchema as { properties?: Record<string, unknown> }).properties ?? {});
+  assert.deepEqual(computerInfoProperties.sort(), ["include"]);
 
   const computerOperationTool = tools.tools.find((tool) => tool.name === "computer_operation");
   assert.ok(computerOperationTool);
@@ -180,7 +182,7 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
     kind: string;
     machineName: string;
     service: { version: string };
-    scopes: Array<{ id: string; type: string; allowedOperations: string[] }>;
+    scopes: Array<{ id: string; type: string; displayPath: string; roots?: string[]; pathPrivacy: { rootsRedacted: boolean }; allowedOperations: string[] }>;
     operationContract: { mcp: { tool: string } };
     operationRegistry: Array<{ op: string; backendOperation: string }>;
     compatibility: { genericTools: string[]; workspaceTools: string[] };
@@ -190,6 +192,10 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   assert.equal(computerInfo.service.version, sourcePackageJson.version);
   assert.equal(computerInfo.scopes[0].id, "app");
   assert.equal(computerInfo.scopes[0].type, "folder");
+  assert.equal(computerInfo.scopes[0].displayPath, "workspace");
+  assert.equal(computerInfo.scopes[0].pathPrivacy.rootsRedacted, true);
+  assert.equal(computerInfo.scopes[0].roots, undefined);
+  assert.equal(JSON.stringify(computerInfo).includes(workspaceRoot), false);
   assert.ok(computerInfo.scopes[0].allowedOperations.includes("read"));
   assert.equal(computerInfo.operationContract.mcp.tool, "computer_operation");
   assert.ok(computerInfo.operationRegistry.some((entry) => entry.op === "file.read" && entry.backendOperation === "read"));
@@ -199,6 +205,13 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   assert.ok(computerInfo.compatibility.genericTools.includes("computer_operation"));
   assert.ok(computerInfo.compatibility.workspaceTools.includes("workspace_operation"));
   assert.ok(computerInfo.compatibility.workspaceTools.includes("read"));
+
+  const detailedComputerInfoResult = await client.callTool({ name: "get_computer_info", arguments: { include: ["roots"] } });
+  const detailedComputerInfo = toolJson(detailedComputerInfoResult) as {
+    scopes: Array<{ roots?: string[]; pathPrivacy: { rootsRedacted: boolean } }>;
+  };
+  assert.equal(detailedComputerInfo.scopes[0].pathPrivacy.rootsRedacted, false);
+  assert.deepEqual(detailedComputerInfo.scopes[0].roots, [workspaceRoot]);
 
   const genericReadResult = await client.callTool({
     name: "computer_operation",

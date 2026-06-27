@@ -8,7 +8,7 @@ Linker.
 Call `get_computer_info` before any workspace action. Read:
 
 - available scopes
-- workspace paths and names
+- scope ids, names, display paths, and path privacy
 - permissions
 - `computerOperationRegistry`
 - local/public MCP URL status
@@ -67,3 +67,7 @@ Do not call compatibility tools such as `list_workspaces`, `open_workspace`, or
 
 Do not assume shell or write access. Computer Linker may expose read-only,
 coding, or full-trust scopes.
+
+Default `get_computer_info` redacts full local folder roots. Choose scopes by
+`id` and `name`; do not require absolute local paths before operating. Request
+`include:["roots"]` only when the user explicitly needs local owner diagnostics.

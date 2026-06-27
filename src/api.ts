@@ -100,7 +100,7 @@ async function control(req: Request): Promise<unknown> {
   switch (action) {
     case "get_computer_info":
     case "computer_info":
-      return getComputerInfo();
+      return getComputerInfo(req.body.input && typeof req.body.input === "object" ? req.body.input as Record<string, unknown> : req.body);
     case "client_setup":
     case "mcp_client_setup":
       return getMcpClientSetup({ tunnels: listTunnelProcesses() });

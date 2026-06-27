@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeConfig } from "./config.js";
-import { getMcpClientSetup } from "./computer-contract.js";
+import { getComputerInfo, getMcpClientSetup } from "./computer-contract.js";
 
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
 const originalWorkspaceConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
@@ -26,8 +26,30 @@ try {
     host: "127.0.0.1",
     port: 3991,
     ownerToken: undefined,
-    workspaces: [],
+    workspaces: [
+      {
+        id: "app",
+        name: "Contract app",
+        path: join(root, "workspace"),
+        permissions: { read: true, write: false, shell: false, codex: false, screen: false },
+      },
+    ],
   });
+  const defaultComputerInfo = getComputerInfo() as {
+    scopes: Array<{ id: string; displayPath: string; roots?: string[]; pathPrivacy: { rootsRedacted: boolean } }>;
+  };
+  assert.equal(defaultComputerInfo.scopes[0].id, "app");
+  assert.equal(defaultComputerInfo.scopes[0].displayPath, "workspace");
+  assert.equal(defaultComputerInfo.scopes[0].pathPrivacy.rootsRedacted, true);
+  assert.equal(defaultComputerInfo.scopes[0].roots, undefined);
+  assert.equal(JSON.stringify(defaultComputerInfo).includes(root), false);
+
+  const detailedComputerInfo = getComputerInfo({ include: ["roots"] }) as {
+    scopes: Array<{ roots?: string[]; pathPrivacy: { rootsRedacted: boolean } }>;
+  };
+  assert.equal(detailedComputerInfo.scopes[0].pathPrivacy.rootsRedacted, false);
+  assert.deepEqual(detailedComputerInfo.scopes[0].roots, [join(root, "workspace")]);
+
   const localSetup = getMcpClientSetup({ tunnels: [] }) as {
     ready: boolean;
     localReady: boolean;

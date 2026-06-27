@@ -78,6 +78,11 @@ export interface WorkspaceLinkerOperationHistoryFilters {
   query?: string;
 }
 
+export interface WorkspaceLinkerComputerInfoOptions {
+  include?: string[];
+  includeRoots?: boolean;
+}
+
 export interface WorkspaceLinkerOperationRegistryFilters {
   contract?: "computer" | "workspace";
   compatibility?: "workspace";
@@ -197,8 +202,8 @@ export class WorkspaceLinkerClient {
     return this.control("doctor") as Promise<T>;
   }
 
-  async getComputerInfo<T = unknown>(): Promise<T> {
-    return this.control("get_computer_info") as Promise<T>;
+  async getComputerInfo<T = unknown>(options: WorkspaceLinkerComputerInfoOptions = {}): Promise<T> {
+    return this.control("get_computer_info", { ...options }) as Promise<T>;
   }
 
   async clientSetup<T = unknown>(): Promise<T> {
