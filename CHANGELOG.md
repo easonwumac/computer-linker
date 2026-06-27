@@ -22,6 +22,8 @@ called out even when the package version is still `0.x`.
 - Workspace root handling is now split into a shared helper module: CLI setup
   commands create explicit roots, while MCP workspace open validates configured
   roots without creating missing directories.
+- npm package metadata now describes Computer Linker as a local MCP server for
+  controlled computer operations instead of foregrounding workspace terminology.
 - README, getting started, architecture, product spec, release checklist, and
   readiness checks now describe the same CI and documentation structure.
 

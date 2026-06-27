@@ -1,7 +1,7 @@
 {
   "name": "@easonwumac/computer-linker",
   "version": "0.1.11",
-  "description": "One computer, one permissioned MCP linker for local workspaces.",
+  "description": "Local MCP server for controlled computer operations.",
   "type": "module",
   "main": "dist/client.js",
   "types": "dist/client.d.ts",
@@ -17,10 +17,11 @@
   "keywords": [
     "mcp",
     "mcp-server",
-    "workspace",
+    "computer",
     "codex",
     "local-first",
-    "automation"
+    "automation",
+    "screenshot"
   ],
   "repository": {
     "type": "git",

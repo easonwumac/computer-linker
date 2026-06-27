@@ -78,10 +78,12 @@ const schemaJson = readJson("docs/computer-operation-v1.schema.json");
 
 assert(packageJson.name === "@easonwumac/computer-linker", "package name must be @easonwumac/computer-linker");
 assert(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(packageJson.version), `package version is not semver-like: ${packageJson.version}`);
+assert(packageJson.description === "Local MCP server for controlled computer operations.", "package description must describe the Computer Linker product model");
 const packageKeywords = new Set(packageJson.keywords ?? []);
-for (const keyword of ["mcp", "mcp-server", "workspace", "codex", "local-first", "automation"]) {
+for (const keyword of ["mcp", "mcp-server", "computer", "codex", "local-first", "automation", "screenshot"]) {
   assert(packageKeywords.has(keyword), `package.json keywords must include ${keyword}`);
 }
+assert(!packageKeywords.has("workspace"), "package.json keywords must not position the package as workspace-first");
 assert(!packageKeywords.has("chatgpt"), "package.json keywords must not position ChatGPT as the product axis");
 assert(lockJson.name === packageJson.name, "package-lock root name must match package.json");
 assert(lockJson.version === packageJson.version, "package-lock root version must match package.json");
