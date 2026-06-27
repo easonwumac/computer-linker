@@ -94,7 +94,7 @@ try {
   const releaseChangelogCheck = undatedChangelogReport.checks.find((check) => check.id === "release-changelog");
   assert.equal(releaseChangelogCheck?.status, "fail");
   assert.match(releaseChangelogCheck?.message ?? "", /must be dated/);
-  assert.match(releaseChangelogCheck?.detail ?? "", /## 0\.1\.0 - YYYY-MM-DD/);
+  assert.match(releaseChangelogCheck?.detail ?? "", new RegExp(`## ${escapeRegex(packageJson.version)} - YYYY-MM-DD`));
   assert.match(undatedChangelogReport.nextActions.join("\n"), /Date the CHANGELOG\.md heading/);
   writeFileSync(changelogPath, changelogBackup, "utf8");
   changelogTouched = false;
