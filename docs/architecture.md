@@ -188,9 +188,16 @@ manual cleanup decision.
 
 ## Scope And Permission Model
 
-The product spec uses **scope** as the public term. A current workspace is a
-folder-backed scope kept for compatibility while the implementation moves toward
-the generic computer-control contract.
+The product spec uses **scope** as the public term. Durable config now uses
+`scopes[]` as the primary model. Current entries are `type:"folder"` scopes;
+future non-folder scope providers, such as broader computer or screen scopes,
+belong in the same `scopes[]` array.
+
+`workspaces[]` remains a `0.x` compatibility mirror for existing folder-backed
+integrations and tools. Legacy `workspaces[]`-only configs load normally. When
+both `scopes[]` and `workspaces[]` are present, `scopes[]` is the source of
+truth. CLI writes save both fields synchronized so old clients can continue to
+read `workspaces[]` during the migration.
 
 Permissions live on predefined scopes, not on individual tool calls. The
 current compatibility flags are:

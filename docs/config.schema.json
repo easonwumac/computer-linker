@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/easonwumac/computer-linker/schemas/config.schema.json",
   "title": "Computer Linker config.json",
-  "description": "Durable Computer Linker configuration. Normal setup commands write this file automatically; the schema is for manual editing, service deployments, and diagnostics.",
+  "description": "Durable Computer Linker configuration. Normal setup commands write this file automatically; the schema is for manual editing, service deployments, and diagnostics. scopes[] is the primary config model; workspaces[] is a 0.x compatibility mirror.",
   "type": "object",
   "properties": {
     "machineId": {
@@ -40,7 +40,147 @@
       "type": "string",
       "minLength": 1
     },
+    "scopes": {
+      "description": "Primary configured scopes. Today Computer Linker supports folder scopes; future non-folder scopes will be added here.",
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable scope id used by MCP clients."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-friendly scope name."
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Folder path exposed by this scope. ~ is expanded by Computer Linker."
+          },
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "read": {
+                "type": "boolean",
+                "description": "Allow file reads and read-only project inspection."
+              },
+              "write": {
+                "type": "boolean",
+                "description": "Allow file creation, edits, moves, and deletes inside the configured scope."
+              },
+              "shell": {
+                "type": "boolean",
+                "description": "Allow command and package-script execution inside the configured scope."
+              },
+              "codex": {
+                "type": "boolean",
+                "description": "Allow Codex operations inside the configured scope."
+              },
+              "screen": {
+                "description": "Allow screenshot operations when a runtime provider is available.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "read",
+              "write",
+              "shell",
+              "codex"
+            ],
+            "additionalProperties": false,
+            "description": "Permission flags for one folder-backed scope."
+          },
+          "policy": {
+            "type": "object",
+            "properties": {
+              "maxRuntimeSeconds": {
+                "description": "Maximum runtime for command-like operations in seconds.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 86400
+              },
+              "maxOutputBytes": {
+                "description": "Maximum captured stdout/stderr bytes for command-like operations.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10485760
+              },
+              "allowedCommands": {
+                "description": "Command allow patterns such as npm *, pnpm *, node *, or git *.",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "deniedCommands": {
+                "description": "Command deny patterns that take precedence over allowedCommands.",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "allowedPackageScripts": {
+                "description": "package.json script-name allow patterns such as test, build, or build:*. When absent, package scripts keep legacy command-policy-only behavior.",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "deniedPackageScripts": {
+                "description": "package.json script-name deny patterns such as deploy, publish, or release:*. These take precedence over allowedPackageScripts.",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "allowShellMetacharacters": {
+                "description": "Allow command chaining, pipes, redirects, and shell metacharacters before allowlist evaluation.",
+                "type": "boolean"
+              },
+              "allowSensitivePathMetadata": {
+                "description": "Allow list/tree/stat style metadata for secret-like path names.",
+                "type": "boolean"
+              },
+              "allowSensitivePathWrites": {
+                "description": "Allow write, patch, move, and delete operations for secret-like paths.",
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "description": "Optional execution and sensitive-path policy for one scope."
+          },
+          "type": {
+            "type": "string",
+            "const": "folder",
+            "description": "Scope provider type. Future non-folder scope types will live in scopes[] next to folder scopes."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "path",
+          "permissions",
+          "type"
+        ],
+        "additionalProperties": false,
+        "description": "A folder-backed Computer Linker scope. This is the primary durable scopes[] shape."
+      }
+    },
     "workspaces": {
+      "description": "0.x compatibility mirror of folder scopes. New Computer Linker writes keep this synchronized for older clients.",
       "minItems": 1,
       "type": "array",
       "items": {
@@ -169,20 +309,29 @@
           "permissions"
         ],
         "additionalProperties": false,
-        "description": "A folder-backed Computer Linker scope. The durable 0.x config field is workspaces[]."
-      },
-      "description": "Configured folder-backed scopes. Product docs call these scopes; workspaces[] remains the durable 0.x config field."
+        "description": "A folder-backed Computer Linker scope without the scope type field. This is the 0.x workspaces[] compatibility shape."
+      }
     }
   },
-  "required": [
-    "workspaces"
-  ],
   "additionalProperties": false,
+  "anyOf": [
+    {
+      "required": [
+        "scopes"
+      ]
+    },
+    {
+      "required": [
+        "workspaces"
+      ]
+    }
+  ],
   "examples": [
     {
       "machineName": "office",
-      "workspaces": [
+      "scopes": [
         {
+          "type": "folder",
           "id": "app",
           "name": "App",
           "path": "C:\\Projects\\my-app",
@@ -201,8 +350,9 @@
       "ownerToken": "replace-with-generated-token",
       "publicMcpOnly": true,
       "publicBaseUrl": "https://mcp.example.com",
-      "workspaces": [
+      "scopes": [
         {
+          "type": "folder",
           "id": "app",
           "name": "App",
           "path": "C:\\Projects\\my-app",
@@ -250,8 +400,9 @@
     },
     {
       "machineName": "office",
-      "workspaces": [
+      "scopes": [
         {
+          "type": "folder",
           "id": "codex-app",
           "name": "Codex App",
           "path": "C:\\Projects\\my-app",

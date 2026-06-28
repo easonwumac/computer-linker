@@ -42,6 +42,11 @@ export interface ConnectionProfile {
   machineName: string;
   configPath: string;
   configSources: RuntimeConfigSources;
+  configModel: {
+    primaryField: "scopes";
+    compatibilityField: "workspaces";
+    writeRule: string;
+  };
   stdio: {
     command: string;
     args: string[];
@@ -179,6 +184,11 @@ export function connectionProfile(config: LocalPortConfig, includeSecrets = fals
     machineName: config.machineName,
     configPath: configPath(),
     configSources,
+    configModel: {
+      primaryField: "scopes",
+      compatibilityField: "workspaces",
+      writeRule: "Computer Linker writes both scopes[] and workspaces[] during 0.x; scopes[] is the source of truth when both are present in config.json.",
+    },
     stdio: {
       command: "computer-linker",
       args: ["serve"],

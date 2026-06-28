@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { loadConfig } from "./config.js";
-import type { LocalPortConfig } from "./permissions.js";
+import { normalizeConfig, type LocalPortConfigInput } from "./permissions.js";
 import { executableCommand, windowsVerbatimArgumentsOption } from "./platform-shell.js";
 
 export type SecuritySeverity = "info" | "warning" | "critical";
@@ -13,7 +13,8 @@ export interface SecurityFinding {
   workspaceId?: string;
 }
 
-export function securityDiagnostics(config: LocalPortConfig = loadConfig()): SecurityFinding[] {
+export function securityDiagnostics(input: LocalPortConfigInput = loadConfig()): SecurityFinding[] {
+  const config = normalizeConfig(input, "workspaces");
   const findings: SecurityFinding[] = [];
   const host = config.host ?? "127.0.0.1";
   const ownerTokenConfigured = Boolean(config.ownerToken);

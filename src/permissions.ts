@@ -31,6 +31,17 @@ export interface ExposedPathConfig {
   policy?: WorkspacePolicy;
 }
 
+export interface FolderScopeConfig extends ExposedPathConfig {
+  type: "folder";
+}
+
+export type ScopeConfig = FolderScopeConfig;
+
+export type LocalPortConfigInput = Omit<Partial<LocalPortConfig>, "scopes" | "workspaces"> & {
+  scopes?: Array<ScopeConfig | (ExposedPathConfig & { type?: "folder" })>;
+  workspaces?: ExposedPathConfig[];
+};
+
 export interface LocalPortConfig {
   machineId?: string;
   machineName: string;
@@ -39,10 +50,15 @@ export interface LocalPortConfig {
   publicBaseUrl?: string;
   publicMcpOnly?: boolean;
   ownerToken?: string;
+  scopes: ScopeConfig[];
   workspaces: ExposedPathConfig[];
 }
 
 export interface ResolvedExposedPath extends ExposedPathConfig {
+  path: string;
+}
+
+export interface ResolvedFolderScope extends FolderScopeConfig {
   path: string;
 }
 
@@ -57,7 +73,7 @@ export class PermissionDeniedError extends OperationError {
 }
 
 export function defaultConfig(): LocalPortConfig {
-  return {
+  return normalizeConfig({
     machineId: generateMachineId(),
     machineName: hostname().trim() || "local-computer",
     host: "127.0.0.1",
@@ -79,7 +95,7 @@ export function defaultConfig(): LocalPortConfig {
         },
       },
     ],
-  };
+  }, "workspaces");
 }
 
 export function isBootstrapDefaultWorkspace(workspace: ExposedPathConfig): boolean {
@@ -120,9 +136,10 @@ function isBootstrapCurrentDirectoryBase(workspace: ExposedPathConfig): boolean 
     !workspace.policy;
 }
 
-export function normalizeConfig(config: LocalPortConfig): LocalPortConfig {
-  const workspaces = config.workspaces.map((entry) => ({
+export function normalizeConfig(config: LocalPortConfigInput, scopeSource: "scopes" | "workspaces" = "scopes"): LocalPortConfig {
+  const scopes = scopeInputs(config, scopeSource).map((entry) => ({
     ...entry,
+    type: "folder" as const,
     id: entry.id.trim(),
     name: entry.name.trim() || entry.id.trim(),
     path: resolve(expandHomePath(entry.path)),
@@ -135,7 +152,8 @@ export function normalizeConfig(config: LocalPortConfig): LocalPortConfig {
     },
     policy: normalizeWorkspacePolicy(entry.policy),
   }));
-  assertUniqueWorkspaceIds(workspaces);
+  assertUniqueWorkspaceIds(scopes);
+  const workspaces = scopes.map(folderScopeToWorkspace);
 
   return {
     machineId: config.machineId?.trim() || generateMachineId(),
@@ -145,7 +163,44 @@ export function normalizeConfig(config: LocalPortConfig): LocalPortConfig {
     publicBaseUrl: config.publicBaseUrl?.trim() || undefined,
     publicMcpOnly: Boolean(config.publicMcpOnly),
     ownerToken: config.ownerToken?.trim() || undefined,
+    scopes,
     workspaces,
+  };
+}
+
+function scopeInputs(config: LocalPortConfigInput, source: "scopes" | "workspaces"): Array<ScopeConfig | (ExposedPathConfig & { type?: "folder" })> {
+  const hasScopes = Array.isArray(config.scopes);
+  const hasWorkspaces = Array.isArray(config.workspaces);
+  if (source === "workspaces" && hasWorkspaces) {
+    return config.workspaces!.map(workspaceToFolderScope);
+  }
+  if (hasScopes) {
+    return config.scopes!.map((entry) => {
+      const type = entry.type ?? "folder";
+      if (type !== "folder") throw new Error(`Unsupported scope type: ${String(type)}`);
+      return { ...entry, type };
+    });
+  }
+  if (hasWorkspaces) {
+    return config.workspaces!.map(workspaceToFolderScope);
+  }
+  return [];
+}
+
+export function workspaceToFolderScope(workspace: ExposedPathConfig): FolderScopeConfig {
+  return {
+    ...workspace,
+    type: "folder",
+  };
+}
+
+export function folderScopeToWorkspace(scope: ScopeConfig): ExposedPathConfig {
+  return {
+    id: scope.id,
+    name: scope.name,
+    path: scope.path,
+    permissions: scope.permissions,
+    policy: scope.policy,
   };
 }
 

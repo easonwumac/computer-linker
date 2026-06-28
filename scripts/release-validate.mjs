@@ -403,9 +403,13 @@ assert(schemaJson.$defs?.ComputerOperationRequest, "computer_operation schema mu
 assert(schemaJson.$defs?.ComputerOperationSuccess, "computer_operation schema must define ComputerOperationSuccess");
 assert(schemaJson.$defs?.ComputerOperationFailure, "computer_operation schema must define ComputerOperationFailure");
 assert(configSchemaJson.$id === "https://github.com/easonwumac/computer-linker/schemas/config.schema.json", "config schema id must be stable");
-assert(configSchemaJson.properties?.workspaces?.type === "array", "config schema must document workspaces[] scopes");
-assert(configSchemaJson.properties?.workspaces?.items?.properties?.permissions?.required?.includes("read"), "config schema must require permission booleans");
-assert(configSchemaJson.properties?.workspaces?.items?.properties?.policy?.properties?.allowSensitivePathWrites?.type === "boolean", "config schema must include sensitive path policy fields");
+assert(configSchemaJson.properties?.scopes?.type === "array", "config schema must document primary scopes[] config");
+assert(configSchemaJson.properties?.scopes?.items?.properties?.type?.const === "folder", "config schema must document folder scope type");
+assert(configSchemaJson.properties?.scopes?.items?.properties?.permissions?.required?.includes("read"), "config schema must require scope permission booleans");
+assert(configSchemaJson.properties?.scopes?.items?.properties?.policy?.properties?.allowSensitivePathWrites?.type === "boolean", "config schema must include sensitive path policy fields");
+assert(configSchemaJson.properties?.workspaces?.type === "array", "config schema must document workspaces[] compatibility scopes");
+assert(configSchemaJson.anyOf?.some((entry) => entry.required?.includes("scopes")), "config schema must accept scopes[] as the primary config field");
+assert(configSchemaJson.anyOf?.some((entry) => entry.required?.includes("workspaces")), "config schema must accept legacy workspaces[] configs");
 
 const ciWorkflow = readText(".github/workflows/ci.yml");
 assertBoundedCiActionsWorkflow(ciWorkflow, "CI");

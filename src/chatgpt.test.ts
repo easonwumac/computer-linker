@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chatGptMcpServerUrl, chatGptPublicBaseUrl, chatGptSetupStatus, chatGptUrl } from "./chatgpt.js";
-import type { LocalPortConfig } from "./permissions.js";
+import { normalizeConfig, type LocalPortConfig } from "./permissions.js";
 import type { TunnelProcessSnapshot } from "./tunnels.js";
 
 const originalConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
@@ -45,12 +45,12 @@ assert.equal(chatGptMcpServerUrl({ publicBaseUrl: "https://configured.example.co
 assert.equal(chatGptPublicBaseUrl({ publicBaseUrl: undefined }, [stoppedTunnel, runningTunnel]), "https://running.trycloudflare.com");
 assert.equal(chatGptPublicBaseUrl({ publicBaseUrl: "https://configured.example.com" }, [stoppedTunnel]), "https://configured.example.com");
 
-const config: LocalPortConfig = {
+const config: LocalPortConfig = normalizeConfig({
   machineName: "test",
   ownerToken: "secret",
   publicBaseUrl: "https://configured.example.com",
   workspaces: [],
-};
+}, "workspaces");
 
 assert.deepEqual(chatGptUrl(config).authHeader, "Authorization: Bearer <ownerToken>");
 assert.deepEqual(chatGptUrl(config, true).authHeader, "Authorization: Bearer secret");

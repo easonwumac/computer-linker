@@ -180,6 +180,11 @@ function workspacesData(): unknown {
   return {
     machineId: config.machineId,
     machineName: config.machineName,
+    compatibility: {
+      primaryConfigField: "scopes",
+      primaryOperationTool: "computer_operation",
+      note: "workspaces is a 0.x compatibility view of folder scopes.",
+    },
     workspaces: registry.listDefinedWorkspaces().map((workspace) => ({
       ...workspace,
       capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),

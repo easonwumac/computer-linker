@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { expandHomePath, isBootstrapDefaultWorkspace, isSafeBootstrapDefaultWorkspace } from "./permissions.js";
+import { expandHomePath, isBootstrapDefaultWorkspace, isSafeBootstrapDefaultWorkspace, normalizeConfig } from "./permissions.js";
 import type { LocalPortConfig, WorkspacePolicy } from "./permissions.js";
 import { configPath, generateOwnerToken, loadConfig, loadConfigFile, runtimeConfigSources, writeConfig, writeDefaultConfig } from "./config.js";
 import { validateConfigFileAt, type ConfigSchemaValidation } from "./config-schema.js";
@@ -286,7 +286,7 @@ async function selfTest(args: string[], commandLabel = "self-test"): Promise<voi
     const port = await findAvailableLoopbackPort();
     process.env.COMPUTER_LINKER_CONFIG_DIR = configDir;
     delete process.env.LOCALPORT_CONFIG_DIR;
-    const config: LocalPortConfig = {
+    const config: LocalPortConfig = normalizeConfig({
       machineName: "computer-linker-self-test",
       host: "127.0.0.1",
       port,
@@ -299,7 +299,7 @@ async function selfTest(args: string[], commandLabel = "self-test"): Promise<voi
           permissions: { read: true, write: false, shell: false, codex: false },
         },
       ],
-    };
+    }, "workspaces");
     writeConfig(config);
     server = serveHttp();
     await waitForSelfTestServer(`http://127.0.0.1:${port}`, timeoutMs);

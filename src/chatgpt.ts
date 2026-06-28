@@ -2,7 +2,7 @@ import { securityDiagnostics } from "./security.js";
 import { listTunnelProcesses, tunnelDiagnostics, type TunnelProcessSnapshot } from "./tunnels.js";
 import { chatGptConnectProfile, parseChatGptProfileMode } from "./profile.js";
 import type { ChatGptProfileMode } from "./profile.js";
-import type { LocalPortConfig } from "./permissions.js";
+import { normalizeConfig, type LocalPortConfig, type LocalPortConfigInput } from "./permissions.js";
 import { runWorkspaceLinkerMcpClientSmoke } from "./client-smoke.js";
 import type { WorkspaceLinkerClientSmokeCheck } from "./client-smoke.js";
 import { genericMcpTools } from "./mcp-surface.js";
@@ -176,7 +176,8 @@ export interface ChatGptSmokeOptions {
 
 const CHATGPT_TOOLS: string[] = [...genericMcpTools];
 
-export function chatGptVerify(config: LocalPortConfig, mode: ChatGptVerifyMode = "safe"): ChatGptVerifyReport {
+export function chatGptVerify(input: LocalPortConfigInput, mode: ChatGptVerifyMode = "safe"): ChatGptVerifyReport {
+  const config = normalizeConfig(input, "workspaces");
   const profile = chatGptConnectProfile(config, false, mode);
   const checks: ChatGptVerifyCheck[] = [];
   const security = securityDiagnostics(config);
@@ -240,7 +241,8 @@ export function chatGptVerify(config: LocalPortConfig, mode: ChatGptVerifyMode =
   };
 }
 
-export function chatGptSetupStatus(config: LocalPortConfig, mode: ChatGptVerifyMode = "coding", options: ChatGptSetupStatusOptions = {}): ChatGptSetupStatus {
+export function chatGptSetupStatus(input: LocalPortConfigInput, mode: ChatGptVerifyMode = "coding", options: ChatGptSetupStatusOptions = {}): ChatGptSetupStatus {
+  const config = normalizeConfig(input, "workspaces");
   const detectedPublicUrl = runningTunnelPublicUrl(options.tunnels);
   const effectivePublicBaseUrl = chatGptPublicBaseUrl(config, options.tunnels);
   const effectiveConfig = effectivePublicBaseUrl ? { ...config, publicBaseUrl: effectivePublicBaseUrl } : config;
@@ -433,7 +435,8 @@ function chatGptSetupWizard(
   };
 }
 
-export function chatGptUrl(config: LocalPortConfig, includeSecret = false, options: ChatGptUrlOptions = {}): ChatGptUrlReport {
+export function chatGptUrl(input: LocalPortConfigInput, includeSecret = false, options: ChatGptUrlOptions = {}): ChatGptUrlReport {
+  const config = normalizeConfig(input, "workspaces");
   const detectedPublicUrl = chatGptDetectedPublicBaseUrl(options.tunnels ?? []);
   const publicBaseUrl = chatGptPublicBaseUrl(config, options.tunnels);
   const publicBaseUrlSource = detectedPublicUrl && publicBaseUrl === detectedPublicUrl
@@ -496,7 +499,8 @@ export function formatChatGptUrl(report: ChatGptUrlReport): string {
   ].join("\n") + "\n";
 }
 
-export async function chatGptSmoke(config: LocalPortConfig, options: ChatGptSmokeOptions = {}): Promise<ChatGptSmokeReport> {
+export async function chatGptSmoke(input: LocalPortConfigInput, options: ChatGptSmokeOptions = {}): Promise<ChatGptSmokeReport> {
+  const config = normalizeConfig(input, "workspaces");
   const clientSmoke = await runWorkspaceLinkerMcpClientSmoke(config, {
     url: options.url,
     token: options.token,

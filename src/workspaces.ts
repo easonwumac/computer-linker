@@ -3,9 +3,11 @@ import { lstat, mkdir, opendir, readFile as readFsFile, realpath, rename, rm, wr
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import {
   assertPermission,
+  folderScopeToWorkspace,
   findExposedPath,
   isPathInsideRoot,
   type LocalPortConfig,
+  type ResolvedFolderScope,
   type ResolvedExposedPath,
 } from "./permissions.js";
 import { operationError } from "./operation-errors.js";
@@ -66,9 +68,16 @@ export class WorkspaceRegistry {
 
   constructor(private readonly config: LocalPortConfig) {}
 
-  listDefinedWorkspaces(): ResolvedExposedPath[] {
-    return this.config.workspaces.map((entry) => ({
+  listDefinedScopes(): ResolvedFolderScope[] {
+    return this.config.scopes.map((entry) => ({
       ...entry,
+      path: resolve(entry.path),
+    }));
+  }
+
+  listDefinedWorkspaces(): ResolvedExposedPath[] {
+    return this.listDefinedScopes().map((entry) => ({
+      ...folderScopeToWorkspace(entry),
       path: resolve(entry.path),
     }));
   }

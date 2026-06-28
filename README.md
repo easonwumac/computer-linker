@@ -45,8 +45,7 @@ Open a specific folder from anywhere:
 computer-linker start C:\Projects\my-app
 ```
 
-The workspace name defaults to the folder name, so `--name` is usually not
-needed.
+The scope name defaults to the folder name, so `--name` is usually not needed.
 
 ## Permission Modes
 
@@ -115,6 +114,11 @@ Main MCP tools:
 | `get_operation_history` | Read redacted recent activity and connection history. |
 
 Full pasteable guidance: [docs/agent-instructions.md](docs/agent-instructions.md).
+
+Configuration is normally written by the CLI. For manual service deployments,
+use `scopes[]` in `~/.computer-linker/config.json`; `workspaces[]` is kept only
+as a 0.x compatibility mirror. See [docs/configuration.md](docs/configuration.md)
+and [docs/config.schema.json](docs/config.schema.json).
 
 ## Useful Commands
 

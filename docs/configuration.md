@@ -23,16 +23,20 @@ The published JSON Schema is:
 docs/config.schema.json
 ```
 
-Use it in editors or scripts that support JSON Schema. The durable `0.x` field
-is still `workspaces[]`; product and MCP docs call each entry a scope.
+Use it in editors or scripts that support JSON Schema.
+
+`scopes[]` is the primary config model. Today every scope is `type:"folder"`.
+Computer Linker also writes `workspaces[]` as a `0.x` compatibility mirror for
+older tools. When both fields are present, `scopes[]` is the source of truth.
 
 ## Read-Only Scope
 
 ```json
 {
   "machineName": "office",
-  "workspaces": [
+  "scopes": [
     {
+      "type": "folder",
       "id": "app",
       "name": "App",
       "path": "C:\\Projects\\my-app",
@@ -54,8 +58,9 @@ is still `workspaces[]`; product and MCP docs call each entry a scope.
 {
   "machineName": "office",
   "ownerToken": "replace-with-generated-token",
-  "workspaces": [
+  "scopes": [
     {
+      "type": "folder",
       "id": "app",
       "name": "App",
       "path": "C:\\Projects\\my-app",
@@ -85,8 +90,9 @@ is still `workspaces[]`; product and MCP docs call each entry a scope.
 ```json
 {
   "machineName": "office",
-  "workspaces": [
+  "scopes": [
     {
+      "type": "folder",
       "id": "codex-app",
       "name": "Codex App",
       "path": "C:\\Projects\\my-app",
@@ -120,8 +126,9 @@ is still `workspaces[]`; product and MCP docs call each entry a scope.
   "ownerToken": "replace-with-generated-token",
   "publicMcpOnly": true,
   "publicBaseUrl": "https://mcp.example.com",
-  "workspaces": [
+  "scopes": [
     {
+      "type": "folder",
       "id": "app",
       "name": "App",
       "path": "C:\\Projects\\my-app",
@@ -140,3 +147,30 @@ is still `workspaces[]`; product and MCP docs call each entry a scope.
 Do not commit real `ownerToken` values or credentials. Keep secrets outside
 exposed folders; sensitive path content, metadata, and mutation are conservative
 by default.
+
+## Legacy Workspaces
+
+Existing `workspaces[]`-only configs keep working during `0.x`:
+
+```json
+{
+  "machineName": "office",
+  "workspaces": [
+    {
+      "id": "app",
+      "name": "App",
+      "path": "C:\\Projects\\my-app",
+      "permissions": {
+        "read": true,
+        "write": false,
+        "shell": false,
+        "codex": false,
+        "screen": false
+      }
+    }
+  ]
+}
+```
+
+After any Computer Linker CLI write, the config is saved with both `scopes[]`
+and `workspaces[]` synchronized.

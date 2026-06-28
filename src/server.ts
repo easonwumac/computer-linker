@@ -184,6 +184,7 @@ const capabilitiesOutputSchema = z.object({
 const listWorkspacesOutputSchema = z.object({
   machineId: z.string(),
   machineName: z.string(),
+  compatibility: looseObjectOutputSchema.optional(),
   workspaces: z.array(workspaceOutputSchema),
 }).passthrough();
 
@@ -309,7 +310,16 @@ export function createLocalPortMcpServer(): McpServer {
         allowedOperations: allowedWorkspaceOperations(workspace.permissions),
         unavailableOperations: unavailableWorkspaceOperations(workspace.permissions),
       }));
-      return toolResponse({ machineId: config.machineId, machineName: config.machineName, workspaces: definedWorkspaces });
+      return toolResponse({
+        machineId: config.machineId,
+        machineName: config.machineName,
+        compatibility: {
+          primaryConfigField: "scopes",
+          primaryOperationTool: "computer_operation",
+          note: "workspaces is a 0.x compatibility view of folder scopes.",
+        },
+        workspaces: definedWorkspaces,
+      });
     }),
   );
 

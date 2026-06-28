@@ -138,6 +138,7 @@ export function getLocalPortCapabilities(): unknown {
     securityFindings,
   });
   const activeMcpToolSurface = mcpToolSurface();
+  const scopeEntries = registry.listDefinedScopes();
 
   return {
     name: "computer-linker",
@@ -162,6 +163,22 @@ export function getLocalPortCapabilities(): unknown {
       totalMemoryBytes: totalmem(),
     },
     connectionProfile: connectionProfile(config, false, configSources),
+    configModel: {
+      primaryField: "scopes",
+      compatibilityField: "workspaces",
+      writeRule: "Computer Linker writes both scopes[] and workspaces[] during 0.x; scopes[] is the source of truth when both are present in config.json.",
+    },
+    scopes: scopeEntries.map((scope) => ({
+      id: scope.id,
+      name: scope.name,
+      type: scope.type,
+      path: scope.path,
+      permissions: scope.permissions,
+      policy: scope.policy ?? {},
+      capabilityPolicy: workspaceCapabilityPolicy(scope.permissions),
+      allowedOperations: allowedWorkspaceOperations(scope.permissions),
+      unavailableOperations: unavailableWorkspaceOperations(scope.permissions),
+    })),
     workspaces: registry.listDefinedWorkspaces().map((workspace) => ({
       id: workspace.id,
       name: workspace.name,
@@ -342,6 +359,14 @@ export function getLocalPortDoctor(): unknown {
       tunnelToolsAvailable: exposure.tunnelToolsAvailable,
       blockingReasons: exposure.blockingReasons,
       warnings: exposure.warnings,
+    },
+    scopes: {
+      total: config.scopes.length,
+      folder: config.scopes.filter((scope) => scope.type === "folder").length,
+      writable: config.scopes.filter((scope) => scope.permissions.write).length,
+      shellEnabled: config.scopes.filter((scope) => scope.permissions.shell).length,
+      codexEnabled: config.scopes.filter((scope) => scope.permissions.codex).length,
+      compatibilityMirror: "workspaces",
     },
     workspaces: {
       total: config.workspaces.length,

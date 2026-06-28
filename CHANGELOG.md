@@ -24,6 +24,9 @@ called out even when the package version is still `0.x`.
 - Added Linux screenshot provider detection and primary-display capture through
   `grim`, `gnome-screenshot`, or ImageMagick `import` when an active desktop
   session is available.
+- Added `scopes[]` as the primary durable config model, with folder scope type
+  metadata and migration coverage for scopes-only, workspaces-only, and mixed
+  config files.
 
 ### Changed
 
@@ -88,6 +91,9 @@ called out even when the package version is still `0.x`.
 - README now stays focused on first-run install, folder startup, MCP client
   setup, tunnel basics, and pasteable agent instructions, with deeper material
   linked through the docs map.
+- Config writes now persist synchronized `scopes[]` and `workspaces[]` fields
+  during `0.x`; `scopes[]` is the source of truth while `workspaces[]` remains
+  a compatibility mirror for older clients.
 - HTTP MCP sessions now expire after a bounded idle timeout, close their
   underlying transport when possible, and write redacted `expired:<id>` session
   events that are visible from operation history.

@@ -55,7 +55,11 @@ const workspaceSchema = z.object({
   path: nonBlankString.describe("Folder path exposed by this scope. ~ is expanded by Computer Linker."),
   permissions: permissionsSchema,
   policy: policySchema.optional(),
-}).strict().describe("A folder-backed Computer Linker scope. The durable 0.x config field is workspaces[].");
+}).strict().describe("A folder-backed Computer Linker scope without the scope type field. This is the 0.x workspaces[] compatibility shape.");
+
+const folderScopeSchema = workspaceSchema.extend({
+  type: z.literal("folder").describe("Scope provider type. Future non-folder scope types will live in scopes[] next to folder scopes."),
+}).strict().describe("A folder-backed Computer Linker scope. This is the primary durable scopes[] shape.");
 
 export const configFileSchema = z.object({
   machineId: nonBlankString.optional().describe("Stable generated machine id. Created automatically when omitted."),
@@ -65,16 +69,27 @@ export const configFileSchema = z.object({
   publicBaseUrl: z.string().url().optional().describe("Public HTTPS origin or base URL used by public URL tunnels."),
   publicMcpOnly: z.boolean().optional().describe("When true, public-host requests expose only /mcp."),
   ownerToken: nonBlankString.optional().describe("Bearer token for HTTP MCP/API access. Keep this secret."),
-  workspaces: z.array(workspaceSchema).min(1).describe(
-    "Configured folder-backed scopes. Product docs call these scopes; workspaces[] remains the durable 0.x config field.",
+  scopes: z.array(folderScopeSchema).min(1).optional().describe(
+    "Primary configured scopes. Today Computer Linker supports folder scopes; future non-folder scopes will be added here.",
   ),
-}).strict().describe("Computer Linker config.json.");
+  workspaces: z.array(workspaceSchema).min(1).optional().describe(
+    "0.x compatibility mirror of folder scopes. New Computer Linker writes keep this synchronized for older clients.",
+  ),
+}).strict().superRefine((value, context) => {
+  if (Array.isArray(value.scopes) || Array.isArray(value.workspaces)) return;
+  context.addIssue({
+    code: "custom",
+    path: ["scopes"],
+    message: "config must include scopes[] or legacy workspaces[]",
+  });
+}).describe("Computer Linker config.json.");
 
 export const CONFIG_SCHEMA_EXAMPLES = [
   {
     machineName: "office",
-    workspaces: [
+    scopes: [
       {
+        type: "folder",
         id: "app",
         name: "App",
         path: "C:\\Projects\\my-app",
@@ -87,8 +102,9 @@ export const CONFIG_SCHEMA_EXAMPLES = [
     ownerToken: "replace-with-generated-token",
     publicMcpOnly: true,
     publicBaseUrl: "https://mcp.example.com",
-    workspaces: [
+    scopes: [
       {
+        type: "folder",
         id: "app",
         name: "App",
         path: "C:\\Projects\\my-app",
@@ -107,8 +123,9 @@ export const CONFIG_SCHEMA_EXAMPLES = [
   },
   {
     machineName: "office",
-    workspaces: [
+    scopes: [
       {
+        type: "folder",
         id: "codex-app",
         name: "Codex App",
         path: "C:\\Projects\\my-app",
@@ -135,8 +152,12 @@ export function configJsonSchema(): JsonObject {
     $schema,
     $id: CONFIG_SCHEMA_ID,
     title: "Computer Linker config.json",
-    description: "Durable Computer Linker configuration. Normal setup commands write this file automatically; the schema is for manual editing, service deployments, and diagnostics.",
+    description: "Durable Computer Linker configuration. Normal setup commands write this file automatically; the schema is for manual editing, service deployments, and diagnostics. scopes[] is the primary config model; workspaces[] is a 0.x compatibility mirror.",
     ...rest,
+    anyOf: [
+      { required: ["scopes"] },
+      { required: ["workspaces"] },
+    ],
     examples: CONFIG_SCHEMA_EXAMPLES,
   };
 }

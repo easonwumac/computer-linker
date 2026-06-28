@@ -4,18 +4,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serviceLogPolicy } from "./retention.js";
 import { serviceControlExecutionCommand, serviceLogs, servicePlan, serviceStatus, writeServiceProfileFiles } from "./service.js";
-import type { LocalPortConfig } from "./permissions.js";
+import { normalizeConfig, type LocalPortConfig } from "./permissions.js";
 
 const root = await mkdtemp(join(tmpdir(), "computer-linker-service-test-"));
 
 try {
-  const config: LocalPortConfig = {
+  const config: LocalPortConfig = normalizeConfig({
     machineName: "service-test",
     host: "127.0.0.1",
     port: 3939,
     ownerToken: "owner-token",
     workspaces: [],
-  };
+  }, "workspaces");
   const stdoutPath = join(root, "service.out.log");
   const largeLog = `${"old-line\n".repeat(Math.ceil(serviceLogPolicy.tailReadMaxBytes / 8) + 10)}last-1\nlast-2\n`;
   await writeFile(stdoutPath, largeLog, "utf8");

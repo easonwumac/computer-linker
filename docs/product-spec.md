@@ -93,6 +93,12 @@ reported through capabilities instead of hidden behind failed calls.
 Use `scope` in the product contract. Keep `workspace` only as a compatibility
 term for existing folder-backed integrations.
 
+Durable config must follow the same terminology. `scopes[]` is the primary
+config array and each current folder entry declares `type:"folder"`.
+`workspaces[]` is a `0.x` compatibility mirror only. Existing workspaces-only
+configs remain readable, and CLI writes synchronize both fields until the
+compatibility surface is removed.
+
 ## System Architecture
 
 Computer Linker has these runtime components:
@@ -145,34 +151,23 @@ The durable config should describe one computer and its scopes:
   "ownerToken": "secret-or-null",
   "scopes": [
     {
+      "type": "folder",
       "id": "app",
       "name": "Main app",
-      "type": "folder",
-      "roots": ["/Users/me/work/app"],
-      "capabilities": [
-        "fs:read",
-        "fs:write",
-        "command:run",
-        "process:manage",
-        "codex:run"
-      ],
+      "path": "/Users/me/work/app",
+      "permissions": {
+        "read": true,
+        "write": true,
+        "shell": true,
+        "codex": true,
+        "screen": false
+      },
       "policy": {
         "maxRuntimeSeconds": 1800,
         "maxOutputBytes": 200000,
         "allowedCommands": ["npm *", "pnpm *", "yarn *", "bun *", "node *", "npx *", "git *", "codex *"],
         "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
         "allowShellMetacharacters": false
-      }
-    },
-    {
-      "id": "screen",
-      "name": "Screen capture",
-      "type": "computer",
-      "capabilities": ["screen:capture"],
-      "policy": {
-        "allowDisplays": true,
-        "allowWindows": true,
-        "allowProcesses": true
       }
     }
   ]
@@ -183,9 +178,12 @@ Rules:
 
 - `machineId` must be created once and stay stable.
 - `scope.id` is the stable target clients use.
-- `roots` are required in durable local config for folder scopes.
+- `type:"folder"` scopes require `path` and `permissions`.
+- Future non-folder scopes, such as computer-level or screen-only scopes, must
+  live in `scopes[]` with their own `type` instead of adding new top-level
+  config arrays.
 - Default remote-oriented `get_computer_info` discovery must not reveal full
-  local roots. It returns scope id, name, type, permissions, `displayPath`, and
+  local paths. It returns scope id, name, type, permissions, `displayPath`, and
   `pathPrivacy`; full `roots` require an explicit details request such as
   `include: ["roots"]` or a local owner diagnostic surface.
 - no operation may silently fall back to unrestricted global access.

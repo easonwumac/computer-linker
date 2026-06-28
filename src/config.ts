@@ -6,6 +6,7 @@ import {
   defaultConfig,
   expandHomePath,
   normalizeConfig,
+  type LocalPortConfigInput,
   type LocalPortConfig,
 } from "./permissions.js";
 import { securePrivateFile } from "./file-permissions.js";
@@ -87,11 +88,11 @@ export function loadConfigFile(): LocalPortConfig {
   }
 
   try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as LocalPortConfig;
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as LocalPortConfigInput;
     const normalized = normalizeConfig(parsed);
     if (!parsed.machineId?.trim()) {
       writeConfig({
-        ...parsed,
+        ...normalized,
         machineId: normalized.machineId,
       });
     }
@@ -113,10 +114,10 @@ export function writeDefaultConfig(): string {
   return path;
 }
 
-export function writeConfig(config: LocalPortConfig): string {
+export function writeConfig(config: LocalPortConfigInput): string {
   const path = configPath();
   mkdirSync(configDir(), { recursive: true });
-  writeFileSync(path, JSON.stringify(normalizeConfig(config), null, 2) + "\n", { mode: 0o600 });
+  writeFileSync(path, JSON.stringify(normalizeConfig(config, "workspaces"), null, 2) + "\n", { mode: 0o600 });
   securePrivateFile(path, 0o600);
   return path;
 }

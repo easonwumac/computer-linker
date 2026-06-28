@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { isLegacyUnsafeBootstrapDefaultWorkspace, isSafeBootstrapDefaultWorkspace } from "./permissions.js";
-import type { LocalPortConfig } from "./permissions.js";
+import { isLegacyUnsafeBootstrapDefaultWorkspace, isSafeBootstrapDefaultWorkspace, normalizeConfig } from "./permissions.js";
+import type { LocalPortConfigInput } from "./permissions.js";
 
 export type ConfigDiagnosticSeverity = "info" | "warning" | "critical";
 
@@ -14,7 +14,8 @@ export interface ConfigDiagnostic {
   path?: string;
 }
 
-export function configDiagnostics(config: LocalPortConfig): ConfigDiagnostic[] {
+export function configDiagnostics(input: LocalPortConfigInput): ConfigDiagnostic[] {
+  const config = normalizeConfig(input, "workspaces");
   const findings: ConfigDiagnostic[] = [];
   const workspaceIds = new Set<string>();
   const workspacePaths = new Map<string, { workspaceId?: string; path: string }>();

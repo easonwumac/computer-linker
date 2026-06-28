@@ -143,7 +143,7 @@ export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
     operationRegistry?: unknown;
   };
   const activeMcpToolSurface = mcpToolSurface();
-  const scopes: ComputerInfoScope[] = registry.listDefinedWorkspaces().map((workspace) => {
+  const scopes: ComputerInfoScope[] = registry.listDefinedScopes().map((workspace) => {
     const scope: ComputerInfoScope = {
       id: workspace.id,
       name: workspace.name,
