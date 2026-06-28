@@ -88,6 +88,12 @@ export interface ServiceStatus {
 
 export type ServicePlanAction = "install" | "uninstall" | "start" | "stop";
 
+export interface ServiceCommandInvocation {
+  command: string;
+  args: string[];
+  display: string;
+}
+
 export interface ServicePlan {
   kind: "computer-linker-service-plan";
   schemaVersion: 1;
@@ -533,13 +539,34 @@ function statusCommands(platform: ServicePlatform, label: string, serviceName: s
 function startCommands(platform: ServicePlatform, label: string, serviceName: string): string[] {
   if (platform === "macos") return [`launchctl kickstart -k gui/$(id -u)/${label}`];
   if (platform === "windows") return [`sc.exe start ${powershellQuote(serviceName)}`];
-  return [`sudo systemctl start ${shellQuote(serviceName)}`];
+  return [serviceControlExecutionCommand(platform, "start", serviceName, label).display];
 }
 
 function stopCommands(platform: ServicePlatform, label: string, serviceName: string): string[] {
   if (platform === "macos") return [`launchctl bootout gui/$(id -u)/${shellQuote(label)}`];
   if (platform === "windows") return [`sc.exe stop ${powershellQuote(serviceName)}`];
-  return [`sudo systemctl stop ${shellQuote(serviceName)}`];
+  return [serviceControlExecutionCommand(platform, "stop", serviceName, label).display];
+}
+
+export function serviceControlExecutionCommand(
+  platform: ServicePlatform,
+  action: "start" | "stop",
+  serviceName: string,
+  label: string,
+): ServiceCommandInvocation {
+  if (platform === "windows") {
+    const args = [action, serviceName];
+    return { command: "sc.exe", args, display: commandDisplay("sc.exe", args) };
+  }
+  if (platform === "macos") {
+    const uid = typeof process.getuid === "function" ? process.getuid() : "$(id -u)";
+    const args = action === "start"
+      ? ["kickstart", "-k", `gui/${uid}/${label}`]
+      : ["bootout", `gui/${uid}/${label}`];
+    return { command: "launchctl", args, display: commandDisplay("launchctl", args) };
+  }
+  const args = ["systemctl", action, serviceName];
+  return { command: "sudo", args, display: commandDisplay("sudo", args) };
 }
 
 function logCommands(
@@ -647,6 +674,10 @@ function sanitizeServiceName(value: string): string {
 function shellQuote(value: string): string {
   if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(value)) return value;
   return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function commandDisplay(command: string, args: string[]): string {
+  return [command, ...args].map((value) => /[\s"]/g.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value).join(" ");
 }
 
 function systemdEscapeArg(value: string): string {

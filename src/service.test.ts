@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serviceLogPolicy } from "./retention.js";
-import { serviceLogs, serviceStatus } from "./service.js";
+import { serviceControlExecutionCommand, serviceLogs, servicePlan, serviceStatus } from "./service.js";
 import type { LocalPortConfig } from "./permissions.js";
 
 const root = await mkdtemp(join(tmpdir(), "computer-linker-service-test-"));
@@ -32,6 +32,19 @@ try {
   assert.equal(status.logFileStatus.stdout.exists, true);
   assert.equal(status.logFileStatus.stdout.sizeBytes, logs.stdout.sizeBytes);
   assert.equal(status.logPolicy.warnBytes, serviceLogPolicy.warnBytes);
+
+  const linuxStartPlan = servicePlan(config, "start", { platform: "linux" });
+  const linuxStartCommand = serviceControlExecutionCommand("linux", "start", "computer-linker", "computer-linker");
+  assert.deepEqual(linuxStartCommand, {
+    command: "sudo",
+    args: ["systemctl", "start", "computer-linker"],
+    display: "sudo systemctl start computer-linker",
+  });
+  assert.deepEqual(linuxStartPlan.commands, [linuxStartCommand.display]);
+
+  const linuxStatus = serviceStatus(config, { platform: "linux", configDirectory: root });
+  assert.deepEqual(linuxStatus.startCommands, [linuxStartCommand.display]);
+  assert.deepEqual(linuxStatus.stopCommands, ["sudo systemctl stop computer-linker"]);
 } finally {
   await rm(root, { recursive: true, force: true });
 }

@@ -57,6 +57,7 @@ import {
   formatServiceStatus,
   parseServiceFormat,
   parseServicePlatform,
+  serviceControlExecutionCommand,
   servicePlan,
   serviceLogs,
   serviceProfileOutput,
@@ -1111,11 +1112,8 @@ function applyServiceControlAction(
 ): ServiceActionReport {
   const status = serviceStatus(loadConfig(), options);
   assertServiceExecutionPlatform(status.platform, action);
-  const command = serviceControlCommand(status.platform, action, status.serviceName, status.label);
-  const stdout = execFileSync(command.command, command.args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const command = serviceControlExecutionCommand(status.platform, action, status.serviceName, status.label);
+  const stdout = execServiceActionCommand(command, status.platform, action);
   return {
     kind: "computer-linker-service-action",
     schemaVersion: 1,
@@ -1152,25 +1150,43 @@ function serviceScriptCommand(platform: CliServiceOptions["platform"], scriptPat
   return { command: "sh", args, display: commandDisplay("sh", args) };
 }
 
-function serviceControlCommand(
+function execServiceActionCommand(
+  command: { command: string; args: string[]; display: string },
   platform: CliServiceOptions["platform"],
   action: "start" | "stop",
-  serviceName: string,
-  label: string,
-): { command: string; args: string[]; display: string } {
-  if (platform === "windows") {
-    const args = [action, serviceName];
-    return { command: "sc.exe", args, display: commandDisplay("sc.exe", args) };
+): string {
+  try {
+    return execFileSync(command.command, command.args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    if (platform === "linux" && command.command === "sudo") {
+      throw new Error([
+        `service ${action} failed while running: ${command.display}`,
+        "Linux service control uses the same sudo systemctl command shown by service status and dry-run.",
+        "Run the printed command manually in a shell with sudo access, or inspect `computer-linker service status --platform linux`.",
+        serviceCommandFailureDetail(error),
+      ].filter(Boolean).join("\n"));
+    }
+    throw error;
   }
-  if (platform === "macos") {
-    const uid = typeof process.getuid === "function" ? process.getuid() : "$(id -u)";
-    const args = action === "start"
-      ? ["kickstart", "-k", `gui/${uid}/${label}`]
-      : ["bootout", `gui/${uid}/${label}`];
-    return { command: "launchctl", args, display: commandDisplay("launchctl", args) };
-  }
-  const args = [action, serviceName];
-  return { command: "systemctl", args, display: commandDisplay("systemctl", args) };
+}
+
+function serviceCommandFailureDetail(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const childError = error as Error & { stderr?: Buffer | string; stdout?: Buffer | string };
+  const stderr = bufferLikeToString(childError.stderr).trim();
+  if (stderr) return `stderr: ${stderr}`;
+  const stdout = bufferLikeToString(childError.stdout).trim();
+  if (stdout) return `stdout: ${stdout}`;
+  return `error: ${error.message}`;
+}
+
+function bufferLikeToString(value: Buffer | string | undefined): string {
+  if (typeof value === "string") return value;
+  if (Buffer.isBuffer(value)) return value.toString("utf8");
+  return "";
 }
 
 function assertServiceExecutionPlatform(platform: CliServiceOptions["platform"], action: string): void {

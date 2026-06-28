@@ -2004,7 +2004,7 @@ try {
   assert.equal(serviceStatus.serviceName, "computer-linker");
   assert.equal(typeof serviceStatus.manifestExists, "boolean");
   assert.ok(serviceStatus.statusCommands.some((command) => command.includes("systemctl status")));
-  assert.ok(serviceStatus.startCommands.some((command) => command.includes("systemctl start")));
+  assert.ok(serviceStatus.startCommands.some((command) => command === "sudo systemctl start computer-linker"));
   assert.ok(serviceStatus.logCommands.some((command) => command.includes("journalctl")));
   const serviceStatusText = (await runCliOutput("service", "status", "--platform", "macos")).stdout;
   assert.match(serviceStatusText, /Computer Linker service status \(macos\)/);
@@ -2029,6 +2029,12 @@ try {
   const uninstallPlanText = (await runCliOutput("service", "uninstall", "--dry-run", "--platform", "linux")).stdout;
   assert.match(uninstallPlanText, /service uninstall dry run \(linux\)/);
   assert.match(uninstallPlanText, /systemctl disable --now/);
+  const linuxStartPlan = JSON.parse((await runCliOutput("service", "start", "--dry-run", "--platform", "linux", "--json")).stdout) as {
+    commands: string[];
+    requiresElevation: boolean;
+  };
+  assert.deepEqual(linuxStartPlan.commands, ["sudo systemctl start computer-linker"]);
+  assert.equal(linuxStartPlan.requiresElevation, true);
   const startPlanText = (await runCliOutput("service", "start", "--dry-run", "--platform", "windows")).stdout;
   assert.match(startPlanText, /service start dry run \(windows\)/);
   assert.match(startPlanText, /sc\.exe start/);

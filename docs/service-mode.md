@@ -89,7 +89,9 @@ and workspace permissions stay in `config.json`.
 
 Platform notes:
 
-- Linux uses `systemd`.
+- Linux uses `systemd`. Install/uninstall and daily start/stop use the printed
+  `sudo systemctl ...` commands; if the CLI cannot run them directly, rerun the
+  printed command in a shell with sudo access.
 - macOS uses a per-user `launchd` agent in `~/Library/LaunchAgents`.
 - Windows uses `sc.exe`; install/uninstall require an elevated PowerShell
   prompt. Generated Windows services write `service.out.log` and
