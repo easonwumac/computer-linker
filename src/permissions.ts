@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { homedir, hostname } from "node:os";
 import { relative, resolve, sep } from "node:path";
+import { OperationError, type OperationErrorCode } from "./operation-errors.js";
 
 export interface PathPermissions {
   read: boolean;
@@ -41,9 +42,12 @@ export interface ResolvedExposedPath extends ExposedPathConfig {
   path: string;
 }
 
-export class PermissionDeniedError extends Error {
-  constructor(message: string) {
-    super(message);
+export class PermissionDeniedError extends OperationError {
+  constructor(
+    message: string,
+    code: Extract<OperationErrorCode, "permission_denied" | "path_out_of_scope"> = "permission_denied",
+  ) {
+    super(code, message);
     this.name = "PermissionDeniedError";
   }
 }
@@ -215,7 +219,7 @@ export function findExposedPath(config: LocalPortConfig, path: string): Resolved
     .filter((entry) => isPathInsideRoot(resolvedPath, entry.path))
     .sort((a, b) => resolve(expandHomePath(b.path)).length - resolve(expandHomePath(a.path)).length)[0];
   if (!match) {
-    throw new PermissionDeniedError(`Path is outside exposed paths: ${path}`);
+    throw new PermissionDeniedError(`Path is outside exposed paths: ${path}`, "path_out_of_scope");
   }
 
   return {

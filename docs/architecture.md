@@ -489,8 +489,9 @@ Search is a first-class coding API:
   by default
 - `search_symbols`: structured symbol discovery for common programming
   languages, including functions, classes, interfaces, types, and enums
-- `batch`: run up to 25 operations in order and return per-operation results
-  without bypassing the permissions of each item
+- `batch`: run up to 25 operations in order and return per-operation results.
+  Batch is non-atomic: each child keeps its normal permission check, and side
+  effects from earlier successful children remain even if a later child fails
 - `package_run`: run an existing `package.json` script through the detected
   package manager; this requires `shell` permission because package scripts can
   execute arbitrary local commands
@@ -666,7 +667,9 @@ Compatibility `batch` writes one outer `workspace_operation` event plus one
 `workspace_operation.batch_item` event for each child operation. This preserves
 the convenience of a single request while keeping the durable history detailed
 enough to inspect which read, write, search, command, or Codex step succeeded
-or failed.
+or failed. Batch replay templates are intentionally non-replayable and require
+explicit child operations plus user confirmation, because a previous batch may
+have already committed some side effects before stopping on an error.
 
 Compatibility clients can also call `workspace_operation` with
 `operation=history` to see recent events for the opened workspace.

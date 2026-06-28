@@ -7,6 +7,7 @@ import { readCodexRunRecords, writeCodexRunRecord } from "./codex-runs.js";
 import { operationCapabilityPolicy, workspaceCapabilityPolicy, type CapabilityName, type CapabilityPolicy, type NetworkAccessPolicy } from "./capability-policy.js";
 import { commandPolicyLimits, managedCommandPolicyLimits } from "./command-policy.js";
 import { historyInsightFromEvents } from "./history-insights.js";
+import { operationError } from "./operation-errors.js";
 import { assertPermission, type PathPermissions } from "./permissions.js";
 import { executableCommand, shellCommand } from "./platform-shell.js";
 import { listManagedProcesses, readManagedProcess, startManagedProcess, stopManagedProcess, type ManagedProcessSnapshot } from "./processes.js";
@@ -627,7 +628,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
     operation: "batch",
     permission: "mixed",
-    description: "Run up to 25 workspace operations in order and return structured per-operation results. Each item still uses its normal permission check.",
+    description: "Run up to 25 workspace operations in order. Batch is non-atomic: each child keeps its own permission check and side effects from earlier successful items remain even if a later item fails.",
     requiredFields: ["operations"],
     optionalFields: ["continueOnError"],
     example: {
@@ -1104,8 +1105,11 @@ export function normalizeWorkspaceOperationInput(body: Record<string, unknown>):
 
 function operationNameFrom(value: unknown): WorkspaceOperationName {
   const operation = optionalString(value);
-  if (!operation || !workspaceOperationNames.includes(operation as WorkspaceOperationName)) {
-    throw new Error(`operation must be one of: ${workspaceOperationNames.join(", ")}`);
+  if (!operation) {
+    throw operationError("invalid_request", "operation is required for this operation");
+  }
+  if (!workspaceOperationNames.includes(operation as WorkspaceOperationName)) {
+    throw operationError("unknown_operation", `operation must be one of: ${workspaceOperationNames.join(", ")}`);
   }
   return operation as WorkspaceOperationName;
 }
@@ -1242,14 +1246,14 @@ function allowedProcessKinds(workspace: Workspace): ManagedProcessSnapshot["kind
   if (workspace.exposedPath.permissions.shell) kinds.push("shell");
   if (workspace.exposedPath.permissions.codex) kinds.push("codex");
   if (kinds.length === 0) {
-    throw new Error(`shell or codex permission is required for managed processes on exposed path ${workspace.exposedPath.id} (${workspace.exposedPath.path})`);
+    throw operationError("permission_denied", `shell or codex permission is required for managed processes on exposed path ${workspace.exposedPath.id} (${workspace.exposedPath.path})`);
   }
   return kinds;
 }
 
 function explainOperation(workspace: Workspace, operationName: string): Record<string, unknown> {
   if (!workspaceOperationNames.includes(operationName as WorkspaceOperationName)) {
-    throw new Error(`operationName must be one of: ${workspaceOperationNames.join(", ")}`);
+    throw operationError("unknown_operation", `operationName must be one of: ${workspaceOperationNames.join(", ")}`);
   }
   const operation = operationName as WorkspaceOperationName;
   const registryEntry = workspaceOperationEntry(operation);
@@ -1320,7 +1324,7 @@ async function runMetadataOperation(
       });
     }
     default:
-      throw new Error(`runMetadataOperation cannot execute operation: ${input.operation}`);
+      throw operationError("unknown_operation", `runMetadataOperation cannot execute operation: ${input.operation}`);
   }
 }
 
@@ -1482,7 +1486,7 @@ async function runFileSearchOperation(
       };
     }
     default:
-      throw new Error(`runFileSearchOperation cannot execute operation: ${input.operation}`);
+      throw operationError("unknown_operation", `runFileSearchOperation cannot execute operation: ${input.operation}`);
   }
 }
 
@@ -1538,7 +1542,7 @@ async function runCodexOperation(
       };
     }
     default:
-      throw new Error(`runCodexOperation cannot execute operation: ${input.operation}`);
+      throw operationError("unknown_operation", `runCodexOperation cannot execute operation: ${input.operation}`);
   }
 }
 
@@ -1586,7 +1590,7 @@ async function runScreenOperation(
       });
     }
     default:
-      throw new Error(`runScreenOperation cannot execute operation: ${input.operation}`);
+      throw operationError("unknown_operation", `runScreenOperation cannot execute operation: ${input.operation}`);
   }
 }
 
@@ -1811,8 +1815,10 @@ async function dispatchWorkspaceOperation(
       };
     }
     case "batch": {
+      const operations = requiredOperations(input.operations);
       const results = [];
-      for (const [index, operation] of requiredOperations(input.operations).entries()) {
+      let stoppedOnError = false;
+      for (const [index, operation] of operations.entries()) {
         if (operation.operation === "batch") {
           writeBatchItemAudit(workspace, index, operation, false, 0, "nested batch operations are not supported");
           const result = {
@@ -1822,7 +1828,10 @@ async function dispatchWorkspaceOperation(
             error: "nested batch operations are not supported",
           };
           results.push(result);
-          if (!input.continueOnError) break;
+          if (!input.continueOnError) {
+            stoppedOnError = index < operations.length - 1;
+            break;
+          }
           continue;
         }
 
@@ -1844,12 +1853,24 @@ async function dispatchWorkspaceOperation(
             ok: false,
             error: errorMessage(error),
           });
-          if (!input.continueOnError) break;
+          if (!input.continueOnError) {
+            stoppedOnError = index < operations.length - 1;
+            break;
+          }
         }
       }
+      const failed = results.filter((result) => !result.ok).length;
       return {
         results,
-        completed: results.every((result) => result.ok),
+        completed: results.length === operations.length && failed === 0,
+        attempted: results.length,
+        succeeded: results.length - failed,
+        failed,
+        stoppedOnError,
+        continueOnError: Boolean(input.continueOnError),
+        nonAtomic: true,
+        sideEffects: "ordered-non-atomic",
+        retryGuidance: "Batch is not atomic. Earlier successful child operations may have committed side effects; inspect results before replaying only the needed operations.",
       };
     }
   }
@@ -2152,8 +2173,8 @@ function workspaceOperationReplayTemplate(input: WorkspaceOperationInput): Audit
         input: {},
       }, {
         replayable: false,
-        reason: "Batch child operation payloads are not stored in the audit log; provide operations before replaying.",
-        requiresInput: ["operations"],
+        reason: "Batch is ordered and non-atomic, so earlier successful child operations may have already committed side effects. Child payloads are not stored in the audit log; provide explicit operations and user confirmation before replaying.",
+        requiresInput: ["operations", "userConfirmation"],
       });
     default:
       return replayableTemplate(baseInput, {
@@ -2208,35 +2229,35 @@ function writeBatchItemAudit(
 
 function required(value: string | undefined, name: string): string {
   const text = value?.trim();
-  if (!text) throw new Error(`${name} is required for this operation`);
+  if (!text) throw operationError("invalid_request", `${name} is required for this operation`);
   return text;
 }
 
 function requiredRaw(value: string | undefined, name: string): string {
-  if (!value) throw new Error(`${name} is required for this operation`);
+  if (!value) throw operationError("invalid_request", `${name} is required for this operation`);
   return value;
 }
 
 function requiredPaths(value: string[] | undefined): string[] {
   if (!value || value.length === 0) {
-    throw new Error("paths is required for this operation");
+    throw operationError("invalid_request", "paths is required for this operation");
   }
   if (value.length > 100) {
-    throw new Error("paths supports at most 100 files per call");
+    throw operationError("invalid_request", "paths supports at most 100 files per call");
   }
   return value.map((path) => required(path, "paths[]"));
 }
 
 function requiredOperations(value: WorkspaceOperationInput[] | undefined): WorkspaceOperationInput[] {
   if (!value || value.length === 0) {
-    throw new Error("operations is required for this operation");
+    throw operationError("invalid_request", "operations is required for this operation");
   }
   if (value.length > 25) {
-    throw new Error("batch supports at most 25 operations per call");
+    throw operationError("invalid_request", "batch supports at most 25 operations per call");
   }
   for (const [index, operation] of value.entries()) {
     if (!workspaceOperationNames.includes(operation.operation)) {
-      throw new Error(`operations[${index}].operation must be one of: ${workspaceOperationNames.join(", ")}`);
+      throw operationError("unknown_operation", `operations[${index}].operation must be one of: ${workspaceOperationNames.join(", ")}`);
     }
   }
   return value;
@@ -2342,7 +2363,7 @@ async function codexWorkflow(
   input: WorkspaceOperationInput,
 ): Promise<unknown> {
   if (!isCodexWorkflowOperation(input.operation)) {
-    throw new Error(`Unsupported Codex workflow: ${input.operation}`);
+    throw operationError("unknown_operation", `Unsupported Codex workflow: ${input.operation}`);
   }
 
   const maxBytes = normalizeBoundedPositiveInteger(input.maxBytes, 64 * 1024, 256 * 1024);
@@ -3393,7 +3414,7 @@ async function validateGitPathspecs(
   paths: string[] | undefined,
 ): Promise<Array<{ inputPath: string; gitPathspec: string }>> {
   if (!paths || paths.length === 0) return [];
-  if (paths.length > 100) throw new Error("paths supports at most 100 files per call");
+  if (paths.length > 100) throw operationError("invalid_request", "paths supports at most 100 files per call");
 
   const normalized = [];
   for (const path of paths.map((value) => required(value, "paths[]"))) {
@@ -3428,7 +3449,7 @@ function requireGitPathspecs(
   paths: Array<{ inputPath: string; gitPathspec: string }>,
 ): Array<{ inputPath: string; gitPathspec: string }> {
   if (paths.length === 0) {
-    throw new Error("paths is required for this operation");
+    throw operationError("invalid_request", "paths is required for this operation");
   }
   return paths;
 }

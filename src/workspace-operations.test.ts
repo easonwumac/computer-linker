@@ -10,6 +10,7 @@ import {
   normalizeWorkspaceOperationInput,
   runWorkspaceOperation,
   workspaceOperationCatalog,
+  workspaceOperationAuditFields,
   workspaceOperationEntry,
   workspaceOperationNames,
   workspaceOperationRegistry,
@@ -1285,9 +1286,25 @@ try {
     ],
   }) as {
     completed: boolean;
+    attempted: number;
+    succeeded: number;
+    failed: number;
+    stoppedOnError: boolean;
+    continueOnError: boolean;
+    nonAtomic: boolean;
+    sideEffects: string;
+    retryGuidance: string;
     results: Array<{ index: number; operation: string; ok: boolean; data?: any; error?: string }>;
   };
   assert.equal(batch.completed, false);
+  assert.equal(batch.attempted, 3);
+  assert.equal(batch.succeeded, 2);
+  assert.equal(batch.failed, 1);
+  assert.equal(batch.stoppedOnError, false);
+  assert.equal(batch.continueOnError, true);
+  assert.equal(batch.nonAtomic, true);
+  assert.equal(batch.sideEffects, "ordered-non-atomic");
+  assert.match(batch.retryGuidance, /not atomic/i);
   assert.equal(batch.results.length, 3);
   assert.equal(batch.results[0].ok, true);
   assert.equal(batch.results[0].data.content, "line1");
@@ -1320,9 +1337,43 @@ try {
       { operation: "write", path: "blocked.txt", content: "blocked" },
       { operation: "read", path: "src/lines.ts" },
     ],
-  }) as { completed: boolean; results: Array<{ ok: boolean }> };
+  }) as { completed: boolean; attempted: number; succeeded: number; failed: number; stoppedOnError: boolean; continueOnError: boolean; results: Array<{ ok: boolean }> };
   assert.equal(stoppedBatch.completed, false);
+  assert.equal(stoppedBatch.attempted, 1);
+  assert.equal(stoppedBatch.succeeded, 0);
+  assert.equal(stoppedBatch.failed, 1);
+  assert.equal(stoppedBatch.stoppedOnError, true);
+  assert.equal(stoppedBatch.continueOnError, false);
   assert.equal(stoppedBatch.results.length, 1);
+
+  const sideEffectBatch = await runWorkspaceOperation(registry, worktreeEnabled, {
+    operation: "batch",
+    operations: [
+      { operation: "write", path: "batch-side-effect.txt", content: "written before failure\n" },
+      { operation: "read", path: "../outside.txt" },
+      { operation: "write", path: "batch-side-effect-skipped.txt", content: "should not run\n" },
+    ],
+  }) as { completed: boolean; attempted: number; succeeded: number; failed: number; stoppedOnError: boolean; results: Array<{ ok: boolean; error?: string }> };
+  assert.equal(sideEffectBatch.completed, false);
+  assert.equal(sideEffectBatch.attempted, 2);
+  assert.equal(sideEffectBatch.succeeded, 1);
+  assert.equal(sideEffectBatch.failed, 1);
+  assert.equal(sideEffectBatch.stoppedOnError, true);
+  assert.equal(sideEffectBatch.results[0].ok, true);
+  assert.equal(sideEffectBatch.results[1].ok, false);
+  assert.match(sideEffectBatch.results[1].error ?? "", /outside workspace/);
+  assert.equal(await readFile(join(workspaceRoot, "batch-side-effect.txt"), "utf8"), "written before failure\n");
+  assert.equal(existsSync(join(workspaceRoot, "batch-side-effect-skipped.txt")), false);
+  const batchReplay = workspaceOperationAuditFields({
+    operation: "batch",
+    operations: [
+      { operation: "write", path: "batch-side-effect.txt", content: "written before failure\n" },
+      { operation: "read", path: "../outside.txt" },
+    ],
+  }).replay;
+  assert.equal(batchReplay?.replayable, false);
+  assert.match(batchReplay?.reason ?? "", /non-atomic/i);
+  assert.deepEqual(batchReplay?.requiresInput, ["operations", "userConfirmation"]);
 
   const processCommand = "node process-output.js";
   const started = await runWorkspaceOperation(registry, codexEnabled, {

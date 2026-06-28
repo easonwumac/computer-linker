@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeConfig } from "./config.js";
-import { getComputerInfo, getMcpClientSetup } from "./computer-contract.js";
+import { computerOperationErrorFrom, getComputerInfo, getMcpClientSetup, runComputerOperation } from "./computer-contract.js";
+import { operationError, type OperationErrorCode } from "./operation-errors.js";
 
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
 const originalWorkspaceConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
@@ -20,6 +21,8 @@ try {
   delete process.env.LOCALPORT_OWNER_TOKEN;
   delete process.env.COMPUTER_LINKER_PUBLIC_BASE_URL;
   delete process.env.LOCALPORT_PUBLIC_BASE_URL;
+  await mkdir(join(root, "workspace"), { recursive: true });
+  await writeFile(join(root, "workspace", "hello.txt"), "hello\n", "utf8");
 
   writeConfig({
     machineName: "client-setup-test",
@@ -32,6 +35,12 @@ try {
         name: "Contract app",
         path: join(root, "workspace"),
         permissions: { read: true, write: false, shell: false, codex: false, screen: true },
+      },
+      {
+        id: "shell",
+        name: "Shell scope",
+        path: join(root, "workspace"),
+        permissions: { read: true, write: false, shell: true, codex: false, screen: false },
       },
     ],
   });
@@ -126,6 +135,18 @@ try {
   assert.match(defaultComputerInfo.status.status, /ready|needs_attention/);
   assert.deepEqual(defaultComputerInfo.status.blockingReasons, []);
   assert.equal(JSON.stringify(defaultComputerInfo).includes(root), false);
+
+  await assertComputerOperationCode({ scope: "app" }, "invalid_request");
+  await assertComputerOperationCode({ scope: "missing", op: "file.read", target: "hello.txt" }, "unknown_scope");
+  await assertComputerOperationCode({ scope: "app", op: "file.nope", target: "hello.txt" }, "unknown_operation");
+  await assertComputerOperationCode({ scope: "app", op: "file.write", target: "blocked.txt", input: { content: "blocked" } }, "permission_denied");
+  await assertComputerOperationCode({ scope: "app", op: "file.read", target: "../outside.txt" }, "path_out_of_scope");
+  await assertComputerOperationCode({ scope: "shell", op: "process.read", target: "proc_missing" }, "process_not_found");
+
+  assertTypedOperationCode("unsupported_platform");
+  assertTypedOperationCode("provider_unavailable");
+  assertTypedOperationCode("timeout");
+  assertTypedOperationCode("os_permission_required");
 
   const detailedComputerInfo = getComputerInfo({ include: ["roots"] }) as {
     scopes: Array<{ roots?: string[]; pathPrivacy: { rootsRedacted: boolean } }>;
@@ -320,4 +341,19 @@ try {
   if (originalLegacyPublicBaseUrl === undefined) delete process.env.LOCALPORT_PUBLIC_BASE_URL;
   else process.env.LOCALPORT_PUBLIC_BASE_URL = originalLegacyPublicBaseUrl;
   await rm(root, { recursive: true, force: true });
+}
+
+async function assertComputerOperationCode(
+  envelope: Parameters<typeof runComputerOperation>[0],
+  code: OperationErrorCode,
+): Promise<void> {
+  const result = await runComputerOperation(envelope);
+  assert.equal(result.ok, false);
+  assert.equal(result.error?.code, code);
+}
+
+function assertTypedOperationCode(code: OperationErrorCode): void {
+  const error = computerOperationErrorFrom(operationError(code, `typed ${code}`));
+  assert.equal(error.code, code);
+  assert.equal(error.retryable, code === "timeout" || code === "provider_unavailable" || code === "os_permission_required");
 }

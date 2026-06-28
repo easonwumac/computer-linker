@@ -1194,6 +1194,14 @@ try {
     });
     assert.equal(controlBatch.status, 200);
     assert.equal(controlBatch.body.data.completed, false);
+    assert.equal(controlBatch.body.data.attempted, 3);
+    assert.equal(controlBatch.body.data.succeeded, 2);
+    assert.equal(controlBatch.body.data.failed, 1);
+    assert.equal(controlBatch.body.data.stoppedOnError, false);
+    assert.equal(controlBatch.body.data.continueOnError, true);
+    assert.equal(controlBatch.body.data.nonAtomic, true);
+    assert.equal(controlBatch.body.data.sideEffects, "ordered-non-atomic");
+    assert.match(controlBatch.body.data.retryGuidance, /not atomic/i);
     assert.equal(controlBatch.body.data.results.length, 3);
     assert.equal(controlBatch.body.data.results[0].ok, true);
     assert.equal(controlBatch.body.data.results[0].data.content, "hello");

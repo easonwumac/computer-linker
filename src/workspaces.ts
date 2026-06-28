@@ -8,6 +8,7 @@ import {
   type LocalPortConfig,
   type ResolvedExposedPath,
 } from "./permissions.js";
+import { operationError } from "./operation-errors.js";
 import { assertNonSensitiveWorkspacePath } from "./sensitive-files.js";
 import { assertConfiguredWorkspaceRootDirectory } from "./workspace-roots.js";
 
@@ -102,24 +103,24 @@ export class WorkspaceRegistry {
         entry.path === resolvedRef,
     );
     if (!workspace) {
-      throw new Error(`Unknown configured workspace: ${workspaceRef}`);
+      throw operationError("unknown_scope", `Unknown configured workspace: ${workspaceRef}`);
     }
     return workspace;
   }
 
   getWorkspace(workspaceId: string): Workspace {
     const workspace = this.workspaces.get(workspaceId);
-    if (!workspace) throw new Error(`Unknown workspaceId: ${workspaceId}`);
+    if (!workspace) throw operationError("unknown_scope", `Unknown workspaceId: ${workspaceId}`);
     return workspace;
   }
 
   resolvePath(workspace: Workspace, inputPath: string): string {
     const absolutePath = resolve(workspace.root, inputPath);
     if (!isPathInsideRoot(absolutePath, workspace.root)) {
-      throw new Error(`Path is outside workspace root: ${inputPath}`);
+      throw operationError("path_out_of_scope", `Path is outside workspace root: ${inputPath}`);
     }
     if (!isPathInsideRoot(absolutePath, workspace.exposedPath.path)) {
-      throw new Error(`Path is outside exposed path: ${inputPath}`);
+      throw operationError("path_out_of_scope", `Path is outside exposed path: ${inputPath}`);
     }
     return absolutePath;
   }
@@ -344,13 +345,13 @@ async function pathInfo(path: string, workspace: Workspace): Promise<WorkspacePa
 
 function assertNotWorkspaceRoot(workspace: Workspace, path: string, action: string): void {
   if (resolve(path) !== resolve(workspace.root)) return;
-  throw new Error(`Refusing to ${action} the workspace root`);
+  throw operationError("permission_denied", `Refusing to ${action} the workspace root`);
 }
 
 async function assertRealPathInside(workspace: Workspace, path: string, inputPath: string): Promise<void> {
   const realPath = await realpath(path);
   if (!isPathInsideRoot(realPath, workspace.root) || !isPathInsideRoot(realPath, workspace.exposedPath.path)) {
-    throw new Error(`Path resolves outside workspace: ${inputPath}`);
+    throw operationError("path_out_of_scope", `Path resolves outside workspace: ${inputPath}`);
   }
 }
 

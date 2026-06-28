@@ -15,6 +15,7 @@ import { loadConfig, runtimeConfigSources } from "./config.js";
 import { computerLinkerDiscovery } from "./discovery-contract.js";
 import { historyInsight } from "./history-insights.js";
 import { compatibilityMcpTools, exposedMcpTools, genericMcpTools, mcpToolSurface } from "./mcp-surface.js";
+import { isOperationError, operationError, type OperationErrorCode } from "./operation-errors.js";
 import { workspaceLinkerVersion } from "./package-metadata.js";
 import { PermissionDeniedError } from "./permissions.js";
 import { connectionProfile } from "./profile.js";
@@ -82,18 +83,7 @@ interface ComputerInfoScope {
   roots?: string[];
 }
 
-export type ComputerOperationErrorCode =
-  | "invalid_request"
-  | "unknown_scope"
-  | "unknown_operation"
-  | "permission_denied"
-  | "path_out_of_scope"
-  | "unsupported_platform"
-  | "provider_unavailable"
-  | "timeout"
-  | "process_not_found"
-  | "os_permission_required"
-  | "execution_failed";
+export type ComputerOperationErrorCode = OperationErrorCode;
 
 export interface ComputerOperationError {
   code: ComputerOperationErrorCode;
@@ -587,7 +577,7 @@ function historyViewInput(op: string): Record<string, unknown> {
 
 function stringValue(value: unknown, name: string): string {
   const text = optionalString(value);
-  if (!text) throw new Error(`${name} is required`);
+  if (!text) throw operationError("invalid_request", `${name} is required`);
   return text;
 }
 
@@ -607,8 +597,19 @@ function elapsedMs(started: number): number {
   return Math.max(0, Math.round(performance.now() - started));
 }
 
-function computerOperationError(error: unknown): ComputerOperationError {
+export function computerOperationErrorFrom(error: unknown): ComputerOperationError {
   const message = error instanceof Error ? error.message : String(error);
+  if (isOperationError(error)) {
+    return {
+      code: error.code,
+      message,
+      retryable: error.retryable,
+      details: {
+        name: error.name,
+        ...(error.details ?? {}),
+      },
+    };
+  }
   return {
     code: computerOperationErrorCode(error, message),
     message,
@@ -616,6 +617,8 @@ function computerOperationError(error: unknown): ComputerOperationError {
     details: error instanceof Error ? { name: error.name } : {},
   };
 }
+
+const computerOperationError = computerOperationErrorFrom;
 
 function computerOperationErrorCode(error: unknown, message: string): ComputerOperationErrorCode {
   if (/(^|\s)(scope|op|path|query|command|prompt|processId|operationName|workspace) is required\b/.test(message)) {

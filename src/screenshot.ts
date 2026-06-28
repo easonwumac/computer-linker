@@ -5,6 +5,7 @@ import { platform, tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { promisify } from "node:util";
+import { isOperationError, operationError, type OperationErrorCode } from "./operation-errors.js";
 import { executableCommand, findExecutableCommand, windowsVerbatimArgumentsOption } from "./platform-shell.js";
 import { screenshotRetentionPolicy } from "./retention.js";
 
@@ -102,23 +103,23 @@ export function listScreenshotTargets(): ScreenshotListResult {
 export async function captureScreenshot(options: ScreenshotCaptureOptions): Promise<ScreenshotCaptureResult> {
   const provider = screenshotProvider();
   if (!provider.available) {
-    throw new Error(provider.permission.detail ?? "screenshot provider is unavailable on this platform");
+    throw operationError(screenshotPermissionErrorCode(provider.permission), provider.permission.detail ?? "screenshot provider is unavailable on this platform");
   }
   if (options.format && options.format !== "png") {
-    throw new Error("only png screenshot format is currently supported");
+    throw operationError("invalid_request", "only png screenshot format is currently supported");
   }
   validateScreenshotBounds(options);
   if (options.source === "process") {
-    throw new Error("screen.capture_process is not implemented for this platform provider yet");
+    throw operationError("unsupported_platform", "screen.capture_process is not implemented for this platform provider yet");
   }
   if (options.source === "display" && options.target && options.target !== "primary") {
-    throw new Error("only the primary display target is currently supported");
+    throw operationError("unsupported_platform", "only the primary display target is currently supported");
   }
   if (options.source === "window" && !options.target) {
-    throw new Error("window id is required for screen.capture_window");
+    throw operationError("invalid_request", "window id is required for screen.capture_window");
   }
   if (!provider.modes.includes(options.source)) {
-    throw new Error(`screen.${options.source} capture is not implemented for ${provider.name}`);
+    throw operationError("unsupported_platform", `screen.${options.source} capture is not implemented for ${provider.name}`);
   }
 
   const dir = screenshotArtifactDirectory();
@@ -168,7 +169,7 @@ export async function captureScreenshot(options: ScreenshotCaptureOptions): Prom
   }
   if (returnMode !== "fileRef") {
     await rm(file, { force: true });
-    throw new Error("screenshot return must be one of: fileRef, base64, bytes");
+    throw operationError("invalid_request", "screenshot return must be one of: fileRef, base64, bytes");
   }
 
   result.fileRef = file;
@@ -351,11 +352,12 @@ async function downscaleScreenshotIfNeeded(file: string, options: ScreenshotCapt
     } else if (platform() === "darwin") {
       await downscalePngWithSips(file, tempFile, target);
     } else {
-      throw new Error(`screenshot downscaling is not supported on ${platform()} yet`);
+      throw operationError("unsupported_platform", `screenshot downscaling is not supported on ${platform()} yet`);
     }
     await rename(tempFile, file);
   } catch (error) {
     await rm(tempFile, { force: true });
+    if (isOperationError(error)) throw error;
     throw new Error(`screenshot downscaling failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -375,7 +377,7 @@ async function downscalePngWithPowerShell(file: string, tempFile: string, target
     ?? findExecutableCommand("powershell.exe")
     ?? findExecutableCommand("pwsh");
   if (!command) {
-    throw new Error("PowerShell is required for Windows screenshot downscaling");
+    throw operationError("provider_unavailable", "PowerShell is required for Windows screenshot downscaling");
   }
   const args = [
     "-NoLogo",
@@ -408,9 +410,15 @@ async function downscalePngWithSips(file: string, tempFile: string, target: { wi
 function validateScreenshotBounds(options: ScreenshotCaptureOptions): void {
   for (const [label, value] of [["maxWidth", options.maxWidth], ["maxHeight", options.maxHeight]] as const) {
     if (value !== undefined && (!Number.isInteger(value) || value <= 0)) {
-      throw new Error(`screenshot ${label} must be a positive integer`);
+      throw operationError("invalid_request", `screenshot ${label} must be a positive integer`);
     }
   }
+}
+
+function screenshotPermissionErrorCode(permission: ScreenshotPermission): Extract<OperationErrorCode, "provider_unavailable" | "unsupported_platform" | "os_permission_required"> {
+  if (permission.status === "os_permission_required") return "os_permission_required";
+  if (permission.status === "unsupported") return "unsupported_platform";
+  return "provider_unavailable";
 }
 
 function screenshotArtifactPolicy(input: Partial<ScreenshotArtifactRetentionSummary> = {}): ScreenshotArtifactRetentionSummary {

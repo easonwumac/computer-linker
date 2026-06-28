@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { operationError } from "./operation-errors.js";
 import { executableCommand, shellCommand } from "./platform-shell.js";
 import { managedProcessRetentionPolicy } from "./retention.js";
 
@@ -171,7 +172,7 @@ export async function stopManagedProcess(input: {
 
 export async function stopManagedProcessById(processId: string, signal?: string): Promise<ManagedProcessSnapshot> {
   const process = processes.get(processId);
-  if (!process) throw new Error(`Unknown process: ${processId}`);
+  if (!process) throw operationError("process_not_found", `Unknown process: ${processId}`);
   return stopProcess(process, normalizeSignal(signal));
 }
 
@@ -241,7 +242,7 @@ function getProcessForWorkspace(input: {
     process.workspaceRoot !== input.workspaceRoot ||
     (input.kinds && !input.kinds.includes(process.kind))
   ) {
-    throw new Error(`Unknown process for workspace: ${input.processId}`);
+    throw operationError("process_not_found", `Unknown process for workspace: ${input.processId}`);
   }
   return process;
 }
