@@ -26,6 +26,9 @@ import { stopAllTunnelProcesses } from "./tunnels.js";
 import {
   closeActiveSession,
   getActiveSession,
+  httpMcpSessionCleanupIntervalMs,
+  httpMcpSessionIdleTimeoutMs,
+  listIdleActiveSessions,
   registerActiveSession,
   touchActiveSession,
   type ActiveSession,
@@ -585,6 +588,36 @@ export async function serveStdio(): Promise<void> {
 const HTTP_REQUEST_BODY_LIMIT = "10mb";
 const HTTP_REQUEST_BODY_LIMIT_LABEL = "10 MB";
 
+interface HttpMcpTransportLike {
+  close?: () => void | Promise<void>;
+}
+
+export interface CleanupIdleHttpMcpSessionsOptions<TTransport extends HttpMcpTransportLike = HttpMcpTransportLike> {
+  transports: Map<string, TTransport>;
+  idleTimeoutMs: number;
+  now?: Date;
+  closeTransport?: (transport: TTransport, session: ActiveSession) => void | Promise<void>;
+  onExpired?: (session: ActiveSession) => void;
+}
+
+export async function cleanupIdleHttpMcpSessions<TTransport extends HttpMcpTransportLike>(options: CleanupIdleHttpMcpSessionsOptions<TTransport>): Promise<ActiveSession[]> {
+  const expired = listIdleActiveSessions({ idleMs: options.idleTimeoutMs, now: options.now });
+  for (const session of expired) {
+    const transport = options.transports.get(session.id);
+    options.transports.delete(session.id);
+    closeActiveSession(session.id);
+    options.onExpired?.(session);
+    if (transport) {
+      try {
+        await (options.closeTransport ?? closeHttpMcpTransport)(transport, session);
+      } catch {
+        // Session state has already been removed; transport close is best-effort cleanup.
+      }
+    }
+  }
+  return expired;
+}
+
 export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; close(): void } {
   const config = loadConfig();
   const host = config.host ?? "127.0.0.1";
@@ -612,6 +645,15 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
     });
   }
   const transports = new Map<string, StreamableHTTPServerTransport>();
+  const idleTimeoutMs = httpMcpSessionIdleTimeoutMs();
+  const cleanupTimer = setInterval(() => {
+    void cleanupIdleHttpMcpSessions({
+      transports,
+      idleTimeoutMs,
+      onExpired: (session) => writeHttpMcpSessionEvent(session, "expired"),
+    });
+  }, httpMcpSessionCleanupIntervalMs(idleTimeoutMs));
+  cleanupTimer.unref?.();
   const oauthProvider = config.ownerToken
     ? new LocalPortOAuthProvider(
         {
@@ -737,17 +779,11 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
           const closedSessionId = transport?.sessionId;
           if (closedSessionId) {
             const session = getActiveSession(closedSessionId);
-            transports.delete(closedSessionId);
-            closeActiveSession(closedSessionId);
-            writeAuditEvent({
-              type: "mcp_session",
-              success: true,
-              ...(session ? activeSessionAuditFields(session) : {
-                surface: "mcp-http",
-                mcpSessionId: shortMcpSessionId(closedSessionId),
-              }),
-              detail: `closed:${closedSessionId.slice(0, 8)}`,
-            });
+            if (transports.has(closedSessionId) || session) {
+              transports.delete(closedSessionId);
+              closeActiveSession(closedSessionId);
+              writeHttpMcpSessionEvent(session ?? closedSessionId, "closed");
+            }
           }
         };
 
@@ -774,11 +810,16 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
     publicUrl: mcpUrl.href,
     apiUrl: localApiUrl,
     close: () => {
+      clearInterval(cleanupTimer);
       void stopAllManagedProcesses();
       void stopAllTunnelProcesses();
       server.close();
     },
   };
+}
+
+async function closeHttpMcpTransport(transport: HttpMcpTransportLike): Promise<void> {
+  await transport.close?.();
 }
 
 function publicMcpOnlyHostFromConfig(config: { publicMcpOnly?: boolean; publicBaseUrl?: string }): string | undefined {
@@ -932,6 +973,21 @@ function activeSessionAuditFields(session: ActiveSession): Partial<AuditEventInp
     authType: session.authType,
     remoteAddress: session.remoteAddress,
   };
+}
+
+function writeHttpMcpSessionEvent(sessionOrId: ActiveSession | string, state: "closed" | "expired"): void {
+  const idPrefix = typeof sessionOrId === "string" ? shortMcpSessionId(sessionOrId) : sessionOrId.idPrefix;
+  writeAuditEvent({
+    type: "mcp_session",
+    success: true,
+    ...(typeof sessionOrId === "string"
+      ? {
+          surface: "mcp-http",
+          mcpSessionId: idPrefix,
+        }
+      : activeSessionAuditFields(sessionOrId)),
+    detail: `${state}:${idPrefix ?? ""}`,
+  });
 }
 
 function shortMcpSessionId(sessionId: string | undefined): string | undefined {

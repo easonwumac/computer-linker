@@ -19,6 +19,7 @@ import { workspaceLinkerVersion } from "./package-metadata.js";
 import { PermissionDeniedError } from "./permissions.js";
 import { connectionProfile } from "./profile.js";
 import { screenshotCapability } from "./screenshot.js";
+import { httpMcpSessionIdleTimeoutMs } from "./sessions.js";
 import { listTunnelProcesses, type TunnelProcessSnapshot } from "./tunnels.js";
 import { WorkspaceRegistry } from "./workspaces.js";
 import {
@@ -189,6 +190,7 @@ export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
       transports: ["stdio", "http"],
       localUrl: capabilities.startup?.localMcpUrl ?? `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/mcp`,
       publicUrl: capabilities.exposure?.publicMcpUrl ?? null,
+      httpMcpSessionIdleTimeoutMs: httpMcpSessionIdleTimeoutMs(),
     },
     scopes,
     tools: {

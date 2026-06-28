@@ -66,6 +66,9 @@ called out even when the package version is still `0.x`.
   envelopes against `docs/computer-operation-v1.schema.json`.
 - `target` now maps to `fromPath` for move operations, so `file.move` can use
   the same simple target/input shape as other file operations.
+- HTTP MCP sessions now expire after a bounded idle timeout, close their
+  underlying transport when possible, and write redacted `expired:<id>` session
+  events that are visible from operation history.
 
 ## 0.1.11 - 2026-06-27
 

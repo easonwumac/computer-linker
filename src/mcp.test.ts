@@ -13,6 +13,7 @@ const require = createRequire(import.meta.url);
 const tsxCliPath = join(dirname(require.resolve("tsx/package.json")), "dist", "cli.mjs");
 const sourcePackageJson = require("../package.json") as { version: string };
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
+const originalHttpMcpSessionIdleTimeoutMs = process.env.COMPUTER_LINKER_HTTP_MCP_SESSION_IDLE_TIMEOUT_MS;
 const root = await mkdtemp(join(tmpdir(), "localport-mcp-test-"));
 const configRoot = join(root, "config");
 const workspaceRoot = join(root, "workspace");
@@ -40,9 +41,12 @@ try {
   await runStdioMcpFlow(configRoot);
   await runCompatibilityStdioMcpFlow(configRoot);
   await runHttpMcpFlow();
+  await runHttpMcpIdleCleanupFlow();
 } finally {
   if (originalConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalConfigDir;
+  if (originalHttpMcpSessionIdleTimeoutMs === undefined) delete process.env.COMPUTER_LINKER_HTTP_MCP_SESSION_IDLE_TIMEOUT_MS;
+  else process.env.COMPUTER_LINKER_HTTP_MCP_SESSION_IDLE_TIMEOUT_MS = originalHttpMcpSessionIdleTimeoutMs;
 
   await rm(root, { recursive: true, force: true });
 }
@@ -224,6 +228,80 @@ async function assertTwoHttpMcpSessions(primaryClient: Client): Promise<void> {
     assert.ok(sessionRefs.size >= 2);
   } finally {
     await secondClient.close();
+  }
+}
+
+async function runHttpMcpIdleCleanupFlow(): Promise<void> {
+  process.env.COMPUTER_LINKER_HTTP_MCP_SESSION_IDLE_TIMEOUT_MS = "120";
+  writeConfig({
+    machineName: "mcp-test",
+    host: "127.0.0.1",
+    port: 3970,
+    ownerToken: "test-token",
+    workspaces: [
+      {
+        id: "app",
+        name: "MCP app",
+        path: workspaceRoot,
+        permissions: { read: true, write: true, shell: false, codex: false, screen: true },
+      },
+    ],
+  });
+
+  const server = serveHttp();
+  const staleClient = new Client({ name: "localport-idle-http-client", version: "0.1.0" });
+  const staleTransport = new StreamableHTTPClientTransport(new URL("http://127.0.0.1:3970/mcp"), {
+    requestInit: {
+      headers: {
+        authorization: "Bearer test-token",
+      },
+    },
+  });
+  const observerClient = new Client({ name: "localport-idle-observer-client", version: "0.1.0" });
+  const observerTransport = new StreamableHTTPClientTransport(new URL("http://127.0.0.1:3970/mcp"), {
+    requestInit: {
+      headers: {
+        authorization: "Bearer test-token",
+      },
+    },
+  });
+
+  try {
+    await staleClient.connect(staleTransport);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await observerClient.connect(observerTransport);
+
+    const history = toolJson(await observerClient.callTool({
+      name: "get_operation_history",
+      arguments: {
+        view: "raw",
+        query: "expired",
+        limit: 50,
+      },
+    })) as { events: Array<{ type?: string; detail?: string; surface?: string; mcpSessionId?: string; clientName?: string; success?: boolean }> };
+
+    assert.ok(history.events.some((event) => (
+      event.type === "mcp_session" &&
+      event.detail?.startsWith("expired:") &&
+      event.surface === "mcp-http" &&
+      /^[A-Za-z0-9_-]{8}$/.test(event.mcpSessionId ?? "") &&
+      event.clientName === "localport-idle-http-client 0.1.0" &&
+      event.success === true
+    )));
+  } finally {
+    await closeClientIgnoringErrors(observerClient);
+    await closeClientIgnoringErrors(staleClient);
+    server.close();
+    if (originalHttpMcpSessionIdleTimeoutMs === undefined) delete process.env.COMPUTER_LINKER_HTTP_MCP_SESSION_IDLE_TIMEOUT_MS;
+    else process.env.COMPUTER_LINKER_HTTP_MCP_SESSION_IDLE_TIMEOUT_MS = originalHttpMcpSessionIdleTimeoutMs;
+  }
+}
+
+async function closeClientIgnoringErrors(client: Client): Promise<void> {
+  try {
+    await client.close();
+  } catch {
+    // A test may intentionally expire the session before the client sends DELETE.
   }
 }
 
