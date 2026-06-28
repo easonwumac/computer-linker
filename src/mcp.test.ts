@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { writeConfig } from "./config.js";
-import { serveHttp } from "./server.js";
+import { MCP_TEXT_RESPONSE_MAX_BYTES, serveHttp } from "./server.js";
 
 const require = createRequire(import.meta.url);
 const tsxCliPath = join(dirname(require.resolve("tsx/package.json")), "dist", "cli.mjs");
@@ -23,6 +23,7 @@ try {
   process.env.LOCALPORT_CONFIG_DIR = configRoot;
   await mkdir(workspaceRoot, { recursive: true });
   await writeFile(join(workspaceRoot, "hello.txt"), "hello from MCP\n", "utf8");
+  await writeFile(join(workspaceRoot, "large.txt"), `${"large-response-line\n".repeat(4000)}`, "utf8");
   writeConfig({
     machineName: "mcp-test",
     host: "127.0.0.1",
@@ -446,6 +447,28 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   assert.equal(genericRead.data.content, "hello");
   assert.equal(genericRead.data.truncated, true);
 
+  const largeReadResult = await client.callTool({
+    name: "computer_operation",
+    arguments: {
+      scope: "app",
+      op: "file.read",
+      target: "large.txt",
+      options: { maxBytes: 100_000 },
+    },
+  });
+  const largeReadStructured = toolStructured(largeReadResult) as { ok: boolean; data: { content: string; truncated: boolean } };
+  assert.equal(largeReadStructured.ok, true);
+  assert.equal(largeReadStructured.data.content, "large-response-line\n".repeat(4000));
+  assert.equal(largeReadStructured.data.truncated, false);
+  const largeReadText = toolText(largeReadResult);
+  const largeReadTextJson = JSON.parse(largeReadText) as { textTruncated?: boolean; structuredContentAvailable?: boolean; structuredContentBytes?: number; summary?: { op?: string; contentBytes?: number } };
+  assert.equal(largeReadTextJson.textTruncated, true);
+  assert.equal(largeReadTextJson.structuredContentAvailable, true);
+  assert.equal(largeReadTextJson.summary?.op, "file.read");
+  assert.equal(largeReadTextJson.summary?.contentBytes, Buffer.byteLength(largeReadStructured.data.content, "utf8"));
+  assert.ok(Buffer.byteLength(largeReadText, "utf8") <= MCP_TEXT_RESPONSE_MAX_BYTES);
+  assert.ok((largeReadTextJson.structuredContentBytes ?? 0) > MCP_TEXT_RESPONSE_MAX_BYTES);
+
   const genericReadHistory = toolJson(await client.callTool({
     name: "get_operation_history",
     arguments: {
@@ -627,10 +650,19 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
 }
 
 function toolJson(result: unknown): unknown {
+  const structuredContent = (result as { structuredContent?: unknown }).structuredContent;
+  if (structuredContent && typeof structuredContent === "object" && !Array.isArray(structuredContent)) return structuredContent;
   const content = (result as { content?: Array<{ type: string; text?: string }> }).content;
   const text = content?.find((item) => item.type === "text")?.text;
   if (!text) throw new Error("Tool result did not include text content");
   return JSON.parse(text);
+}
+
+function toolText(result: unknown): string {
+  const content = (result as { content?: Array<{ type: string; text?: string }> }).content;
+  const text = content?.find((item) => item.type === "text")?.text;
+  if (!text) throw new Error("Tool result did not include text content");
+  return text;
 }
 
 function toolStructured(result: unknown): Record<string, unknown> {

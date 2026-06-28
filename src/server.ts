@@ -510,9 +510,10 @@ function toolResponse(data: unknown): {
   content: Array<{ type: "text"; text: string }>;
   structuredContent: Record<string, unknown>;
 } {
+  const structuredContent = jsonObject(data);
   return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-    structuredContent: jsonObject(data),
+    content: [{ type: "text", text: toolResponseText(data, structuredContent) }],
+    structuredContent,
   };
 }
 
@@ -521,6 +522,67 @@ function jsonObject(data: unknown): Record<string, unknown> {
     return data as Record<string, unknown>;
   }
   return { result: data };
+}
+
+function toolResponseText(data: unknown, structuredContent: Record<string, unknown>): string {
+  const fullJson = JSON.stringify(data, null, 2) ?? "null";
+  const fullBytes = Buffer.byteLength(fullJson, "utf8");
+  if (fullBytes <= MCP_TEXT_RESPONSE_MAX_BYTES) return fullJson;
+
+  return JSON.stringify({
+    kind: "computer-linker-tool-response-preview",
+    textTruncated: true,
+    structuredContentAvailable: true,
+    structuredContentBytes: fullBytes,
+    previewBytes: MCP_TEXT_RESPONSE_PREVIEW_BYTES,
+    summary: toolResponseSummary(structuredContent),
+    preview: truncateUtf8(fullJson, MCP_TEXT_RESPONSE_PREVIEW_BYTES),
+  }, null, 2);
+}
+
+function toolResponseSummary(structuredContent: Record<string, unknown>): Record<string, unknown> {
+  const summary: Record<string, unknown> = {
+    topLevelKeys: Object.keys(structuredContent).slice(0, 30),
+  };
+  copyShortSummaryFields(structuredContent, summary, ["kind", "ok", "operationId", "scope", "op", "view"]);
+  const error = structuredContent.error;
+  if (isRecord(error)) {
+    summary.error = shortObjectSummary(error, ["code", "message", "retryable"]);
+  }
+  const data = structuredContent.data;
+  if (isRecord(data)) {
+    summary.dataKeys = Object.keys(data).slice(0, 30);
+    for (const [key, value] of Object.entries(data)) {
+      if (typeof value === "string" && Buffer.byteLength(value, "utf8") > 1024) {
+        summary[`${key}Bytes`] = Buffer.byteLength(value, "utf8");
+      }
+    }
+  }
+  return summary;
+}
+
+function copyShortSummaryFields(source: Record<string, unknown>, target: Record<string, unknown>, fields: string[]): void {
+  for (const field of fields) {
+    const value = source[field];
+    if (typeof value === "string" && value.length <= 160) target[field] = value;
+    else if (typeof value === "number" || typeof value === "boolean") target[field] = value;
+  }
+}
+
+function shortObjectSummary(source: Record<string, unknown>, fields: string[]): Record<string, unknown> {
+  const target: Record<string, unknown> = {};
+  copyShortSummaryFields(source, target, fields);
+  return target;
+}
+
+function truncateUtf8(value: string, maxBytes: number): string {
+  return Buffer.byteLength(value, "utf8") > maxBytes
+    ? Buffer.from(value, "utf8").subarray(0, maxBytes).toString("utf8")
+    : value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 async function auditedToolCall<T>(
@@ -587,6 +649,8 @@ export async function serveStdio(): Promise<void> {
 
 const HTTP_REQUEST_BODY_LIMIT = "10mb";
 const HTTP_REQUEST_BODY_LIMIT_LABEL = "10 MB";
+export const MCP_TEXT_RESPONSE_MAX_BYTES = 16 * 1024;
+const MCP_TEXT_RESPONSE_PREVIEW_BYTES = 4 * 1024;
 
 interface HttpMcpTransportLike {
   close?: () => void | Promise<void>;

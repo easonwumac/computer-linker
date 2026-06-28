@@ -69,6 +69,9 @@ called out even when the package version is still `0.x`.
 - HTTP MCP sessions now expire after a bounded idle timeout, close their
   underlying transport when possible, and write redacted `expired:<id>` session
   events that are visible from operation history.
+- MCP tool text responses now stay bounded for large payloads: small responses
+  remain readable JSON, while large responses keep complete data in
+  `structuredContent` and expose only a compact text preview.
 
 ## 0.1.11 - 2026-06-27
 
