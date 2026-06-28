@@ -4,7 +4,8 @@ import { basename } from "node:path";
 import { legacyNetworkCapabilitySemantics, workspaceCapabilityPolicy } from "./capability-policy.js";
 import { computerOperationContract, publicComputerOperationRegistry } from "./computer-operation-registry.js";
 import { configDiagnostics, type ConfigDiagnostic } from "./config-diagnostics.js";
-import { auditLogPath, codexRunsPath, loadConfig } from "./config.js";
+import { auditLogPath, codexRunsPath, loadConfig, runtimeConfigSources } from "./config.js";
+import { localStatePermissionsReport } from "./local-state.js";
 import { workspaceLinkerVersion } from "./package-metadata.js";
 import type { LocalPortConfig } from "./permissions.js";
 import { executableCommand, findExecutableCommand, windowsVerbatimArgumentsOption } from "./platform-shell.js";
@@ -114,6 +115,7 @@ export interface ReleaseReadiness {
 
 export function getLocalPortCapabilities(): unknown {
   const config = loadConfig();
+  const configSources = runtimeConfigSources();
   const registry = new WorkspaceRegistry(config);
   const localTools = localToolCapabilities();
   const toolReadiness = localToolReadiness(localTools);
@@ -146,6 +148,7 @@ export function getLocalPortCapabilities(): unknown {
       ownerTokenConfigured: Boolean(config.ownerToken),
       httpModeWithoutOwnerToken: config.ownerToken ? "owner-token-or-oauth" : "loopback-only",
     },
+    configSources,
     machine: {
       id: config.machineId,
       hostname: config.machineName,
@@ -158,7 +161,7 @@ export function getLocalPortCapabilities(): unknown {
       cpuCount: cpus().length,
       totalMemoryBytes: totalmem(),
     },
-    connectionProfile: connectionProfile(config, false),
+    connectionProfile: connectionProfile(config, false, configSources),
     workspaces: registry.listDefinedWorkspaces().map((workspace) => ({
       id: workspace.id,
       name: workspace.name,
@@ -274,6 +277,7 @@ export function getLocalPortCapabilities(): unknown {
 
 export function getLocalPortDoctor(): unknown {
   const config = loadConfig();
+  const configSources = runtimeConfigSources();
   const localTools = localToolCapabilities();
   const toolReadiness = localToolReadiness(localTools);
   const configFindings = configDiagnostics(config);
@@ -317,6 +321,7 @@ export function getLocalPortDoctor(): unknown {
       port: config.port ?? 3939,
       localMcpUrl: `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/mcp`,
       localApiUrl: `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/api/v1`,
+      configSources,
       startCommands: {
         start: "computer-linker start",
         serveHttp: "computer-linker start",
@@ -370,6 +375,7 @@ export function getLocalPortDoctor(): unknown {
       notes: service.notes,
     },
     maintenance,
+    localStatePermissions: localStatePermissionsReport(),
     localTools,
     toolReadiness,
     nextActions: uniqueStrings([

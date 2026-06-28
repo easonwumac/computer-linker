@@ -1,4 +1,4 @@
-import { configPath } from "./config.js";
+import { configPath, runtimeConfigSources, type RuntimeConfigSources } from "./config.js";
 import { genericMcpTools } from "./mcp-surface.js";
 import type { LocalPortConfig } from "./permissions.js";
 
@@ -41,6 +41,7 @@ export interface ConnectionProfile {
   machineId?: string;
   machineName: string;
   configPath: string;
+  configSources: RuntimeConfigSources;
   stdio: {
     command: string;
     args: string[];
@@ -162,7 +163,7 @@ export interface ChatGptConnectorConfig {
   warnings: string[];
 }
 
-export function connectionProfile(config: LocalPortConfig, includeSecrets = false): ConnectionProfile {
+export function connectionProfile(config: LocalPortConfig, includeSecrets = false, configSources: RuntimeConfigSources = runtimeConfigSources(config)): ConnectionProfile {
   const host = config.host ?? "127.0.0.1";
   const port = config.port ?? 3939;
   const publicBaseUrl = config.publicBaseUrl ?? localPublicBaseUrl(host, port);
@@ -177,6 +178,7 @@ export function connectionProfile(config: LocalPortConfig, includeSecrets = fals
     machineId: config.machineId,
     machineName: config.machineName,
     configPath: configPath(),
+    configSources,
     stdio: {
       command: "computer-linker",
       args: ["serve"],

@@ -402,8 +402,14 @@ The config lives at:
 ~/.computer-linker/config.json
 ```
 
-`config show` redacts the owner token by default; use `--show-token` only on a
-trusted local setup screen.
+`config show` is file-focused and redacts the owner token by default; use
+`--show-token` only on a trusted local setup screen. Runtime environment
+overrides such as `COMPUTER_LINKER_OWNER_TOKEN` and
+`COMPUTER_LINKER_PUBLIC_BASE_URL` are intentionally not printed by
+`config show`. Use `computer-linker doctor --json`, `computer-linker profile`,
+or `computer-linker client setup --json` and inspect `configSources` when you
+need to know whether the active value came from the file, an environment
+variable, or a detected tunnel.
 
 For shell-enabled scopes, `config.json` can set or refine conservative command
 policy:
@@ -530,8 +536,12 @@ active background command and Codex processes that were started through MCP.
 Local runtime state is bounded by default. Audit history is compacted by file
 size, recent history reads scan from the tail, Codex workflow records are
 redacted and capped, screenshot `fileRef` artifacts are temporary, and exited
-managed process snapshots are removed after the recent debugging window. Run
-`computer-linker doctor --json` to inspect the exact maintenance policy.
+managed process snapshots are removed after the recent debugging window. Local
+state files such as `config.json`, `audit.jsonl`, `codex-runs.jsonl`,
+`oauth-state.json`, and `tunnels.json` are created with restrictive file modes;
+`doctor --json` also reports `localStatePermissions` and repairs broad POSIX
+permissions when practical. Run `computer-linker doctor --json` to inspect the
+exact maintenance policy.
 HTTP MCP tool-call history includes the short MCP session reference, client
 name/id when available, auth type, user agent, and remote address, but not the
 full session header or bearer token.

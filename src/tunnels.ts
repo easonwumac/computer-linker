@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { configDir } from "./config.js";
+import { securePrivateFile } from "./file-permissions.js";
 import { executableCommand, windowsVerbatimArgumentsOption } from "./platform-shell.js";
 
 export type TunnelProviderName = "cloudflare" | "tailscale" | "openai";
@@ -471,6 +472,7 @@ export async function ensureOpenAiTunnelClientInstalled(options: { clientPath?: 
     sha256: actualSha256,
     installedAt: new Date().toISOString(),
   }, null, 2)}\n`, { mode: 0o600 });
+  securePrivateFile(join(toolsDir, "release.json"), 0o600);
   rmSync(extractDir, { recursive: true, force: true });
 
   return {
@@ -994,7 +996,9 @@ function writePersistedTunnelSnapshots(snapshots: TunnelProcessSnapshot[]): void
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
       .slice(0, maxPersistedTunnelSnapshots)
       .map(compactTunnelSnapshotForPersistence);
-    writeFileSync(tunnelStatePath(), `${JSON.stringify(sorted, null, 2)}\n`, { mode: 0o600 });
+    const path = tunnelStatePath();
+    writeFileSync(path, `${JSON.stringify(sorted, null, 2)}\n`, { mode: 0o600 });
+    securePrivateFile(path, 0o600);
   } catch {
     // Tunnel snapshots are best-effort diagnostics; tunnel operation should continue without them.
   }

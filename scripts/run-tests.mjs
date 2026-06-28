@@ -30,6 +30,7 @@ const tests = [
   tsx("tunnels", "src/tunnels.test.ts"),
   tsx("sessions", "src/sessions.test.ts"),
   tsx("processes", "src/processes.test.ts"),
+  tsx("local state", "src/local-state.test.ts"),
   tsx("security", "src/security.test.ts"),
   tsx("computer contract", "src/computer-contract.test.ts"),
   tsx("api", "src/api.test.ts"),

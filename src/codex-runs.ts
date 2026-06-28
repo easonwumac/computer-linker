@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { redactAuditValue } from "./audit-redaction.js";
 import { codexRunsPath } from "./config.js";
+import { securePrivateFile } from "./file-permissions.js";
 import { codexRunRetentionPolicy, enforceJsonlRetention, readTailText, type JsonlRetentionPolicy } from "./retention.js";
 import type { ProcessResult, WorkspaceOperationName } from "./workspace-operations.js";
 
@@ -70,6 +71,7 @@ export function writeCodexRunRecord(input: WriteCodexRunRecordInput): CodexRunRe
   const path = codexRunsPath();
   mkdirSync(dirname(path), { recursive: true });
   appendFileSync(path, `${JSON.stringify(record)}\n`, { mode: 0o600 });
+  securePrivateFile(path, 0o600);
   try {
     enforceCodexRunRetention();
   } catch {

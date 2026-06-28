@@ -197,6 +197,10 @@ try {
     assert.equal(typeof capabilities.body.data.machine.platform, "string");
     assert.equal(capabilities.body.data.connectionProfile.machineName, "api-test");
     assert.equal(capabilities.body.data.connectionProfile.machineId, capabilities.body.data.machineId);
+    assert.equal(capabilities.body.data.configSources.ownerToken.source, "file");
+    assert.equal(capabilities.body.data.configSources.ownerToken.valueRedacted, "<ownerToken>");
+    assert.equal(capabilities.body.data.configSources.publicBaseUrl.source, "absent");
+    assert.equal(capabilities.body.data.connectionProfile.configSources.ownerToken.source, "file");
     assert.equal(capabilities.body.data.connectionProfile.http.auth.header, "Authorization: Bearer <ownerToken>");
     assert.equal(capabilities.body.data.connectionProfile.http.auth.bearerToken, undefined);
     assert.ok(capabilities.body.data.workspaces[0].allowedOperations.includes("read"));
@@ -408,6 +412,8 @@ try {
     assert.deepEqual(clientSetup.body.data.blockingReasons, []);
     assert.ok(clientSetup.body.data.remoteBlockingReasons.some((reason: string) => reason.includes("No public MCP URL")));
     assert.equal(clientSetup.body.data.connection.localMcpUrl, "http://127.0.0.1:3959/mcp");
+    assert.equal(clientSetup.body.data.connection.configSources.ownerToken.source, "file");
+    assert.equal(clientSetup.body.data.connection.configSources.ownerToken.valueRedacted, "<ownerToken>");
     assert.equal(clientSetup.body.data.auth.bearerHeader, "Authorization: Bearer <ownerToken>");
     assert.deepEqual(clientSetup.body.data.tools, ["get_computer_info", "computer_operation", "get_operation_history"]);
     assert.equal(clientSetup.body.data.operationShape.tool, "computer_operation");
@@ -1082,6 +1088,8 @@ try {
     assert.equal(controlDoctor.body.data.machine.nodeVersion, process.version);
     assert.equal(controlDoctor.body.data.runtime.localMcpUrl, "http://127.0.0.1:3959/mcp");
     assert.equal(controlDoctor.body.data.runtime.localApiUrl, "http://127.0.0.1:3959/api/v1");
+    assert.equal(controlDoctor.body.data.runtime.configSources.ownerToken.source, "file");
+    assert.equal(controlDoctor.body.data.runtime.configSources.publicBaseUrl.source, "absent");
     assert.equal(controlDoctor.body.data.runtime.startCommands.start, "computer-linker start");
     assert.equal(controlDoctor.body.data.runtime.startCommands.serveHttp, "computer-linker start");
     assert.equal(controlDoctor.body.data.startup.kind, "computer-linker-startup-readiness");
@@ -1100,6 +1108,8 @@ try {
     assert.ok(Array.isArray(controlDoctor.body.data.security.findings));
     assert.ok(Array.isArray(controlDoctor.body.data.tunnels.tools));
     assert.ok(Array.isArray(controlDoctor.body.data.tunnels.commands));
+    assert.equal(controlDoctor.body.data.localStatePermissions.kind, "computer-linker-local-state-permissions");
+    assert.ok(controlDoctor.body.data.localStatePermissions.files.some((file: { role: string }) => file.role === "config"));
     assert.match(controlDoctor.body.data.service.profileCommand, /^computer-linker service profile --platform /);
     assert.match(controlDoctor.body.data.service.profileBundleCommand, /--output-dir \.\/service-profile$/);
     assert.match(controlDoctor.body.data.service.installDryRunCommand, /service install --dry-run --platform/);

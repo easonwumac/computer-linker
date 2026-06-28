@@ -6,8 +6,7 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { expandHomePath, isBootstrapDefaultWorkspace, isSafeBootstrapDefaultWorkspace } from "./permissions.js";
 import type { LocalPortConfig, WorkspacePolicy } from "./permissions.js";
-import { loadConfig } from "./config.js";
-import { configPath, generateOwnerToken, writeConfig, writeDefaultConfig } from "./config.js";
+import { configPath, generateOwnerToken, loadConfig, loadConfigFile, runtimeConfigSources, writeConfig, writeDefaultConfig } from "./config.js";
 import { getLocalPortDoctor } from "./capabilities.js";
 import { chatGptSmoke, chatGptUrl, chatGptVerify, formatChatGptSmoke, formatChatGptUrl, formatChatGptVerify, parseChatGptVerifyMode } from "./chatgpt.js";
 import { formatCliCommand, invocationCommand, invocationCommandParts } from "./cli-format.js";
@@ -1802,7 +1801,7 @@ function profile(args: string[]): void {
   if (unknown.length > 0) {
     throw new Error(`Unknown profile option: ${unknown[0]}`);
   }
-  console.log(JSON.stringify(connectionProfile(loadConfig(), includeSecrets), null, 2));
+  console.log(JSON.stringify(connectionProfile(loadConfig(), includeSecrets, runtimeConfigSources()), null, 2));
 }
 
 async function client(args: string[]): Promise<void> {
@@ -2419,7 +2418,7 @@ function config(args: string[]): void {
     if (unknown.length > 0) {
       throw new Error(`Unknown config show option: ${unknown[0]}`);
     }
-    console.log(JSON.stringify(redactedConfig(loadConfig(), rest.includes("--show-token")), null, 2));
+    console.log(JSON.stringify(redactedConfig(loadConfigFile(), rest.includes("--show-token")), null, 2));
     return;
   }
 
@@ -2441,7 +2440,7 @@ function config(args: string[]): void {
   if (subcommand === "set-public-url" || subcommand === "set-public-base-url") {
     const publicBaseUrl = requireHttpsUrl(value, "public URL");
     const writtenPath = writeConfig({
-      ...loadConfig(),
+      ...loadConfigFile(),
       publicBaseUrl,
     });
     console.log(`Updated publicBaseUrl in ${writtenPath}`);
@@ -2450,7 +2449,7 @@ function config(args: string[]): void {
   }
 
   if (subcommand === "clear-public-url" || subcommand === "clear-public-base-url") {
-    const current = loadConfig();
+    const current = loadConfigFile();
     const writtenPath = writeConfig({
       ...current,
       publicBaseUrl: undefined,
@@ -2484,17 +2483,30 @@ function configToken(args: string[]): void {
   }
 
   const includeSecret = args.includes("--show-token");
+  const fileConfig = loadConfigFile();
   const config = loadConfig();
+  const sources = runtimeConfigSources(fileConfig);
   let ownerToken = config.ownerToken;
   let writtenPath = configPath();
   let rotated = false;
+  let source = sources.ownerToken.source;
+  let envName = sources.ownerToken.envName;
+  let fileConfigured = sources.ownerToken.fileConfigured;
+  let overriddenByEnv = sources.ownerToken.overriddenByEnv;
   if (action === "rotate") {
+    if (sources.ownerToken.overriddenByEnv) {
+      throw new Error(`ownerToken is overridden by ${sources.ownerToken.envName}; update that environment variable or unset it before rotating the file token.`);
+    }
     ownerToken = generateOwnerToken();
     writtenPath = writeConfig({
-      ...config,
+      ...fileConfig,
       ownerToken,
     });
     rotated = true;
+    source = "file";
+    envName = undefined;
+    fileConfigured = true;
+    overriddenByEnv = false;
   }
 
   const tokenConfigured = Boolean(ownerToken);
@@ -2507,13 +2519,19 @@ function configToken(args: string[]): void {
           "Update MCP clients with the new Authorization bearer token.",
           "Restart the HTTP server after token-state changes when using OAuth clients.",
         ]
-      : ["Run `computer-linker config token rotate --show-token` when you need to replace the owner token."]
+      : sources.ownerToken.overriddenByEnv
+        ? ["Update or unset the owner-token environment variable before expecting file token changes to affect runtime auth."]
+        : ["Run `computer-linker config token rotate --show-token` when you need to replace the owner token."]
     : ["Run `computer-linker config token rotate --show-token` before exposing Computer Linker through a tunnel."];
   const report = {
     kind: "computer-linker-owner-token",
     schemaVersion: 1,
     configPath: writtenPath,
     tokenConfigured,
+    source,
+    envName,
+    fileConfigured,
+    overriddenByEnv,
     rotated,
     authHeader,
     ownerToken: includeSecret ? ownerToken : undefined,
@@ -2528,6 +2546,10 @@ function configToken(args: string[]): void {
   console.log("Computer Linker owner token");
   console.log(`configPath: ${report.configPath}`);
   console.log(`tokenConfigured: ${report.tokenConfigured ? "yes" : "no"}`);
+  console.log(`source: ${report.source}`);
+  if (report.envName) console.log(`envName: ${report.envName}`);
+  console.log(`fileConfigured: ${report.fileConfigured ? "yes" : "no"}`);
+  console.log(`overriddenByEnv: ${report.overriddenByEnv ? "yes" : "no"}`);
   console.log(`rotated: ${report.rotated ? "yes" : "no"}`);
   if (report.authHeader) console.log(`authHeader: ${report.authHeader}`);
   if (includeSecret && ownerToken) console.log(`ownerToken: ${ownerToken}`);

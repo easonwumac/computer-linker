@@ -195,7 +195,7 @@ function symbolsFromLine(line: string): Array<{ name: string; kind: string; sign
 }
 
 async function fallbackSearchText(options: SearchTextOptions): Promise<string> {
-  const files = await fallbackFindFiles(options.cwd, "**/*", options.maxResults * 10);
+  const files = await fallbackFindFiles(options.cwd, options.glob ?? "**/*", options.maxResults * 10);
   const needle = options.caseSensitive ? options.query : options.query.toLowerCase();
   const matches: string[] = [];
 
@@ -230,7 +230,7 @@ function fileExtension(path: string): string {
 
 async function fallbackFindFiles(root: string, pattern: string, maxResults: number): Promise<string[]> {
   const results: string[] = [];
-  const needle = globNeedle(pattern);
+  const matchesGlob = fallbackGlobMatcher(pattern);
 
   async function walk(directory: string): Promise<void> {
     if (results.length >= maxResults) return;
@@ -248,10 +248,10 @@ async function fallbackFindFiles(root: string, pattern: string, maxResults: numb
         await walk(path);
         continue;
       }
-      const relativePath = relative(root, path);
+      const relativePath = toPortablePath(relative(root, path));
       if (isSensitiveWorkspacePath(relativePath)) continue;
-      if (!needle || relativePath.includes(needle)) {
-        results.push(toPortablePath(relativePath));
+      if (matchesGlob(relativePath)) {
+        results.push(relativePath);
         if (results.length >= maxResults) return;
       }
     }
@@ -261,8 +261,72 @@ async function fallbackFindFiles(root: string, pattern: string, maxResults: numb
   return results;
 }
 
-function globNeedle(pattern: string): string {
-  return pattern.replace(/\*\*\/|\*|\{|\}/g, "").replace(/^\/+|\/+$/g, "");
+function fallbackGlobMatcher(pattern: string): (path: string) => boolean {
+  const normalizedPattern = toPortablePath(pattern || "**/*").replace(/^\.\//, "");
+  const patterns = expandBracePatterns(normalizedPattern);
+  const matchers = patterns.map((item) => {
+    const subject = item.includes("/") ? "path" : "basename";
+    const regex = globPatternRegex(item);
+    return { subject, regex };
+  });
+  return (path) => {
+    const normalizedPath = toPortablePath(path);
+    const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+    return matchers.some((matcher) => matcher.regex.test(matcher.subject === "path" ? normalizedPath : basename));
+  };
+}
+
+function expandBracePatterns(pattern: string, limit = 32): string[] {
+  const match = /\{([^{}]+)\}/.exec(pattern);
+  if (!match) return [pattern];
+  const prefix = pattern.slice(0, match.index);
+  const suffix = pattern.slice(match.index + match[0].length);
+  const parts = match[1].split(",").filter((part) => part.length > 0);
+  const expanded: string[] = [];
+  for (const part of parts) {
+    for (const value of expandBracePatterns(`${prefix}${part}${suffix}`, limit)) {
+      expanded.push(value);
+      if (expanded.length >= limit) return expanded;
+    }
+  }
+  return expanded;
+}
+
+function globPatternRegex(pattern: string): RegExp {
+  let source = "^";
+  for (let index = 0; index < pattern.length;) {
+    const char = pattern[index];
+    const next = pattern[index + 1];
+    const afterNext = pattern[index + 2];
+    if (char === "*" && next === "*" && afterNext === "/") {
+      source += "(?:.*/)?";
+      index += 3;
+      continue;
+    }
+    if (char === "*" && next === "*") {
+      source += ".*";
+      index += 2;
+      continue;
+    }
+    if (char === "*") {
+      source += "[^/]*";
+      index += 1;
+      continue;
+    }
+    if (char === "?") {
+      source += "[^/]";
+      index += 1;
+      continue;
+    }
+    source += escapeRegex(char);
+    index += 1;
+  }
+  source += "$";
+  return new RegExp(source);
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 }
 
 function limitLines(text: string, maxLines: number): string {

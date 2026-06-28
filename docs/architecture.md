@@ -349,7 +349,9 @@ a direct bearer token for simpler clients that support custom headers.
 OAuth registered clients, access tokens, and refresh tokens are persisted in
 `~/.computer-linker/oauth-state.json` with `0600` permissions. Short-lived
 authorization codes stay in memory and expire quickly; they are not persisted
-across restarts.
+across restarts. Existing local state files are checked through
+`localStatePermissions`; on POSIX systems broad modes are repaired to the
+expected private mode, while Windows reports the chmod check as not applicable.
 
 When running behind a tunnel, `publicBaseUrl` or `COMPUTER_LINKER_PUBLIC_BASE_URL`
 must match the reachable origin so OAuth issuer and resource metadata are
@@ -531,8 +533,10 @@ surface for the same config file used by the MCP server:
 - `computer-linker here`, `computer-linker setup`, and
   `computer-linker start <folder>` initialize machine identity, owner token,
   workspace scopes, permissions, and default command policy.
-- `computer-linker config ...` shows and edits config values such as
-  `publicBaseUrl` and per-workspace execution policy.
+- `computer-linker config ...` shows and edits file-backed config values such
+  as `publicBaseUrl` and per-workspace execution policy. Runtime environment
+  overrides are reported separately through `configSources` in doctor,
+  profile, capabilities, and client setup payloads.
 - `computer-linker process list/read/stop` talks to the running local HTTP
   server and manages background command/Codex processes started through MCP.
 - `computer-linker screen status` reports screenshot provider readiness,

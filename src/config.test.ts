@@ -3,22 +3,28 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { configDiagnostics } from "./config-diagnostics.js";
-import { configPath, loadConfig, writeDefaultConfig } from "./config.js";
+import { configPath, loadConfig, loadConfigFile, runtimeConfigSources, writeDefaultConfig } from "./config.js";
 
 const originalWorkspaceConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
+const originalLegacyWorkspaceConfigDir = process.env.WORKSPACE_LINKER_CONFIG_DIR;
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
 const originalWorkspaceOwnerToken = process.env.COMPUTER_LINKER_OWNER_TOKEN;
+const originalLegacyWorkspaceOwnerToken = process.env.WORKSPACE_LINKER_OWNER_TOKEN;
 const originalOwnerToken = process.env.LOCALPORT_OWNER_TOKEN;
 const originalWorkspacePublicBaseUrl = process.env.COMPUTER_LINKER_PUBLIC_BASE_URL;
+const originalLegacyWorkspacePublicBaseUrl = process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL;
 const originalLocalportPublicBaseUrl = process.env.LOCALPORT_PUBLIC_BASE_URL;
 const root = await mkdtemp(join(tmpdir(), "localport-config-test-"));
 
 try {
   process.env.COMPUTER_LINKER_CONFIG_DIR = "";
+  process.env.WORKSPACE_LINKER_CONFIG_DIR = "";
   process.env.LOCALPORT_CONFIG_DIR = root;
   process.env.COMPUTER_LINKER_OWNER_TOKEN = "";
+  process.env.WORKSPACE_LINKER_OWNER_TOKEN = "";
   delete process.env.LOCALPORT_OWNER_TOKEN;
   process.env.COMPUTER_LINKER_PUBLIC_BASE_URL = "";
+  process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL = "";
   process.env.LOCALPORT_PUBLIC_BASE_URL = "";
   assert.equal(configPath(), join(root, "config.json"));
 
@@ -74,12 +80,43 @@ try {
   process.env.COMPUTER_LINKER_OWNER_TOKEN = "";
   process.env.LOCALPORT_OWNER_TOKEN = "env-owner-token";
   const migrated = loadConfig();
+  const migratedFile = loadConfigFile();
+  const migratedSources = runtimeConfigSources(migratedFile);
   assert.match(migrated.machineId ?? "", /^machine_/);
   assert.equal(migrated.ownerToken, "env-owner-token");
   assert.equal(migrated.publicBaseUrl, "https://file.example.com");
+  assert.equal(migratedFile.ownerToken, "legacy-token");
+  assert.equal(migratedSources.ownerToken.source, "env");
+  assert.equal(migratedSources.ownerToken.envName, "LOCALPORT_OWNER_TOKEN");
+  assert.equal(migratedSources.ownerToken.legacyEnvName, true);
+  assert.equal(migratedSources.ownerToken.fileConfigured, true);
+  assert.equal(migratedSources.ownerToken.overriddenByEnv, true);
+  assert.equal(migratedSources.ownerToken.valueRedacted, "<ownerToken>");
+  assert.equal(migratedSources.publicBaseUrl.source, "file");
+  assert.equal(migratedSources.publicBaseUrl.value, "https://file.example.com");
   const migratedRaw = JSON.parse(await readFile(configPath(), "utf8")) as { machineId?: string; ownerToken?: string };
   assert.equal(migratedRaw.machineId, migrated.machineId);
   assert.equal(migratedRaw.ownerToken, "legacy-token");
+
+  process.env.COMPUTER_LINKER_OWNER_TOKEN = "env-owner";
+  process.env.LOCALPORT_OWNER_TOKEN = "legacy-owner";
+  process.env.COMPUTER_LINKER_PUBLIC_BASE_URL = "https://env.example.com";
+  const primaryEnv = loadConfig();
+  const primaryEnvFile = loadConfigFile();
+  const primaryEnvSources = runtimeConfigSources(primaryEnvFile);
+  assert.equal(primaryEnv.ownerToken, "env-owner");
+  assert.equal(primaryEnv.publicBaseUrl, "https://env.example.com");
+  assert.equal(primaryEnvFile.ownerToken, "legacy-token");
+  assert.equal(primaryEnvFile.publicBaseUrl, "https://file.example.com");
+  assert.equal(primaryEnvSources.ownerToken.source, "env");
+  assert.equal(primaryEnvSources.ownerToken.envName, "COMPUTER_LINKER_OWNER_TOKEN");
+  assert.equal(primaryEnvSources.ownerToken.legacyEnvName, false);
+  assert.equal(primaryEnvSources.publicBaseUrl.source, "env");
+  assert.equal(primaryEnvSources.publicBaseUrl.envName, "COMPUTER_LINKER_PUBLIC_BASE_URL");
+  assert.equal(primaryEnvSources.publicBaseUrl.value, "https://env.example.com");
+  assert.equal(primaryEnvSources.publicBaseUrl.fileValue, "https://file.example.com");
+  process.env.COMPUTER_LINKER_OWNER_TOKEN = "";
+  process.env.COMPUTER_LINKER_PUBLIC_BASE_URL = "";
 
   const diagnostics = configDiagnostics({
     machineName: "diagnostics",
@@ -147,17 +184,26 @@ try {
   if (originalWorkspaceConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
   else process.env.COMPUTER_LINKER_CONFIG_DIR = originalWorkspaceConfigDir;
 
+  if (originalLegacyWorkspaceConfigDir === undefined) delete process.env.WORKSPACE_LINKER_CONFIG_DIR;
+  else process.env.WORKSPACE_LINKER_CONFIG_DIR = originalLegacyWorkspaceConfigDir;
+
   if (originalConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalConfigDir;
 
   if (originalWorkspaceOwnerToken === undefined) delete process.env.COMPUTER_LINKER_OWNER_TOKEN;
   else process.env.COMPUTER_LINKER_OWNER_TOKEN = originalWorkspaceOwnerToken;
 
+  if (originalLegacyWorkspaceOwnerToken === undefined) delete process.env.WORKSPACE_LINKER_OWNER_TOKEN;
+  else process.env.WORKSPACE_LINKER_OWNER_TOKEN = originalLegacyWorkspaceOwnerToken;
+
   if (originalOwnerToken === undefined) delete process.env.LOCALPORT_OWNER_TOKEN;
   else process.env.LOCALPORT_OWNER_TOKEN = originalOwnerToken;
 
   if (originalWorkspacePublicBaseUrl === undefined) delete process.env.COMPUTER_LINKER_PUBLIC_BASE_URL;
   else process.env.COMPUTER_LINKER_PUBLIC_BASE_URL = originalWorkspacePublicBaseUrl;
+
+  if (originalLegacyWorkspacePublicBaseUrl === undefined) delete process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL;
+  else process.env.WORKSPACE_LINKER_PUBLIC_BASE_URL = originalLegacyWorkspacePublicBaseUrl;
 
   if (originalLocalportPublicBaseUrl === undefined) delete process.env.LOCALPORT_PUBLIC_BASE_URL;
   else process.env.LOCALPORT_PUBLIC_BASE_URL = originalLocalportPublicBaseUrl;

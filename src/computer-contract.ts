@@ -11,7 +11,7 @@ import {
   publicComputerOperationRegistry,
   type ComputerOperationEnvelope,
 } from "./computer-operation-registry.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, runtimeConfigSources } from "./config.js";
 import { computerLinkerDiscovery } from "./discovery-contract.js";
 import { historyInsight } from "./history-insights.js";
 import { compatibilityMcpTools, exposedMcpTools, genericMcpTools, mcpToolSurface } from "./mcp-surface.js";
@@ -135,6 +135,7 @@ const genericAgentInstructions = [
 
 export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
   const config = loadConfig();
+  const configSources = runtimeConfigSources();
   const registry = new WorkspaceRegistry(config);
   const include = parseComputerInfoInclude(options);
   const includeRoots = include.includeRoots;
@@ -191,6 +192,7 @@ export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
       localUrl: capabilities.startup?.localMcpUrl ?? `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/mcp`,
       publicUrl: capabilities.exposure?.publicMcpUrl ?? null,
       httpMcpSessionIdleTimeoutMs: httpMcpSessionIdleTimeoutMs(),
+      configSources,
     },
     scopes,
     tools: {
@@ -372,7 +374,8 @@ function displayWorkspacePath(path: string, name: string, id: string): string {
 
 export function getMcpClientSetup(options: McpClientSetupOptions = {}): unknown {
   const config = loadConfig();
-  const profile = connectionProfile(config, options.includeSecrets === true);
+  const configSources = runtimeConfigSources();
+  const profile = connectionProfile(config, options.includeSecrets === true, configSources);
   const tunnelSnapshots = options.tunnels ?? listTunnelProcesses();
   const activeOpenAiTunnel = runningOpenAiTunnel(tunnelSnapshots);
   const activeOpenAiTunnelId = activeOpenAiTunnel ? openAiTunnelIdFromSnapshot(activeOpenAiTunnel) : undefined;
@@ -409,6 +412,7 @@ export function getMcpClientSetup(options: McpClientSetupOptions = {}): unknown 
       publicMcpUrl,
       publicBaseUrl: publicBaseUrl ?? null,
       publicBaseUrlSource,
+      configSources,
       tunnel: activeOpenAiTunnel
         ? {
             provider: "openai",

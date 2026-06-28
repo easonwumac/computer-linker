@@ -192,6 +192,31 @@ try {
   assert.doesNotMatch(JSON.stringify(redactedConfigShow), /"token"/);
   const fullConfigShow = JSON.parse((await runCliOutput("config", "show", "--show-token")).stdout) as { ownerToken?: string };
   assert.equal(fullConfigShow.ownerToken, "token");
+  const envConfigShow = JSON.parse((await runCliOutputWithEnv({
+    COMPUTER_LINKER_OWNER_TOKEN: "env-redacted",
+    COMPUTER_LINKER_PUBLIC_BASE_URL: "https://env.example.com",
+  }, "config", "show", "--show-token")).stdout) as { ownerToken?: string; publicBaseUrl?: string };
+  assert.equal(envConfigShow.ownerToken, "token");
+  assert.notEqual(envConfigShow.ownerToken, "env-redacted");
+  assert.notEqual(envConfigShow.publicBaseUrl, "https://env.example.com");
+  const envTokenStatus = JSON.parse((await runCliOutputWithEnv({
+    COMPUTER_LINKER_OWNER_TOKEN: "env-redacted",
+  }, "config", "token", "--json")).stdout) as {
+    source: string;
+    envName?: string;
+    fileConfigured: boolean;
+    overriddenByEnv: boolean;
+    ownerToken?: string;
+  };
+  assert.equal(envTokenStatus.source, "env");
+  assert.equal(envTokenStatus.envName, "COMPUTER_LINKER_OWNER_TOKEN");
+  assert.equal(envTokenStatus.fileConfigured, true);
+  assert.equal(envTokenStatus.overriddenByEnv, true);
+  assert.equal(envTokenStatus.ownerToken, undefined);
+  await assert.rejects(
+    () => runCliOutputWithEnv({ COMPUTER_LINKER_OWNER_TOKEN: "env-redacted" }, "config", "token", "rotate"),
+    /ownerToken is overridden by COMPUTER_LINKER_OWNER_TOKEN/,
+  );
   await assert.rejects(
     () => runCliOutput("config", "show", "--bad"),
     /Unknown config show option: --bad/,

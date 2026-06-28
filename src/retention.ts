@@ -1,5 +1,6 @@
 import { closeSync, existsSync, openSync, readFileSync, readSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { securePrivateFile } from "./file-permissions.js";
 
 export interface JsonlRetentionPolicy {
   maxBytes: number;
@@ -159,6 +160,7 @@ export function fileStatus(path: string, warnBytes: number): {
 
 export function safeWriteFile(path: string, content: string): void {
   writeFileSync(path, content, { mode: 0o600 });
+  securePrivateFile(path, 0o600);
 }
 
 export function parentDirectory(path: string): string {

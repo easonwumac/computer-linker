@@ -17,6 +17,7 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import { checkResourceAllowed, resourceUrlFromServerUrl } from "@modelcontextprotocol/sdk/shared/auth-utils.js";
+import { securePrivateFile } from "./file-permissions.js";
 
 export interface LocalPortOAuthConfig {
   ownerToken: string;
@@ -132,6 +133,7 @@ export class OAuthStateStore implements OAuthRegisteredClientsStore {
       accessTokens: Object.fromEntries(this.accessTokens),
       refreshTokens: Object.fromEntries(this.refreshTokens),
     } satisfies OAuthProviderState, null, 2) + "\n", { mode: 0o600 });
+    securePrivateFile(this.statePath, 0o600);
   }
 }
 

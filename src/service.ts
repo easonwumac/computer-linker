@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { configDir } from "./config.js";
+import { securePrivateFile } from "./file-permissions.js";
 import { expandHomePath, type LocalPortConfig } from "./permissions.js";
 import { fileStatus, readTailText, serviceLogPolicy, tailLinesFromText } from "./retention.js";
 
@@ -217,6 +218,10 @@ export function writeServiceProfileFiles(config: LocalPortConfig, options: Servi
   writeFileSync(files.manifest, profile.manifest, { mode: 0o600 });
   writeFileSync(files.install, installScriptBody(profile, files), { mode: 0o700 });
   writeFileSync(files.uninstall, uninstallScriptBody(profile), { mode: 0o700 });
+  securePrivateFile(files.profile, 0o600);
+  securePrivateFile(files.manifest, 0o600);
+  securePrivateFile(files.install, 0o700);
+  securePrivateFile(files.uninstall, 0o700);
 
   return {
     kind: "computer-linker-service-files",

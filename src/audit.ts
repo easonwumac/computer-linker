@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { redactAuditValue } from "./audit-redaction.js";
 import { auditLogPath } from "./config.js";
+import { securePrivateFile } from "./file-permissions.js";
 import { auditRetentionPolicy, enforceJsonlRetention, readTailText, type JsonlRetentionPolicy } from "./retention.js";
 
 export interface AuditEvent {
@@ -72,6 +73,7 @@ export function writeAuditEvent(event: AuditEventInput): void {
   appendFileSync(path, `${JSON.stringify(redactAuditValue({ timestamp: new Date().toISOString(), ...event }))}\n`, {
     mode: 0o600,
   });
+  securePrivateFile(path, 0o600);
   try {
     enforceAuditRetention();
   } catch {
