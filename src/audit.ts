@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { redactAuditValue } from "./audit-redaction.js";
 import { auditLogPath } from "./config.js";
+import { auditRetentionPolicy, enforceJsonlRetention, readTailText, type JsonlRetentionPolicy } from "./retention.js";
 
 export interface AuditEvent {
   timestamp: string;
@@ -55,6 +56,7 @@ export interface ReadAuditEventsOptions {
   tool?: string;
   workspaceId?: string;
   query?: string;
+  maxTailScanBytes?: number;
 }
 
 export function writeAuditEvent(event: AuditEventInput): void {
@@ -63,6 +65,11 @@ export function writeAuditEvent(event: AuditEventInput): void {
   appendFileSync(path, `${JSON.stringify(redactAuditValue({ timestamp: new Date().toISOString(), ...event }))}\n`, {
     mode: 0o600,
   });
+  try {
+    enforceAuditRetention();
+  } catch {
+    // Retention is opportunistic; the audit event has already been durably appended.
+  }
 }
 
 export function writeAuthFailureEvent(input: {
@@ -112,28 +119,62 @@ export function readAuditEvents(options: ReadAuditEventsOptions = {}): AuditEven
   const path = auditLogPath();
   if (!existsSync(path)) return [];
 
-  let events = readFileSync(path, "utf8")
+  const limit = normalizeLimit(options.limit);
+  if (limit) return readAuditEventsFromTail(path, options, limit);
+
+  return readFileSync(path, "utf8")
     .trimEnd()
-    .split("\n")
+    .split(/\r?\n/)
     .filter(Boolean)
-    .map((line) => redactAuditValue(JSON.parse(line) as AuditEvent));
+    .map(parseAuditEvent)
+    .filter((event) => auditEventMatchesFilters(event, options))
+    .reverse();
+}
 
-  if (options.type) events = events.filter((event) => event.type === options.type);
-  if (options.success !== undefined) events = events.filter((event) => event.success === options.success);
-  if (options.tool) events = events.filter((event) => event.tool === options.tool);
-  if (options.workspaceId) {
-    events = events.filter((event) => event.workspaceId === options.workspaceId || event.workspaceRef === options.workspaceId);
-  }
-  if (options.query) {
-    const query = options.query.toLowerCase();
-    events = events.filter((event) => auditSearchText(event).includes(query));
-  }
+export function enforceAuditRetention(policy: Partial<JsonlRetentionPolicy> = {}): ReturnType<typeof enforceJsonlRetention> {
+  return enforceJsonlRetention(auditLogPath(), {
+    maxBytes: policy.maxBytes ?? auditRetentionPolicy.maxBytes,
+    maxLines: policy.maxLines,
+  });
+}
 
-  if (options.limit && options.limit > 0) {
-    events = events.slice(Math.max(0, events.length - options.limit));
-  }
+function readAuditEventsFromTail(path: string, options: ReadAuditEventsOptions, limit: number): AuditEvent[] {
+  const maxScanBytes = Math.max(1024, Math.floor(options.maxTailScanBytes ?? auditRetentionPolicy.tailReadMaxBytes));
+  let scanBytes = Math.min(maxScanBytes, Math.max(64 * 1024, limit * 2048));
 
-  return events.reverse();
+  while (true) {
+    const tail = readTailText(path, scanBytes);
+    const lines = tail.text.trimEnd().split(/\r?\n/).filter(Boolean);
+    const events: AuditEvent[] = [];
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const event = parseAuditEvent(lines[index]);
+      if (!auditEventMatchesFilters(event, options)) continue;
+      events.push(event);
+      if (events.length >= limit) return events;
+    }
+    if (!tail.truncated || scanBytes >= maxScanBytes || scanBytes >= tail.sizeBytes) {
+      return events;
+    }
+    scanBytes = Math.min(maxScanBytes, tail.sizeBytes, scanBytes * 2);
+  }
+}
+
+function parseAuditEvent(line: string): AuditEvent {
+  return redactAuditValue(JSON.parse(line) as AuditEvent);
+}
+
+function auditEventMatchesFilters(event: AuditEvent, options: ReadAuditEventsOptions): boolean {
+  if (options.type && event.type !== options.type) return false;
+  if (options.success !== undefined && event.success !== options.success) return false;
+  if (options.tool && event.tool !== options.tool) return false;
+  if (options.workspaceId && event.workspaceId !== options.workspaceId && event.workspaceRef !== options.workspaceId) return false;
+  if (options.query && !auditSearchText(event).includes(options.query.toLowerCase())) return false;
+  return true;
+}
+
+function normalizeLimit(value: number | undefined): number | undefined {
+  if (!Number.isInteger(value) || !value || value <= 0) return undefined;
+  return Math.floor(value);
 }
 
 function auditSearchText(event: AuditEvent): string {

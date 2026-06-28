@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { executableCommand, shellCommand } from "./platform-shell.js";
+import { managedProcessRetentionPolicy } from "./retention.js";
 
 const defaultMaxOutputBytes = 128 * 1024;
 
@@ -30,6 +31,21 @@ interface ManagedProcess extends ManagedProcessSnapshot {
 
 const processes = new Map<string, ManagedProcess>();
 
+export interface ManagedProcessRetentionOptions {
+  nowMs?: number;
+  maxExitedAgeMs?: number;
+  maxExitedPerWorkspace?: number;
+}
+
+export interface ManagedProcessRetentionReport {
+  scanned: number;
+  removed: number;
+  runningKept: number;
+  exitedKept: number;
+  maxExitedAgeMs: number;
+  maxExitedPerWorkspace: number;
+}
+
 export function startManagedProcess(input: {
   kind: ManagedProcessSnapshot["kind"];
   workspaceId: string;
@@ -42,6 +58,7 @@ export function startManagedProcess(input: {
   maxOutputBytes?: number;
   stdin?: string;
 }): ManagedProcessSnapshot {
+  cleanupExitedManagedProcesses();
   const processId = `proc_${randomUUID()}`;
   const detached = process.platform !== "win32";
   const command = input.args
@@ -116,6 +133,7 @@ export function listManagedProcesses(input: {
   workspaceRoot: string;
   kinds?: ManagedProcessSnapshot["kind"][];
 }): ManagedProcessSnapshot[] {
+  cleanupExitedManagedProcesses();
   return [...processes.values()]
     .filter((process) => process.workspaceId === input.workspaceId && process.workspaceRoot === input.workspaceRoot)
     .filter((process) => !input.kinds || input.kinds.includes(process.kind))
@@ -124,6 +142,7 @@ export function listManagedProcesses(input: {
 }
 
 export function listAllManagedProcesses(): ManagedProcessSnapshot[] {
+  cleanupExitedManagedProcesses();
   return [...processes.values()]
     .map(snapshot)
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
@@ -135,6 +154,7 @@ export function readManagedProcess(input: {
   workspaceRoot: string;
   kinds?: ManagedProcessSnapshot["kind"][];
 }): ManagedProcessSnapshot {
+  cleanupExitedManagedProcesses();
   return snapshot(getProcessForWorkspace(input));
 }
 
@@ -158,6 +178,54 @@ export async function stopManagedProcessById(processId: string, signal?: string)
 export async function stopAllManagedProcesses(signal = "SIGTERM"): Promise<ManagedProcessSnapshot[]> {
   const normalizedSignal = normalizeSignal(signal);
   return Promise.all([...processes.values()].map((process) => stopProcess(process, normalizedSignal)));
+}
+
+export function cleanupExitedManagedProcesses(options: ManagedProcessRetentionOptions = {}): ManagedProcessRetentionReport {
+  const nowMs = options.nowMs ?? Date.now();
+  const maxExitedAgeMs = options.maxExitedAgeMs ?? managedProcessRetentionPolicy.maxExitedAgeMs;
+  const maxExitedPerWorkspace = options.maxExitedPerWorkspace ?? managedProcessRetentionPolicy.maxExitedPerWorkspace;
+  const remove = new Set<string>();
+  const exitedByWorkspace = new Map<string, ManagedProcess[]>();
+  let runningKept = 0;
+
+  for (const process of processes.values()) {
+    if (process.status === "running") {
+      runningKept += 1;
+      continue;
+    }
+    const endedAtMs = Date.parse(process.endedAt ?? process.startedAt);
+    if (Number.isFinite(endedAtMs) && nowMs - endedAtMs > maxExitedAgeMs) {
+      remove.add(process.processId);
+    }
+    const key = `${process.workspaceId}\0${process.workspaceRoot}`;
+    const group = exitedByWorkspace.get(key) ?? [];
+    group.push(process);
+    exitedByWorkspace.set(key, group);
+  }
+
+  for (const group of exitedByWorkspace.values()) {
+    const newestFirst = [...group].sort((a, b) => processSortTime(b) - processSortTime(a));
+    for (const [index, process] of newestFirst.entries()) {
+      if (index >= maxExitedPerWorkspace) remove.add(process.processId);
+    }
+  }
+
+  for (const processId of remove) {
+    const process = processes.get(processId);
+    if (!process || process.status === "running") continue;
+    if (process.timer) clearTimeout(process.timer);
+    processes.delete(processId);
+  }
+
+  const exitedKept = [...processes.values()].filter((process) => process.status === "exited").length;
+  return {
+    scanned: processes.size + remove.size,
+    removed: remove.size,
+    runningKept,
+    exitedKept,
+    maxExitedAgeMs,
+    maxExitedPerWorkspace,
+  };
 }
 
 function getProcessForWorkspace(input: {
@@ -215,6 +283,10 @@ function appendBounded(current: string, next: string, maxOutputBytes: number): s
     output = output.slice(Math.max(1, output.length - maxOutputBytes));
   }
   return output;
+}
+
+function processSortTime(process: ManagedProcess): number {
+  return Date.parse(process.endedAt ?? process.startedAt) || 0;
 }
 
 function processStartErrorMessage(error: Error & { code?: unknown }): string {

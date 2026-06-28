@@ -95,6 +95,14 @@ Platform notes:
   prompt. Generated Windows services write `service.out.log` and
   `service.err.log` under the Computer Linker config directory.
 
+Generated macOS and Windows service logs are plain local files. Computer Linker
+does not hide large files by reading them whole: `service logs` reads only the
+tail, reports file sizes, and warns when either generated log exceeds the
+configured warning threshold. If logs grow large, stop the service, archive or
+remove `service.out.log` / `service.err.log`, then start the service again.
+Linux service logs are expected to live in journald; use the printed
+`journalctl` command for rotation and retention managed by systemd.
+
 Keep the HTTP service loopback-only unless it is protected by Tailscale,
 Cloudflare Access, or equivalent network controls.
 

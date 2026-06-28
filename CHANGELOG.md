@@ -49,6 +49,11 @@ called out even when the package version is still `0.x`.
 - README common operation examples are now covered by a registry validation
   test so invalid option pairings such as `file.list` with tree-only bounds
   cannot drift back in silently.
+- Local maintenance state is now bounded: audit history compacts oversized
+  JSONL files and reads recent events from the tail, Codex workflow records are
+  redacted and capped, screenshot `fileRef` artifacts expire from the temp
+  directory, exited managed process snapshots are pruned, and service logs are
+  tailed with size diagnostics.
 
 ## 0.1.11 - 2026-06-27
 

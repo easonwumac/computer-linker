@@ -333,7 +333,9 @@ request/result schema is documented in
 For screenshot operations, cloud MCP clients should request
 `options.returnMode: "base64"` with `maxWidth` and `maxHeight` bounds. Use
 `returnMode: "fileRef"` only for local automation that can read the temp file
-path on the same computer.
+path on the same computer. `fileRef` artifacts are temporary: Computer Linker
+keeps them only under its screenshot temp directory, removes stale files on
+later captures, and reports the policy in `get_computer_info` and `doctor`.
 
 The compatibility policy for the public MCP surface is documented in
 [docs/api-compatibility.md](docs/api-compatibility.md), and reusable agent
@@ -453,7 +455,8 @@ computer-linker service uninstall --yes
 
 Windows install/uninstall must run from an elevated PowerShell prompt. See
 [docs/service-mode.md](docs/service-mode.md) for generated files and platform
-notes.
+notes. `service logs` is bounded to the tail of generated macOS/Windows log
+files and warns when `service.out.log` or `service.err.log` grows large.
 
 ## Check Readiness
 
@@ -481,7 +484,7 @@ when you want the full workspace list, warnings, running tunnel rows, and all
 next actions.
 `doctor` checks platform info, Node, local tools such as `rg`, `git`, `codex`,
 workspace permissions, config diagnostics, auth, tunnel readiness, security
-findings, and `releaseReadiness`.
+findings, retention/maintenance status, and `releaseReadiness`.
 `doctor --fix --dry-run` previews the same repairs without writing the config.
 `doctor --fix` applies low-risk config repairs: remove the bootstrap `current`
 scope after explicit scopes exist, remove exact duplicate folder scopes that
@@ -497,6 +500,12 @@ non-zero when the release status is blocked.
 connection-history inspection in one command.
 `process list/read/stop` talks to the running local HTTP server, so it manages
 active background command and Codex processes that were started through MCP.
+
+Local runtime state is bounded by default. Audit history is compacted by file
+size, recent history reads scan from the tail, Codex workflow records are
+redacted and capped, screenshot `fileRef` artifacts are temporary, and exited
+managed process snapshots are removed after the recent debugging window. Run
+`computer-linker doctor --json` to inspect the exact maintenance policy.
 
 The release readiness block is intended for productization gates:
 

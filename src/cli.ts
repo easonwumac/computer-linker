@@ -1506,6 +1506,17 @@ function doctor(args: string[] = []): void {
       installDryRunCommand: string;
       uninstallDryRunCommand: string;
     };
+    maintenance: {
+      audit: { sizeBytes: number; maxBytes: number; oversized: boolean };
+      codexRuns: { sizeBytes: number; maxBytes: number; maxRecords: number; oversized: boolean };
+      screenshots: { fileCount: number; staleCount: number; totalBytes: number; maxAgeMs: number; maxFiles: number; maxTotalBytes: number };
+      serviceLogs: {
+        stdout: { sizeBytes: number; oversized: boolean };
+        stderr: { sizeBytes: number; oversized: boolean };
+        policy: { warnBytes: number; tailReadMaxBytes: number };
+      };
+      managedProcesses: { maxExitedAgeMs: number; maxExitedPerWorkspace: number };
+    };
     nextActions: string[];
   };
   if (args.includes("--json")) {
@@ -1528,6 +1539,10 @@ function doctor(args: string[] = []): void {
   console.log(`releaseReadiness: status=${report.releaseReadiness.status} ready=${report.releaseReadiness.ready ? "yes" : "no"} gate="${report.releaseReadiness.recommendedGate}"`);
   console.log(`service: platform=${report.service.platform} name=${report.service.serviceName} manifest=${report.service.manifestExists === null ? "service-manager" : report.service.manifestExists ? "present" : "missing"}`);
   console.log(`serviceCommand: ${report.service.command}`);
+  console.log(`maintenance: audit=${report.maintenance.audit.sizeBytes}/${report.maintenance.audit.maxBytes} bytes${report.maintenance.audit.oversized ? " oversized" : ""} codexRuns=${report.maintenance.codexRuns.sizeBytes}/${report.maintenance.codexRuns.maxBytes} bytes maxRecords=${report.maintenance.codexRuns.maxRecords}${report.maintenance.codexRuns.oversized ? " oversized" : ""}`);
+  console.log(`maintenanceScreenshots: files=${report.maintenance.screenshots.fileCount} stale=${report.maintenance.screenshots.staleCount} bytes=${report.maintenance.screenshots.totalBytes}/${report.maintenance.screenshots.maxTotalBytes}`);
+  console.log(`maintenanceServiceLogs: stdout=${report.maintenance.serviceLogs.stdout.sizeBytes} bytes${report.maintenance.serviceLogs.stdout.oversized ? " oversized" : ""} stderr=${report.maintenance.serviceLogs.stderr.sizeBytes} bytes${report.maintenance.serviceLogs.stderr.oversized ? " oversized" : ""} tailReadMaxBytes=${report.maintenance.serviceLogs.policy.tailReadMaxBytes}`);
+  console.log(`maintenanceProcesses: exitedAgeMs=${report.maintenance.managedProcesses.maxExitedAgeMs} exitedPerWorkspace=${report.maintenance.managedProcesses.maxExitedPerWorkspace}`);
   console.log(`startup: ready=${report.startup.ready ? "yes" : "no"} recommended=${report.startup.recommendedMode}`);
   console.log(`toolReadiness: ready=${report.toolReadiness.ready ? "yes" : "no"} requiredMissing=${report.toolReadiness.requiredMissing.join(",") || "none"} recommendedMissing=${report.toolReadiness.recommendedMissing.join(",") || "none"}`);
   console.log("tunnel tools:");

@@ -1,10 +1,12 @@
 import { execFile } from "node:child_process";
-import { mkdir, readFile, rename, rm } from "node:fs/promises";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { mkdir, readFile, readdir, rename, rm, stat, unlink } from "node:fs/promises";
 import { platform, tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { promisify } from "node:util";
 import { executableCommand, findExecutableCommand, windowsVerbatimArgumentsOption } from "./platform-shell.js";
+import { screenshotRetentionPolicy } from "./retention.js";
 
 const execFileAsync = promisify(execFile);
 const windowsScreenshotCommandEnv = "COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND";
@@ -22,6 +24,7 @@ export interface ScreenshotListResult {
   modes: string[];
   displays: Array<{ id: string; primary: boolean; width?: number; height?: number }>;
   windows: Array<{ id: string; title?: string; processId?: number; processName?: string }>;
+  fileRefRetention: ScreenshotArtifactRetentionSummary;
 }
 
 export interface ScreenshotCaptureOptions {
@@ -48,6 +51,25 @@ export interface ScreenshotCaptureResult {
   provider: string;
 }
 
+export interface ScreenshotArtifactRetentionSummary {
+  directory: string;
+  maxAgeMs: number;
+  maxFiles: number;
+  maxTotalBytes: number;
+}
+
+export interface ScreenshotArtifactStatus extends ScreenshotArtifactRetentionSummary {
+  exists: boolean;
+  fileCount: number;
+  totalBytes: number;
+  staleCount: number;
+}
+
+export interface ScreenshotArtifactCleanupReport extends ScreenshotArtifactStatus {
+  removed: number;
+  removedBytes: number;
+}
+
 export function screenshotCapability(): ScreenshotListResult {
   const provider = screenshotProvider();
   if (!provider.available) {
@@ -58,6 +80,7 @@ export function screenshotCapability(): ScreenshotListResult {
       modes: [],
       displays: [],
       windows: [],
+      fileRefRetention: screenshotArtifactRetentionSummary(),
     };
   }
 
@@ -68,6 +91,7 @@ export function screenshotCapability(): ScreenshotListResult {
     modes: provider.modes,
     displays: [{ id: "primary", primary: true }],
     windows: [],
+    fileRefRetention: screenshotArtifactRetentionSummary(),
   };
 }
 
@@ -97,8 +121,9 @@ export async function captureScreenshot(options: ScreenshotCaptureOptions): Prom
     throw new Error(`screen.${options.source} capture is not implemented for ${provider.name}`);
   }
 
-  const dir = join(tmpdir(), "computer-linker-screenshots");
+  const dir = screenshotArtifactDirectory();
   await mkdir(dir, { recursive: true });
+  await cleanupScreenshotArtifacts({ directory: dir }).catch(() => undefined);
   const file = join(dir, `screenshot-${randomUUID()}.png`);
   const args = provider.captureArgs(options, file);
 
@@ -148,6 +173,83 @@ export async function captureScreenshot(options: ScreenshotCaptureOptions): Prom
 
   result.fileRef = file;
   return result;
+}
+
+export function screenshotArtifactDirectory(): string {
+  return resolve(process.env.COMPUTER_LINKER_SCREENSHOT_DIR ?? join(tmpdir(), "computer-linker-screenshots"));
+}
+
+export function screenshotArtifactRetentionSummary(): ScreenshotArtifactRetentionSummary {
+  return {
+    directory: screenshotArtifactDirectory(),
+    maxAgeMs: screenshotRetentionPolicy.maxAgeMs,
+    maxFiles: screenshotRetentionPolicy.maxFiles,
+    maxTotalBytes: screenshotRetentionPolicy.maxTotalBytes,
+  };
+}
+
+export function screenshotArtifactStatus(input: Partial<ScreenshotArtifactRetentionSummary> & {
+  nowMs?: number;
+} = {}): ScreenshotArtifactStatus {
+  const policy = screenshotArtifactPolicy(input);
+  const records = screenshotArtifactRecordsSync(policy.directory);
+  const nowMs = input.nowMs ?? Date.now();
+  return {
+    ...policy,
+    exists: existsSync(policy.directory),
+    fileCount: records.length,
+    totalBytes: records.reduce((total, record) => total + record.sizeBytes, 0),
+    staleCount: records.filter((record) => nowMs - record.mtimeMs > policy.maxAgeMs).length,
+  };
+}
+
+export async function cleanupScreenshotArtifacts(input: Partial<ScreenshotArtifactRetentionSummary> & {
+  nowMs?: number;
+  preserve?: string[];
+} = {}): Promise<ScreenshotArtifactCleanupReport> {
+  const policy = screenshotArtifactPolicy(input);
+  const nowMs = input.nowMs ?? Date.now();
+  const preserve = new Set((input.preserve ?? []).map((file) => resolve(file)));
+  await mkdir(policy.directory, { recursive: true });
+
+  const records = await screenshotArtifactRecords(policy.directory);
+  const remove = new Set<string>();
+  for (const record of records) {
+    if (!preserve.has(record.path) && nowMs - record.mtimeMs > policy.maxAgeMs) {
+      remove.add(record.path);
+    }
+  }
+
+  const newestFirst = [...records].sort((a, b) => b.mtimeMs - a.mtimeMs);
+  for (const [index, record] of newestFirst.entries()) {
+    if (!preserve.has(record.path) && index >= policy.maxFiles) {
+      remove.add(record.path);
+    }
+  }
+
+  let totalBytes = records.reduce((total, record) => total + record.sizeBytes, 0);
+  for (const record of [...records].sort((a, b) => a.mtimeMs - b.mtimeMs)) {
+    if (totalBytes <= policy.maxTotalBytes) break;
+    if (preserve.has(record.path)) continue;
+    remove.add(record.path);
+    totalBytes -= record.sizeBytes;
+  }
+
+  let removed = 0;
+  let removedBytes = 0;
+  for (const record of records) {
+    if (!remove.has(record.path)) continue;
+    await unlink(record.path).catch(() => undefined);
+    removed += 1;
+    removedBytes += record.sizeBytes;
+  }
+
+  const status = screenshotArtifactStatus({ ...policy, nowMs });
+  return {
+    ...status,
+    removed,
+    removedBytes,
+  };
 }
 
 function screenshotProvider(): {
@@ -242,7 +344,7 @@ async function downscaleScreenshotIfNeeded(file: string, options: ScreenshotCapt
     return;
   }
 
-  const tempFile = join(tmpdir(), "computer-linker-screenshots", `screenshot-resized-${randomUUID()}.png`);
+  const tempFile = join(screenshotArtifactDirectory(), `screenshot-resized-${randomUUID()}.png`);
   try {
     if (platform() === "win32") {
       await downscalePngWithPowerShell(file, tempFile, target);
@@ -309,6 +411,54 @@ function validateScreenshotBounds(options: ScreenshotCaptureOptions): void {
       throw new Error(`screenshot ${label} must be a positive integer`);
     }
   }
+}
+
+function screenshotArtifactPolicy(input: Partial<ScreenshotArtifactRetentionSummary> = {}): ScreenshotArtifactRetentionSummary {
+  return {
+    directory: resolve(input.directory ?? screenshotArtifactDirectory()),
+    maxAgeMs: input.maxAgeMs ?? screenshotRetentionPolicy.maxAgeMs,
+    maxFiles: input.maxFiles ?? screenshotRetentionPolicy.maxFiles,
+    maxTotalBytes: input.maxTotalBytes ?? screenshotRetentionPolicy.maxTotalBytes,
+  };
+}
+
+async function screenshotArtifactRecords(directory: string): Promise<Array<{ path: string; sizeBytes: number; mtimeMs: number }>> {
+  const root = resolve(directory);
+  const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
+  const records: Array<{ path: string; sizeBytes: number; mtimeMs: number }> = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !isScreenshotArtifactName(entry.name)) continue;
+    const path = safeScreenshotArtifactPath(root, entry.name);
+    if (!path) continue;
+    const stats = await stat(path).catch(() => undefined);
+    if (!stats?.isFile()) continue;
+    records.push({ path, sizeBytes: stats.size, mtimeMs: stats.mtimeMs });
+  }
+  return records;
+}
+
+function screenshotArtifactRecordsSync(directory: string): Array<{ path: string; sizeBytes: number; mtimeMs: number }> {
+  const root = resolve(directory);
+  if (!existsSync(root)) return [];
+  const records: Array<{ path: string; sizeBytes: number; mtimeMs: number }> = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isFile() || !isScreenshotArtifactName(entry.name)) continue;
+    const path = safeScreenshotArtifactPath(root, entry.name);
+    if (!path) continue;
+    const stats = statSync(path);
+    if (!stats.isFile()) continue;
+    records.push({ path, sizeBytes: stats.size, mtimeMs: stats.mtimeMs });
+  }
+  return records;
+}
+
+function safeScreenshotArtifactPath(root: string, name: string): string | undefined {
+  const path = resolve(root, name);
+  return path === root || !path.startsWith(`${root}${sep}`) ? undefined : path;
+}
+
+function isScreenshotArtifactName(name: string): boolean {
+  return /^screenshot(?:-resized)?-[a-f0-9-]+\.png$/i.test(name);
 }
 
 function windowsDisplayCaptureScript(): string {

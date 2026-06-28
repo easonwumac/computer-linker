@@ -4,14 +4,15 @@ import { basename } from "node:path";
 import { legacyNetworkCapabilitySemantics, workspaceCapabilityPolicy } from "./capability-policy.js";
 import { computerOperationContract, publicComputerOperationRegistry } from "./computer-operation-registry.js";
 import { configDiagnostics, type ConfigDiagnostic } from "./config-diagnostics.js";
-import { loadConfig } from "./config.js";
+import { auditLogPath, codexRunsPath, loadConfig } from "./config.js";
 import { workspaceLinkerVersion } from "./package-metadata.js";
 import type { LocalPortConfig } from "./permissions.js";
 import { executableCommand, findExecutableCommand, windowsVerbatimArgumentsOption } from "./platform-shell.js";
 import { connectionProfile } from "./profile.js";
-import { screenshotCapability } from "./screenshot.js";
+import { screenshotArtifactStatus, screenshotCapability } from "./screenshot.js";
 import { securityDiagnostics } from "./security.js";
 import { serviceStatus, type ServiceStatus } from "./service.js";
+import { auditRetentionPolicy, codexRunRetentionPolicy, fileStatus, managedProcessRetentionPolicy } from "./retention.js";
 import { listTunnelProcesses, tunnelDiagnostics } from "./tunnels.js";
 import { WorkspaceRegistry } from "./workspaces.js";
 import { exposedMcpTools, mcpToolSurface } from "./mcp-surface.js";
@@ -125,7 +126,9 @@ export function getLocalPortCapabilities(): unknown {
   });
   const securityFindings = securityFindingsForTunnelMode(rawSecurityFindings, tunnel);
   const exposure = exposureReadiness(config, tunnel, securityFindings);
-  const startup = startupReadiness(config);
+  const service = serviceStatus(config);
+  const startup = startupReadiness(config, service);
+  const maintenance = maintenanceDiagnostics(service);
   const releaseStatus = releaseReadiness(config, {
     toolReadiness,
     startup,
@@ -216,6 +219,7 @@ export function getLocalPortCapabilities(): unknown {
     screenshot: screenshotCapability(),
     exposure,
     startup,
+    maintenance,
     workspaceOperations: workspaceOperationNames,
     computerOperationContract,
     computerOperationRegistry: publicComputerOperationRegistry(),
@@ -285,6 +289,7 @@ export function getLocalPortDoctor(): unknown {
   const warningFindings = securityFindings.filter((finding) => finding.severity === "warning");
   const service = serviceStatus(config);
   const startup = startupReadiness(config, service);
+  const maintenance = maintenanceDiagnostics(service);
   const releaseStatus = releaseReadiness(config, {
     toolReadiness,
     startup,
@@ -364,10 +369,69 @@ export function getLocalPortDoctor(): unknown {
       uninstallDryRunCommand: `computer-linker service uninstall --dry-run --platform ${service.platform}`,
       notes: service.notes,
     },
+    maintenance,
     localTools,
     toolReadiness,
-    nextActions: doctorNextActions(exposure.blockingReasons, securityFindings, releaseStatus),
+    nextActions: uniqueStrings([
+      ...doctorNextActions(exposure.blockingReasons, securityFindings, releaseStatus),
+      ...maintenanceNextActions(maintenance),
+    ]),
   };
+}
+
+function maintenanceDiagnostics(service: ServiceStatus): {
+  kind: "computer-linker-maintenance";
+  schemaVersion: 1;
+  audit: ReturnType<typeof fileStatus> & { maxBytes: number; tailReadMaxBytes: number };
+  codexRuns: ReturnType<typeof fileStatus> & { maxBytes: number; maxRecords: number; tailReadMaxBytes: number };
+  screenshots: ReturnType<typeof screenshotArtifactStatus>;
+  serviceLogs: ServiceStatus["logFileStatus"] & { policy: ServiceStatus["logPolicy"] };
+  managedProcesses: {
+    maxExitedAgeMs: number;
+    maxExitedPerWorkspace: number;
+  };
+} {
+  return {
+    kind: "computer-linker-maintenance",
+    schemaVersion: 1,
+    audit: {
+      ...fileStatus(auditLogPath(), auditRetentionPolicy.maxBytes),
+      maxBytes: auditRetentionPolicy.maxBytes,
+      tailReadMaxBytes: auditRetentionPolicy.tailReadMaxBytes,
+    },
+    codexRuns: {
+      ...fileStatus(codexRunsPath(), codexRunRetentionPolicy.maxBytes),
+      maxBytes: codexRunRetentionPolicy.maxBytes,
+      maxRecords: codexRunRetentionPolicy.maxRecords,
+      tailReadMaxBytes: codexRunRetentionPolicy.tailReadMaxBytes,
+    },
+    screenshots: screenshotArtifactStatus(),
+    serviceLogs: {
+      ...service.logFileStatus,
+      policy: service.logPolicy,
+    },
+    managedProcesses: {
+      maxExitedAgeMs: managedProcessRetentionPolicy.maxExitedAgeMs,
+      maxExitedPerWorkspace: managedProcessRetentionPolicy.maxExitedPerWorkspace,
+    },
+  };
+}
+
+function maintenanceNextActions(maintenance: ReturnType<typeof maintenanceDiagnostics>): string[] {
+  const actions: string[] = [];
+  if (maintenance.audit.oversized) {
+    actions.push("Audit history is over the retention threshold; new audit writes compact it automatically, or archive/remove audit.jsonl during maintenance.");
+  }
+  if (maintenance.codexRuns.oversized) {
+    actions.push("Codex run history is over the retention threshold; new Codex workflow writes compact codex-runs.jsonl automatically.");
+  }
+  if (maintenance.screenshots.staleCount > 0) {
+    actions.push("Stale screenshot fileRef artifacts exist; the next screenshot capture will clean them up.");
+  }
+  if (maintenance.serviceLogs.stdout.oversized || maintenance.serviceLogs.stderr.oversized) {
+    actions.push("Generated service logs are oversized; run `computer-linker service logs`, then stop the service and archive or remove service.out.log/service.err.log.");
+  }
+  return actions;
 }
 
 export function startupReadiness(config: LocalPortConfig, service: ServiceStatus = serviceStatus(config)): StartupReadiness {
@@ -662,6 +726,10 @@ function doctorNextActions(
     actions.add("No immediate action required.");
   }
   return [...actions];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim().length > 0))];
 }
 
 function exposureReadiness(

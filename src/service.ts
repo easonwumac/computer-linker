@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { configDir } from "./config.js";
 import { expandHomePath, type LocalPortConfig } from "./permissions.js";
+import { fileStatus, readTailText, serviceLogPolicy, tailLinesFromText } from "./retention.js";
 
 export type ServicePlatform = "linux" | "macos" | "windows";
 export type ServiceFormat = "profile" | "manifest";
@@ -76,6 +77,11 @@ export interface ServiceStatus {
     stdout: string;
     stderr: string;
   };
+  logPolicy: ServiceLogPolicy;
+  logFileStatus: {
+    stdout: ServiceLogFileStatus;
+    stderr: ServiceLogFileStatus;
+  };
   notes: string[];
 }
 
@@ -105,18 +111,42 @@ export interface ServiceLogReport {
     stdout: string;
     stderr: string;
   };
+  policy: ServiceLogPolicy;
   stdout: {
     exists: boolean;
     path: string;
+    sizeBytes: number;
+    readBytes: number;
+    truncated: boolean;
+    oversized: boolean;
+    warnBytes: number;
     tail: string;
   };
   stderr: {
     exists: boolean;
     path: string;
+    sizeBytes: number;
+    readBytes: number;
+    truncated: boolean;
+    oversized: boolean;
+    warnBytes: number;
     tail: string;
   };
   commands: string[];
   notes: string[];
+}
+
+export interface ServiceLogPolicy {
+  warnBytes: number;
+  tailReadMaxBytes: number;
+}
+
+export interface ServiceLogFileStatus {
+  exists: boolean;
+  path: string;
+  sizeBytes: number;
+  warnBytes: number;
+  oversized: boolean;
 }
 
 export function serviceProfile(config: LocalPortConfig, options: ServiceProfileOptions = {}): ServiceProfile {
@@ -198,6 +228,7 @@ export function writeServiceProfileFiles(config: LocalPortConfig, options: Servi
 
 export function serviceStatus(config: LocalPortConfig, options: ServiceProfileOptions = {}): ServiceStatus {
   const profile = serviceProfile(config, options);
+  const logFileStatus = serviceLogFileStatus(profile.logFiles);
   return {
     kind: "computer-linker-service-status",
     schemaVersion: 1,
@@ -216,6 +247,8 @@ export function serviceStatus(config: LocalPortConfig, options: ServiceProfileOp
     stopCommands: profile.stopCommands,
     logCommands: profile.logCommands,
     logFiles: profile.logFiles,
+    logPolicy: currentServiceLogPolicy(),
+    logFileStatus,
     notes: profile.notes,
   };
 }
@@ -271,6 +304,7 @@ export function serviceLogs(
     serviceName: profile.serviceName,
     label: profile.label,
     logFiles: profile.logFiles,
+    policy: currentServiceLogPolicy(),
     stdout: readLogTail(profile.logFiles.stdout, lines),
     stderr: readLogTail(profile.logFiles.stderr, lines),
     commands: profile.logCommands,
@@ -290,6 +324,7 @@ export function formatServiceStatus(status: ServiceStatus): string {
     `manifestPath: ${status.manifestPath}`,
     `manifest: ${manifest}`,
     `command: ${status.commandDisplay}`,
+    `logs: stdout ${formatLogFileStatus(status.logFileStatus.stdout)}, stderr ${formatLogFileStatus(status.logFileStatus.stderr)}`,
     "status commands:",
     ...status.statusCommands.map((command) => `  ${command}`),
     "daily commands:",
@@ -319,8 +354,10 @@ export function formatServiceLogs(report: ServiceLogReport): string {
     `Computer Linker service logs (${report.platform})`,
     `serviceName: ${report.serviceName}`,
     `stdout: ${report.stdout.path} (${report.stdout.exists ? "present" : "missing"})`,
+    `stdout size: ${report.stdout.sizeBytes} bytes${report.stdout.oversized ? ` (over ${report.stdout.warnBytes} byte warning threshold)` : ""}${report.stdout.truncated ? `; showing tail from last ${report.stdout.readBytes} bytes` : ""}`,
     report.stdout.tail ? report.stdout.tail : "  (no stdout log content)",
     `stderr: ${report.stderr.path} (${report.stderr.exists ? "present" : "missing"})`,
+    `stderr size: ${report.stderr.sizeBytes} bytes${report.stderr.oversized ? ` (over ${report.stderr.warnBytes} byte warning threshold)` : ""}${report.stderr.truncated ? `; showing tail from last ${report.stderr.readBytes} bytes` : ""}`,
     report.stderr.tail ? report.stderr.tail : "  (no stderr log content)",
     "commands:",
     ...report.commands.map((command) => `  ${command}`),
@@ -539,7 +576,11 @@ function serviceLogNotes(platform: ServicePlatform): string[] {
   if (platform === "linux") {
     return ["Linux systemd services usually log to journald; use the printed journalctl command when local log files are empty."];
   }
-  return ["Logs are written by the generated service profile after the service starts."];
+  return [
+    "Logs are written by the generated service profile after the service starts.",
+    `service logs reads only the last ${serviceLogPolicy.tailReadMaxBytes} bytes and warns when a generated log exceeds ${serviceLogPolicy.warnBytes} bytes.`,
+    "Stop the service, archive or remove service.out.log/service.err.log, then start it again if the generated logs grow too large.",
+  ];
 }
 
 function serviceLogFiles(serviceConfigDir: string): { stdout: string; stderr: string } {
@@ -549,21 +590,37 @@ function serviceLogFiles(serviceConfigDir: string): { stdout: string; stderr: st
   };
 }
 
-function readLogTail(path: string, lines: number): { exists: boolean; path: string; tail: string } {
-  if (!existsSync(path)) return { exists: false, path, tail: "" };
-  const content = readFileSync(path, "utf8");
+function readLogTail(path: string, lines: number): ServiceLogReport["stdout"] {
+  const tail = readTailText(path, serviceLogPolicy.tailReadMaxBytes);
   return {
-    exists: true,
+    exists: tail.exists,
     path,
-    tail: tailLines(content, lines),
+    sizeBytes: tail.sizeBytes,
+    readBytes: tail.readBytes,
+    truncated: tail.truncated,
+    oversized: tail.sizeBytes > serviceLogPolicy.warnBytes,
+    warnBytes: serviceLogPolicy.warnBytes,
+    tail: tailLinesFromText(tail.text, lines),
   };
 }
 
-function tailLines(content: string, lines: number): string {
-  const items = content.split(/\r?\n/);
-  const hasTrailingNewline = items.length > 0 && items.at(-1) === "";
-  const trimmed = hasTrailingNewline ? items.slice(0, -1) : items;
-  return trimmed.slice(-lines).join("\n");
+function serviceLogFileStatus(logFiles: { stdout: string; stderr: string }): ServiceStatus["logFileStatus"] {
+  return {
+    stdout: fileStatus(logFiles.stdout, serviceLogPolicy.warnBytes),
+    stderr: fileStatus(logFiles.stderr, serviceLogPolicy.warnBytes),
+  };
+}
+
+function currentServiceLogPolicy(): ServiceLogPolicy {
+  return {
+    warnBytes: serviceLogPolicy.warnBytes,
+    tailReadMaxBytes: serviceLogPolicy.tailReadMaxBytes,
+  };
+}
+
+function formatLogFileStatus(status: ServiceLogFileStatus): string {
+  if (!status.exists) return "missing";
+  return `${status.sizeBytes} bytes${status.oversized ? " oversized" : ""}`;
 }
 
 function normalizeLogLines(value: number | undefined): number {

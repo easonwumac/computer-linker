@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { auditLogPath } from "./config.js";
-import { readAuditEvents, readRecentAuditEvents, writeAdminActionEvent, writeAuditEvent, writeAuthFailureEvent } from "./audit.js";
+import { enforceAuditRetention, readAuditEvents, readRecentAuditEvents, writeAdminActionEvent, writeAuditEvent, writeAuthFailureEvent } from "./audit.js";
 import { historyInsightFromEvents } from "./history-insights.js";
 
 const originalConfigDir = process.env.LOCALPORT_CONFIG_DIR;
@@ -119,6 +119,22 @@ try {
   assert.ok(debugBundle.debugBundle?.redactions.some((redaction) => redaction.includes("Secret-shaped values")));
   assert.doesNotMatch(JSON.stringify(debugBundle), /sk-legacy|legacybearer|legacy:secret/);
   assert.match(JSON.stringify(debugBundle), /OPENAI_API_KEY=<redacted>/);
+
+  await writeFile(auditLogPath(), Array.from({ length: 120 }, (_, index) => JSON.stringify({
+    timestamp: `2026-01-01T00:${String(index).padStart(2, "0")}:00.000Z`,
+    type: "tool_call",
+    tool: "synthetic",
+    success: true,
+    detail: `event-${index}`,
+  })).join("\n") + "\n", "utf8");
+  const recentSynthetic = readAuditEvents({ limit: 3, maxTailScanBytes: 4096 });
+  assert.deepEqual(recentSynthetic.map((event) => event.detail), ["event-119", "event-118", "event-117"]);
+  const retention = enforceAuditRetention({ maxBytes: 1000 });
+  assert.equal(retention.changed, true);
+  assert.ok(retention.removedLines > 0);
+  const retainedSynthetic = readAuditEvents();
+  assert.equal(retainedSynthetic[0].detail, "event-119");
+  assert.ok(retainedSynthetic.length < 120);
 } finally {
   if (originalConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalConfigDir;

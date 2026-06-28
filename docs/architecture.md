@@ -629,6 +629,10 @@ targets, paths, request paths, remote addresses, and command previews. File
 contents, write payloads, screenshot image bytes, and tokens are not logged.
 CLI/API history readers use this file directly, so history survives restarts and
 can be exported or filtered without changing the permission boundary.
+The file is bounded by a default 10 MB retention cap. Normal recent-history
+reads scan from the tail instead of loading the full JSONL file, and new audit
+writes compact oversized history opportunistically while preserving the newest
+events.
 The generic `computer_operation` and compatibility `workspace_operation`
 surfaces write into the same audit/history stream. Generic events keep the
 dotted op name, resolved scope id/root, target, and mapped path so
@@ -655,6 +659,16 @@ full sensitive text is not written to the audit log.
 For local support/debug workflows, the same redacted views are available through
 `computer-linker history --view last` and
 `computer-linker history --view debug_bundle --json --output <file>`.
+
+Codex workflow records live in `~/.computer-linker/codex-runs.jsonl`, separate
+from audit history. They store bounded, redacted prompt/stdout/stderr previews
+and change summaries for `codex_plan`, `codex_review`, `codex_fix`,
+`codex_test`, and `codex_continue`. The store is capped to 500 recent records
+and 10 MB by default. Managed process snapshots are in memory only; exited
+snapshots are retained for a recent debugging window, while running processes
+are never removed by retention cleanup. Screenshot `fileRef` artifacts are kept
+only in the Computer Linker screenshot temp directory and are cleaned by age,
+count, and total byte limits.
 
 Reachability is verified through CLI smoke checks. `computer-linker doctor`
 reports local readiness, `computer-linker diagnose client` summarizes client

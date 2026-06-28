@@ -1,14 +1,36 @@
 import assert from "node:assert/strict";
-import { access, chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { captureScreenshot, listScreenshotTargets, screenshotCapability } from "./screenshot.js";
+import { captureScreenshot, cleanupScreenshotArtifacts, listScreenshotTargets, screenshotArtifactStatus, screenshotCapability } from "./screenshot.js";
 
 const originalWindowsScreenshotCommand = process.env.COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND;
+const originalScreenshotDirectory = process.env.COMPUTER_LINKER_SCREENSHOT_DIR;
 const root = await mkdtemp(join(tmpdir(), "computer-linker-screenshot-test-"));
 const twoByTwoPng = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGP4/7/hPwMYMzT8ZwBiAGO/CfnRtiYIAAAAAElFTkSuQmCC";
 
 try {
+  const artifactDirectory = join(root, "screenshots");
+  process.env.COMPUTER_LINKER_SCREENSHOT_DIR = artifactDirectory;
+  await mkdir(artifactDirectory, { recursive: true });
+  const staleArtifact = join(artifactDirectory, "screenshot-00000000-0000-4000-8000-000000000001.png");
+  const freshArtifact = join(artifactDirectory, "screenshot-00000000-0000-4000-8000-000000000002.png");
+  const unrelatedArtifact = join(artifactDirectory, "not-computer-linker.png");
+  await writeFile(staleArtifact, Buffer.from(twoByTwoPng, "base64"));
+  await writeFile(freshArtifact, Buffer.from(twoByTwoPng, "base64"));
+  await writeFile(unrelatedArtifact, "keep");
+  const oldDate = new Date(Date.now() - 10_000);
+  await utimes(staleArtifact, oldDate, oldDate);
+
+  const cleanup = await cleanupScreenshotArtifacts({ nowMs: Date.now(), maxAgeMs: 1000, maxFiles: 10, maxTotalBytes: 1024 });
+  assert.equal(cleanup.removed, 1);
+  await assert.rejects(() => access(staleArtifact));
+  await access(freshArtifact);
+  await access(unrelatedArtifact);
+  const artifactStatus = screenshotArtifactStatus({ nowMs: Date.now(), maxAgeMs: 1000 });
+  assert.equal(artifactStatus.fileCount, 1);
+  assert.equal(artifactStatus.staleCount, 0);
+
   if (process.platform === "win32") {
     const fakeProvider = await installFakeWindowsScreenshotProvider(root);
     process.env.COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND = fakeProvider;
@@ -81,6 +103,11 @@ try {
     delete process.env.COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND;
   } else {
     process.env.COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND = originalWindowsScreenshotCommand;
+  }
+  if (originalScreenshotDirectory === undefined) {
+    delete process.env.COMPUTER_LINKER_SCREENSHOT_DIR;
+  } else {
+    process.env.COMPUTER_LINKER_SCREENSHOT_DIR = originalScreenshotDirectory;
   }
   await rm(root, { recursive: true, force: true });
 }
