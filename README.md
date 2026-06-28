@@ -14,13 +14,14 @@ computer; Cloudflare, Tailscale, or OpenAI tunnel exposure is optional.
 
 ## Quick Start
 
-Install the CLI, expose one folder, and keep the server running:
+Most users only need three steps: install, start one folder, connect an MCP
+client.
+
+### 1. Install
 
 ```powershell
 npm install -g @easonwumac/computer-linker
 computer-linker check
-cd C:\Projects\my-app
-computer-linker here
 ```
 
 macOS/Linux:
@@ -28,26 +29,117 @@ macOS/Linux:
 ```bash
 npm install -g @easonwumac/computer-linker
 computer-linker check
-cd ~/projects/my-app
+```
+
+`check` is safe: it creates a temporary workspace, starts a local test server,
+verifies the MCP flow, then removes the temporary files.
+
+### 2. Start One Folder
+
+Run this inside the folder you want to expose:
+
+```powershell
+cd C:\Projects\my-app
 computer-linker here
 ```
 
-Leave that terminal running. In another terminal, copy the MCP client settings
-and verify the connection:
+Or run it from anywhere and pass the folder path:
+
+```powershell
+computer-linker start C:\Projects\my-app
+```
+
+Leave that terminal running. In another terminal, run client setup or
+diagnosis commands. The server listens locally at:
+
+```text
+http://127.0.0.1:3939/mcp
+```
+
+`here` and `start <folder>` automatically create config, owner token, and a
+workspace entry when needed. The workspace name defaults to the folder name, so
+you usually do not need `--name`.
+
+Default access is meant for normal coding: file read/write plus approved
+project commands such as package manager, Node, and Git commands. Use
+`--read-only` for inspection-only access. Use `--full-trust` only for a folder
+where Codex and screen capture are intended.
+
+### 3. Connect A Client
+
+In another terminal, print the settings for your MCP client:
 
 ```powershell
 computer-linker client setup
 computer-linker diagnose client
 ```
 
-`here` exposes the current folder. From another folder, use
-`computer-linker start C:\Projects\my-app` instead. Both commands create
-config, owner token, and a workspace entry when needed. The workspace name
-defaults to the folder name. By default it enables file edits plus approved
-project commands. Use `--read-only` for inspection only or `--full-trust` only
-for folders where Codex and screen capture are intended.
+Use `client setup --show-token` only on a trusted local screen when the client
+needs the bearer token.
 
-From this source checkout, use the same flow through the development runner:
+### ChatGPT Or Cloud Clients
+
+Cloud clients cannot connect to `127.0.0.1`, so add a tunnel only when you need
+cloud access:
+
+```powershell
+cd C:\Projects\my-app
+computer-linker here --tunnel openai --tunnel-id tunnel_...
+```
+
+Computer Linker can also start Tailscale Funnel or Cloudflare Tunnel:
+
+```powershell
+computer-linker here --tunnel tailscale
+computer-linker here --tunnel cloudflare
+```
+
+Tunnel commands expose only `/mcp` on the public side.
+
+### Daily Commands
+
+```powershell
+computer-linker status
+computer-linker status --details
+computer-linker client setup
+computer-linker diagnose client
+computer-linker tunnel status
+computer-linker history --view connections
+```
+
+The documentation map is [docs/README.md](docs/README.md). If you are unsure
+where to begin, use [docs/learning-paths.md](docs/learning-paths.md). For the
+short step-by-step path, see [docs/getting-started.md](docs/getting-started.md)
+or [docs/tutorials.md](docs/tutorials.md). For daily operation, use
+[docs/usage-guide.md](docs/usage-guide.md). For copyable CLI commands, see
+[docs/cli-reference.md](docs/cli-reference.md). For command execution safety,
+see [docs/command-policy.md](docs/command-policy.md). For agent operation
+recipes, see [docs/agent-playbook.md](docs/agent-playbook.md). For SDK usage,
+see [docs/sdk-quickstart.md](docs/sdk-quickstart.md). For development and
+release work, see [docs/developer-guide.md](docs/developer-guide.md).
+
+### Safety Defaults
+
+Computer Linker is CLI-first; there is no web dashboard in the product path.
+MCP and the JSON API are protocol surfaces for clients, automation, and smoke
+checks.
+
+Shell and Codex operations are normal local host processes, not network
+sandboxes. Computer Linker reports this in `networkAccess`. Use OS, container,
+firewall, proxy, or network-layer controls when network isolation matters.
+
+Sensitive paths are conservative by default. Content reads and text searches
+block common secret files, including `.env*`, private keys, credential JSON
+files, and cloud CLI credential directories. Metadata operations such as
+`file.list`, `file.tree`, `file.stat`, `code.context`, and project overview
+hide those sensitive path names by default. Example files such as
+`.env.example`, `.env.sample`, and `.env.template` remain visible. Write-class
+operations block sensitive path mutation by default. Keep real secrets outside
+exposed folders.
+
+### Development Checkout
+
+From this source checkout, run the same flow through the development runner:
 
 ```powershell
 npm install
@@ -55,64 +147,9 @@ npm run dev -- quickstart C:\Projects\my-app
 npm run dev -- start C:\Projects\my-app
 ```
 
-Use `client setup --show-token` only on a trusted local setup screen when the
-client needs the bearer token.
-
-What `here` and `start <folder>` do:
-
-- creates config, owner token, and workspace entry when needed
-- uses the folder name as the workspace name by default
-- updates an existing workspace for the same folder instead of duplicating it
-- starts the local MCP server at `http://127.0.0.1:3939/mcp`
-- runs a startup check against health, JSON API, MCP initialize, tools/list,
-  `get_computer_info`, `computer_operation`, and operation history
-
-`here`, `start <folder>`, and `setup <folder>` default to normal coding access: file
-edits plus approved project commands. Use `--read-only` for inspection-only
-access, or `--full-trust` only where Codex and screen capture are intended. Add
-`--codex` or `--screen` only for folders where those abilities are intended.
-When shell or Codex access is enabled, Computer Linker also creates a default
-execution policy with command allowlists and runtime/output limits.
-Those host processes are not network sandboxes; `networkAccess` reports that
-Computer Linker does not block host network access. Use OS, container,
-firewall, proxy, or network-layer controls when network isolation matters.
-Sensitive paths are conservative by default. File content reads and text
-searches block common sensitive files, including `.env*`, private keys,
-credential JSON files, and cloud CLI credential directories. Metadata
-operations such as `file.list`, `file.tree`, `file.stat`, `code.context`, and
-project overview hide those sensitive path names by default, while example
-files such as `.env.example`, `.env.sample`, and `.env.template` remain
-visible. Write-class operations block sensitive path mutation by default.
-Keep real secrets outside exposed folders.
-
-`check` is safe to run before exposing real folders. It creates a temporary
-config and workspace, starts a loopback HTTP MCP server, verifies `/healthz`,
-the local JSON API, MCP initialize, tools/list, `get_computer_info`, and one
-read-only `computer_operation`, then removes the temporary files.
-
 `quickstart --json` exposes `commands.check` for the optional isolated install
 check. `commands.selfTest` remains as a compatibility alias for older agents
 that already consumed the previous JSON field.
-
-If you are unsure where to begin, use
-[docs/learning-paths.md](docs/learning-paths.md). For more guided setup paths,
-see [docs/tutorials.md](docs/tutorials.md). It covers local coding, read-only
-review, OpenAI Secure MCP Tunnel, public HTTPS tunnels, and the first
-operations an agent should call. For daily operation, use
-[docs/usage-guide.md](docs/usage-guide.md). For copyable daily CLI commands,
-use [docs/cli-reference.md](docs/cli-reference.md). For command execution
-safety, use [docs/command-policy.md](docs/command-policy.md). For agent
-operation recipes, use [docs/agent-playbook.md](docs/agent-playbook.md).
-
-There is no web dashboard in the product path. Human setup and management are
-CLI-first; MCP and the JSON API are only protocol surfaces for clients,
-automation, and smoke checks. The default help output is intentionally short;
-use `computer-linker help advanced` for service, config, API, and compatibility
-commands. ChatGPT-specific setup exports are compatibility helpers under
-`computer-linker help chatgpt`; prefer the generic MCP client commands first.
-
-`here` and `start <folder>` are local-only unless you pass `--tunnel
-cloudflare`, `--tunnel tailscale`, or `--tunnel openai`.
 
 ## Expose To Cloud Clients
 
@@ -377,8 +414,8 @@ File operations are scoped to configured folders. Command and Codex operations
 start in the configured scope, but they are normal local execution, so only
 enable them for folders you trust.
 Sensitive file content is blocked by default for direct reads and searches;
-directory listings may still show file names so the agent can understand project
-shape without receiving secret values.
+metadata operations such as listings, trees, stat, and project overview hide
+sensitive path names unless the workspace policy explicitly opts in.
 
 ## Configure Scopes
 
