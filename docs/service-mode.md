@@ -64,6 +64,19 @@ directory by default, then runs the generated install script. Pass
 current platform. Use `--dry-run` for cross-platform plans such as
 `--platform linux` while working on Windows.
 
+Service install and uninstall are safe to repeat:
+
+- Linux install updates the systemd unit, enables it, then restarts it.
+  Uninstall disables/stops if present, removes the unit file, reloads systemd,
+  and tolerates an already missing service.
+- macOS install replaces an already loaded launchd agent before bootstrapping
+  the new plist. Uninstall tolerates an already unloaded or missing agent.
+- Windows install replaces an existing service before creating the new one.
+  Uninstall prints a no-op message when the service is already missing.
+
+Dry-run output includes the planned effect, such as create/update, replace, or
+remove-if-present, before listing the native commands.
+
 Before installing:
 
 ```bash

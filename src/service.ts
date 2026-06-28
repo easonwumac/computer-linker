@@ -99,6 +99,7 @@ export interface ServicePlan {
   schemaVersion: 1;
   action: ServicePlanAction;
   dryRun: boolean;
+  effect: string;
   platform: ServicePlatform;
   serviceName: string;
   label: string;
@@ -282,6 +283,7 @@ export function servicePlan(
     schemaVersion: 1,
     action,
     dryRun: options.dryRun ?? true,
+    effect: servicePlanEffect(profile.platform, action),
     platform: profile.platform,
     serviceName: profile.serviceName,
     label: profile.label,
@@ -351,6 +353,7 @@ export function formatServicePlan(plan: ServicePlan): string {
   return [
     `Computer Linker service ${plan.action}${plan.dryRun ? " dry run" : ""} (${plan.platform})`,
     `serviceName: ${plan.serviceName}`,
+    `effect: ${plan.effect}`,
     `requiresElevation: ${plan.requiresElevation ? "yes" : "no"}`,
     `profileCommand: ${plan.recommendedProfileCommand}`,
     "commands:",
@@ -482,15 +485,30 @@ function windowsServiceScript(input: {
   ].join(" && ");
   const binPath = `${windowsQuote(process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe")} /d /s /c ${windowsQuote(command)}`;
   return `$ErrorActionPreference = "Stop"
-sc.exe create ${powershellQuote(input.serviceName)} binPath= ${powershellQuote(binPath)} start= auto DisplayName= "Computer Linker"
-sc.exe description ${powershellQuote(input.serviceName)} "Computer Linker HTTP MCP server"
-sc.exe start ${powershellQuote(input.serviceName)}
+$serviceName = ${powershellQuote(input.serviceName)}
+$existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+if ($existing) {
+  if ($existing.Status -ne "Stopped") {
+    sc.exe stop $serviceName | Out-Host
+    Start-Sleep -Seconds 1
+  }
+  sc.exe delete $serviceName | Out-Host
+  if ($LASTEXITCODE -ne 0) { throw "sc.exe delete failed for $serviceName" }
+  Start-Sleep -Seconds 1
+}
+sc.exe create $serviceName binPath= ${powershellQuote(binPath)} start= auto DisplayName= "Computer Linker"
+if ($LASTEXITCODE -ne 0) { throw "sc.exe create failed for $serviceName" }
+sc.exe description $serviceName "Computer Linker HTTP MCP server"
+if ($LASTEXITCODE -ne 0) { throw "sc.exe description failed for $serviceName" }
+sc.exe start $serviceName
+if ($LASTEXITCODE -ne 0) { throw "sc.exe start failed for $serviceName" }
 `;
 }
 
 function installCommands(platform: ServicePlatform, manifestPath: string, label: string, serviceName: string): string[] {
   if (platform === "macos") {
     return [
+      `launchctl bootout gui/$(id -u)/${shellQuote(label)} 2>/dev/null || true`,
       `mkdir -p ${shellQuote(dirnamePath(manifestPath))}`,
       `cp ./service-profile/${basename(manifestPath)} ${shellQuote(manifestPath)}`,
       `launchctl bootstrap gui/$(id -u) ${shellQuote(manifestPath)}`,
@@ -506,7 +524,8 @@ function installCommands(platform: ServicePlatform, manifestPath: string, label:
   return [
     `sudo cp ./service-profile/${basename(manifestPath)} ${shellQuote(manifestPath)}`,
     "sudo systemctl daemon-reload",
-    `sudo systemctl enable --now ${shellQuote(serviceName)}`,
+    `sudo systemctl enable ${shellQuote(serviceName)}`,
+    `sudo systemctl restart ${shellQuote(serviceName)}`,
   ];
 }
 
@@ -519,14 +538,25 @@ function uninstallCommands(platform: ServicePlatform, manifestPath: string, labe
   }
   if (platform === "windows") {
     return [
-      `sc.exe stop ${powershellQuote(serviceName)}`,
-      `sc.exe delete ${powershellQuote(serviceName)}`,
+      `$serviceName = ${powershellQuote(serviceName)}`,
+      "$existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue",
+      "if ($existing) {",
+      "  if ($existing.Status -ne \"Stopped\") {",
+      "    sc.exe stop $serviceName | Out-Host",
+      "    Start-Sleep -Seconds 1",
+      "  }",
+      "  sc.exe delete $serviceName | Out-Host",
+      "  if ($LASTEXITCODE -ne 0) { throw \"sc.exe delete failed for $serviceName\" }",
+      "} else {",
+      "  Write-Host \"Service $serviceName is not installed; nothing to remove.\"",
+      "}",
     ];
   }
   return [
-    `sudo systemctl disable --now ${shellQuote(serviceName)}`,
+    `sudo systemctl disable --now ${shellQuote(serviceName)} || true`,
     `sudo rm -f ${shellQuote(manifestPath)}`,
     "sudo systemctl daemon-reload",
+    `sudo systemctl reset-failed ${shellQuote(serviceName)} || true`,
   ];
 }
 
@@ -666,6 +696,15 @@ function serviceActionRequiresElevation(platform: ServicePlatform, action: Servi
   return true;
 }
 
+function servicePlanEffect(platform: ServicePlatform, action: ServicePlanAction): string {
+  if (action === "uninstall") return "remove if present; tolerate an already missing service";
+  if (action === "start") return "start the installed service";
+  if (action === "stop") return "stop the installed service";
+  if (platform === "macos") return "replace an existing launchd agent or create it";
+  if (platform === "windows") return "replace an existing Windows service or create it";
+  return "install or update the systemd unit, enable it, and restart it";
+}
+
 function sanitizeServiceName(value: string): string {
   const sanitized = value.trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, "-").replace(/^-+|-+$/g, "");
   return sanitized || "computer-linker";
@@ -715,6 +754,7 @@ function installScriptBody(profile: ServiceProfile, files: ServiceFileSet): stri
   if (profile.platform === "macos") {
     return scriptBody("macos", [
       scriptDir,
+      `launchctl bootout gui/$(id -u)/${shellQuote(profile.label)} 2>/dev/null || true`,
       `mkdir -p ${shellQuote(dirnamePath(profile.manifestPath))}`,
       `cp "$SCRIPT_DIR/${basename(files.manifest)}" ${shellQuote(profile.manifestPath)}`,
       `launchctl bootstrap gui/$(id -u) ${shellQuote(profile.manifestPath)}`,
@@ -725,7 +765,8 @@ function installScriptBody(profile: ServiceProfile, files: ServiceFileSet): stri
     scriptDir,
     `sudo cp "$SCRIPT_DIR/${basename(files.manifest)}" ${shellQuote(profile.manifestPath)}`,
     "sudo systemctl daemon-reload",
-    `sudo systemctl enable --now ${shellQuote(profile.serviceName)}`,
+    `sudo systemctl enable ${shellQuote(profile.serviceName)}`,
+    `sudo systemctl restart ${shellQuote(profile.serviceName)}`,
   ]);
 }
 

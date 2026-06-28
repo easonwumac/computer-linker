@@ -1962,7 +1962,8 @@ try {
   assert.ok(linuxServiceProfile.command.includes("--transport"));
   assert.match(linuxServiceProfile.manifest, /\[Unit\]/);
   assert.match(linuxServiceProfile.manifest, /Environment=COMPUTER_LINKER_CONFIG_DIR=/);
-  assert.ok(linuxServiceProfile.installCommands.some((command) => command.includes("systemctl enable --now")));
+  assert.ok(linuxServiceProfile.installCommands.some((command) => command === "sudo systemctl enable computer-linker"));
+  assert.ok(linuxServiceProfile.installCommands.some((command) => command === "sudo systemctl restart computer-linker"));
   assert.ok(linuxServiceProfile.notes.some((note) => note.includes("computer-linker init")));
 
   const macosServiceManifest = (await runCliOutput("service", "profile", "--platform", "macos", "--format", "manifest")).stdout;
@@ -1987,7 +1988,9 @@ try {
   assert.equal(writtenServiceProfile.kind, "computer-linker-service-profile");
   assert.equal(writtenServiceProfile.platform, "linux");
   assert.match(await readFile(serviceFiles.files.manifest, "utf8"), /\[Service\]/);
-  assert.match(await readFile(serviceFiles.files.install, "utf8"), /systemctl enable --now/);
+  const linuxServiceInstallScript = await readFile(serviceFiles.files.install, "utf8");
+  assert.match(linuxServiceInstallScript, /systemctl enable computer-linker/);
+  assert.match(linuxServiceInstallScript, /systemctl restart computer-linker/);
   assert.match(await readFile(serviceFiles.files.uninstall, "utf8"), /systemctl disable --now/);
 
   const serviceStatus = JSON.parse((await runCliOutput("service", "status", "--platform", "linux", "--json")).stdout) as {
@@ -2015,6 +2018,7 @@ try {
     kind: string;
     action: string;
     dryRun: boolean;
+    effect: string;
     platform: string;
     requiresElevation: boolean;
     commands: string[];
@@ -2022,6 +2026,7 @@ try {
   assert.equal(installPlan.kind, "computer-linker-service-plan");
   assert.equal(installPlan.action, "install");
   assert.equal(installPlan.dryRun, true);
+  assert.match(installPlan.effect, /replace an existing Windows service or create it/);
   assert.equal(installPlan.platform, "windows");
   assert.equal(installPlan.requiresElevation, true);
   assert.ok(installPlan.commands.some((command) => command.includes("install-service.ps1") || command.includes("Get-Service")));
