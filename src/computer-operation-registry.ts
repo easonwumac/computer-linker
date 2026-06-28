@@ -62,10 +62,10 @@ const computerOperationDefinitions: ComputerOperationDefinition[] = [
   { op: "file.stat", category: "file", backendOperation: "stat", target: "path", description: "Return metadata for one scoped file or directory." },
   { op: "file.list", category: "file", backendOperation: "list_details", target: "path", description: "List directory entries with type, size, and modified time." },
   { op: "file.tree", category: "file", backendOperation: "tree", target: "path", description: "List a bounded recursive tree for codebase orientation." },
-  { op: "file.read", category: "file", backendOperation: "read", target: "path", description: "Read one UTF-8 file with optional byte or line bounds." },
-  { op: "file.read_many", category: "file", backendOperation: "read_many", description: "Read several UTF-8 files in one bounded scoped call." },
-  { op: "file.write", category: "file", backendOperation: "write", target: "path", description: "Create or overwrite one UTF-8 file inside the scope." },
-  { op: "file.create", category: "file", backendOperation: "create_file", target: "path", description: "Create one new UTF-8 file inside the scope and fail if it already exists." },
+  { op: "file.read", category: "file", backendOperation: "read", target: "path", description: "Read one UTF-8 file by default, or explicit bounded base64 bytes for binary files." },
+  { op: "file.read_many", category: "file", backendOperation: "read_many", description: "Read several UTF-8 files by default, or explicit bounded base64 bytes for binary files." },
+  { op: "file.write", category: "file", backendOperation: "write", target: "path", description: "Create or overwrite one UTF-8 file inside the scope. Missing parents require createParents=true." },
+  { op: "file.create", category: "file", backendOperation: "create_file", target: "path", description: "Create one new UTF-8 file inside the scope and fail if it already exists. Missing parents require createParents=true." },
   { op: "file.patch", category: "file", backendOperation: "patch", target: "path", description: "Apply a validated unified diff inside the scope." },
   { op: "file.move", category: "file", backendOperation: "move", target: "fromPath", description: "Move or rename a scoped file or directory. Moving the configured scope root is blocked." },
   { op: "file.delete", category: "file", backendOperation: "delete", target: "path", description: "Delete a scoped file or directory. Deleting the configured scope root is blocked." },
@@ -117,10 +117,10 @@ const computerOperationExamples: Record<string, ComputerOperationEnvelope> = {
   "file.stat": { scope: "app", op: "file.stat", target: "README.md" },
   "file.list": { scope: "app", op: "file.list", target: "src" },
   "file.tree": { scope: "app", op: "file.tree", target: ".", options: { maxDepth: 2, maxEntries: 100 } },
-  "file.read": { scope: "app", op: "file.read", target: "README.md", options: { maxBytes: 65536 } },
-  "file.read_many": { scope: "app", op: "file.read_many", input: { paths: ["README.md", "package.json"] }, options: { maxBytes: 65536 } },
-  "file.write": { scope: "app", op: "file.write", target: "notes/todo.md", input: { content: "- item\n" } },
-  "file.create": { scope: "app", op: "file.create", target: "notes/todo.md", input: { content: "- item\n" } },
+  "file.read": { scope: "app", op: "file.read", target: "README.md", options: { maxBytes: 65536, encoding: "utf8" } },
+  "file.read_many": { scope: "app", op: "file.read_many", input: { paths: ["README.md", "package.json"] }, options: { maxBytes: 65536, encoding: "utf8" } },
+  "file.write": { scope: "app", op: "file.write", target: "notes/todo.md", input: { content: "- item\n" }, options: { createParents: true } },
+  "file.create": { scope: "app", op: "file.create", target: "notes/todo.md", input: { content: "- item\n" }, options: { createParents: true } },
   "file.patch": { scope: "app", op: "file.patch", input: { patch: "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-old\n+new\n" } },
   "file.move": { scope: "app", op: "file.move", target: "old.txt", input: { toPath: "archive/old.txt" } },
   "file.delete": { scope: "app", op: "file.delete", target: "tmp/output", input: { recursive: true } },
@@ -196,7 +196,7 @@ export const computerOperationContract: ComputerOperationContract = {
 
 export const computerOperationRegistry: ComputerOperationRegistryEntry[] = computerOperationDefinitions.map((definition) => {
   const backend = workspaceOperationEntry(definition.backendOperation);
-  const optionFields = new Set(["maxBytes", "maxOutputBytes", "maxResults", "timeoutSeconds", "maxDepth", "maxEntries", "startLine", "lineCount", "beforeContext", "afterContext", "format", "returnMode", "maxWidth", "maxHeight"]);
+  const optionFields = new Set(["maxBytes", "maxOutputBytes", "maxResults", "timeoutSeconds", "maxDepth", "maxEntries", "startLine", "lineCount", "encoding", "createParents", "beforeContext", "afterContext", "format", "returnMode", "maxWidth", "maxHeight"]);
   const backendTarget = definition.backendTarget ?? definition.target;
   const requiredInput = backend.requiredFields.filter((field) => field !== backendTarget);
   const optionalInput = backend.optionalFields.filter((field) => field !== backendTarget && !optionFields.has(field));

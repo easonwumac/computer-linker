@@ -129,6 +129,8 @@ export interface WorkspaceOperationInput {
   path?: string;
   paths?: string[];
   content?: string;
+  encoding?: string;
+  createParents?: boolean;
   patch?: string;
   oldText?: string;
   newText?: string;
@@ -373,34 +375,34 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
     operation: "read",
     permission: "read",
-    description: "Read a UTF-8 file, optionally bounded by line range or byte count.",
+    description: "Read a UTF-8 file by default, or return bounded base64 bytes when encoding=base64 is explicit.",
     requiredFields: ["path"],
-    optionalFields: ["startLine", "lineCount", "maxBytes"],
-    example: { operation: "read", path: "README.md", startLine: 1, lineCount: 80, maxBytes: 65536 },
+    optionalFields: ["startLine", "lineCount", "maxBytes", "encoding"],
+    example: { operation: "read", path: "README.md", startLine: 1, lineCount: 80, maxBytes: 65536, encoding: "utf8" },
   },
   {
     operation: "read_many",
     permission: "read",
-    description: "Read multiple UTF-8 files in one workspace-scoped call, with per-file truncation.",
+    description: "Read multiple UTF-8 files by default, or return bounded base64 bytes when encoding=base64 is explicit.",
     requiredFields: ["paths"],
-    optionalFields: ["maxBytes"],
-    example: { operation: "read_many", paths: ["README.md", "src/index.ts"], maxBytes: 65536 },
+    optionalFields: ["maxBytes", "encoding"],
+    example: { operation: "read_many", paths: ["README.md", "src/index.ts"], maxBytes: 65536, encoding: "utf8" },
   },
   {
     operation: "write",
     permission: "write",
-    description: "Create or overwrite a UTF-8 file.",
+    description: "Create or overwrite a UTF-8 file. Missing parent directories require createParents=true.",
     requiredFields: ["path", "content"],
-    optionalFields: [],
-    example: { operation: "write", path: "notes/todo.md", content: "- item\n" },
+    optionalFields: ["createParents"],
+    example: { operation: "write", path: "notes/todo.md", content: "- item\n", createParents: true },
   },
   {
     operation: "create_file",
     permission: "write",
-    description: "Create a new UTF-8 file and fail if the path already exists. Use this for first-run probes or new files when overwriting would be unsafe.",
+    description: "Create a new UTF-8 file and fail if the path already exists. Missing parent directories require createParents=true.",
     requiredFields: ["path", "content"],
-    optionalFields: [],
-    example: { operation: "create_file", path: "notes/todo.md", content: "- item\n" },
+    optionalFields: ["createParents"],
+    example: { operation: "create_file", path: "notes/todo.md", content: "- item\n", createParents: true },
   },
   {
     operation: "write_if_unchanged",
@@ -1057,6 +1059,8 @@ export function normalizeWorkspaceOperationInput(body: Record<string, unknown>):
     path: optionalString(merged.path),
     paths: optionalStringArray(merged.paths),
     content: typeof merged.content === "string" ? merged.content : undefined,
+    encoding: optionalString(merged.encoding),
+    createParents: optionalBoolean(merged.createParents),
     patch: typeof merged.patch === "string" ? merged.patch : undefined,
     oldText: typeof merged.oldText === "string" ? merged.oldText : undefined,
     newText: typeof merged.newText === "string" ? merged.newText : undefined,
@@ -1357,10 +1361,11 @@ async function runFileSearchOperation(
       const path = required(input.path, "path");
       return {
         path,
-        ...readResult(await registry.readFile(workspace.id, path), {
+        ...readResult(await registry.readFileBytes(workspace.id, path), {
           startLine: input.startLine,
           lineCount: input.lineCount,
           maxBytes: input.maxBytes,
+          encoding: input.encoding,
         }),
       };
     }
@@ -1368,26 +1373,29 @@ async function runFileSearchOperation(
       const maxBytes = normalizeBoundedPositiveInteger(input.maxBytes, 64 * 1024, 256 * 1024);
       return {
         files: await Promise.all(requiredPaths(input.paths).map(async (path) => {
-          const content = await registry.readFile(workspace.id, path);
           return {
             path,
-            content: truncateText(content, maxBytes),
-            sizeBytes: Buffer.byteLength(content, "utf8"),
-            sha256: sha256(content),
-            truncated: Buffer.byteLength(content, "utf8") > maxBytes,
+            ...readResult(await registry.readFileBytes(workspace.id, path), {
+              maxBytes,
+              encoding: input.encoding,
+            }),
           };
         })),
       };
     }
     case "write": {
       const path = required(input.path, "path");
-      await registry.writeFile(workspace.id, path, requiredRaw(input.content, "content"));
+      await registry.writeFile(workspace.id, path, requiredRaw(input.content, "content"), {
+        createParents: input.createParents ?? false,
+      });
       return { path };
     }
     case "create_file": {
       const path = required(input.path, "path");
       const content = requiredRaw(input.content, "content");
-      await registry.createFile(workspace.id, path, content);
+      await registry.createFile(workspace.id, path, content, {
+        createParents: input.createParents ?? false,
+      });
       return {
         path,
         created: true,
@@ -1939,6 +1947,7 @@ function workspaceOperationReplayTemplate(input: WorkspaceOperationInput): Audit
           path: input.path,
           startLine: input.startLine,
           lineCount: input.lineCount,
+          encoding: input.encoding,
           includeDiff: input.includeDiff,
           maxBytes: input.maxBytes,
         },
@@ -1947,6 +1956,7 @@ function workspaceOperationReplayTemplate(input: WorkspaceOperationInput): Audit
       return replayableTemplate(baseInput, {
         input: {
           paths: input.paths,
+          encoding: input.encoding,
           maxBytes: input.maxBytes,
         },
       });
@@ -1977,6 +1987,7 @@ function workspaceOperationReplayTemplate(input: WorkspaceOperationInput): Audit
       return replayableTemplate(baseInput, {
         input: {
           path: input.path,
+          createParents: input.createParents,
         },
       }, {
         replayable: false,
@@ -2265,10 +2276,11 @@ function requiredOperations(value: WorkspaceOperationInput[] | undefined): Works
 }
 
 function readResult(
-  content: string,
-  options: { startLine?: number; lineCount?: number; maxBytes?: number },
+  bytes: Buffer,
+  options: { startLine?: number; lineCount?: number; maxBytes?: number; encoding?: string },
 ): {
   content: string;
+  encoding: "utf8" | "base64";
   sizeBytes: number;
   sha256: string;
   truncated: boolean;
@@ -2276,10 +2288,27 @@ function readResult(
   endLine?: number;
   totalLines?: number;
 } {
-  const sizeBytes = Buffer.byteLength(content, "utf8");
+  const encoding = normalizeReadEncoding(options.encoding);
+  const sizeBytes = bytes.length;
   const startLine = normalizeOptionalPositiveInteger(options.startLine);
   const lineCount = normalizeOptionalPositiveInteger(options.lineCount);
   const maxBytes = options.maxBytes === undefined ? undefined : normalizeBoundedPositiveInteger(options.maxBytes, sizeBytes, 256 * 1024);
+
+  if (encoding === "base64") {
+    if (startLine || lineCount) {
+      throw operationError("invalid_request", "startLine and lineCount are only supported for UTF-8 file reads");
+    }
+    const selectedBytes = maxBytes === undefined ? bytes : bytes.subarray(0, maxBytes);
+    return {
+      content: selectedBytes.toString("base64"),
+      encoding,
+      sizeBytes,
+      sha256: sha256(bytes),
+      truncated: selectedBytes.length < bytes.length,
+    };
+  }
+
+  const content = decodeUtf8ReadBytes(bytes);
   let selected = content;
   let endLine: number | undefined;
   let totalLines: number | undefined;
@@ -2296,8 +2325,9 @@ function readResult(
   const truncatedContent = maxBytes === undefined ? selected : truncateText(selected, maxBytes);
   return {
     content: truncatedContent,
+    encoding,
     sizeBytes,
-    sha256: sha256(content),
+    sha256: sha256(bytes),
     truncated: truncatedContent !== selected,
     startLine: startLine ?? undefined,
     endLine,
@@ -2305,8 +2335,27 @@ function readResult(
   };
 }
 
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
+function normalizeReadEncoding(value: string | undefined): "utf8" | "base64" {
+  const encoding = (value ?? "utf8").toLowerCase();
+  if (encoding === "utf8" || encoding === "utf-8") return "utf8";
+  if (encoding === "base64") return "base64";
+  throw operationError("invalid_request", "encoding must be one of: utf8, base64");
+}
+
+function decodeUtf8ReadBytes(bytes: Buffer): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch (error) {
+    throw operationError(
+      "invalid_request",
+      "File is not valid UTF-8 text. Use encoding=base64 for binary reads.",
+      { cause: error },
+    );
+  }
+}
+
+function sha256(value: string | Buffer): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function normalizeOptionalPositiveInteger(value: number | undefined): number | undefined {

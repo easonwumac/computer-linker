@@ -118,6 +118,8 @@ try {
     operationName: undefined,
     paths: undefined,
     content: undefined,
+    encoding: undefined,
+    createParents: undefined,
     patch: undefined,
     oldText: undefined,
     newText: undefined,
@@ -177,6 +179,8 @@ try {
     "export const value: number = 1;",
     "",
   ].join("\n"), "utf8");
+  const binaryFixture = Buffer.from([0, 159, 146, 150, 255]);
+  await writeFile(join(workspaceRoot, "binary.bin"), binaryFixture);
   await writeFile(join(workspaceRoot, "src/lines.ts"), "line1\nline2\nline3\nline4\n", "utf8");
   await writeFile(join(workspaceRoot, ".env"), "HIDDEN_SETTING=blocked-value\n", "utf8");
   await writeFile(join(workspaceRoot, ".env.example"), "EXAMPLE_SETTING=example\n", "utf8");
@@ -1088,10 +1092,59 @@ try {
     operation: "read",
     path: "src/lines.ts",
     maxBytes: 5,
-  }) as { content: string; sha256: string; truncated: boolean };
+  }) as { content: string; encoding: string; sha256: string; truncated: boolean };
   assert.equal(writableRead.content, "line1");
+  assert.equal(writableRead.encoding, "utf8");
   assert.equal(writableRead.truncated, true);
   assert.match(writableRead.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(writableRead.sha256, sha256("line1\nline2\nline3\nline4\n"));
+
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "read",
+      path: "binary.bin",
+    }),
+    /not valid UTF-8/,
+  );
+  const binaryRead = await runWorkspaceOperation(registry, worktreeEnabled, {
+    operation: "read",
+    path: "binary.bin",
+    encoding: "base64",
+    maxBytes: 3,
+  }) as { content: string; encoding: string; sizeBytes: number; sha256: string; truncated: boolean };
+  assert.equal(binaryRead.encoding, "base64");
+  assert.equal(binaryRead.content, binaryFixture.subarray(0, 3).toString("base64"));
+  assert.equal(binaryRead.sizeBytes, binaryFixture.length);
+  assert.equal(binaryRead.sha256, sha256(binaryFixture));
+  assert.equal(binaryRead.truncated, true);
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "read",
+      path: "binary.bin",
+      encoding: "base64",
+      startLine: 1,
+    }),
+    /startLine and lineCount/,
+  );
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "read",
+      path: "src/lines.ts",
+      encoding: "hex",
+    }),
+    /encoding must be one of/,
+  );
+  const binaryReadMany = await runWorkspaceOperation(registry, worktreeEnabled, {
+    operation: "read_many",
+    paths: ["binary.bin"],
+    encoding: "base64",
+    maxBytes: 2,
+  }) as { files: Array<{ content: string; encoding: string; sizeBytes: number; sha256: string; truncated: boolean }> };
+  assert.equal(binaryReadMany.files[0]?.encoding, "base64");
+  assert.equal(binaryReadMany.files[0]?.content, binaryFixture.subarray(0, 2).toString("base64"));
+  assert.equal(binaryReadMany.files[0]?.sizeBytes, binaryFixture.length);
+  assert.equal(binaryReadMany.files[0]?.sha256, sha256(binaryFixture));
+  assert.equal(binaryReadMany.files[0]?.truncated, true);
 
   await assert.rejects(
     () => runWorkspaceOperation(registry, worktreeEnabled, {
@@ -1142,6 +1195,22 @@ try {
   }) as { path: string };
   assert.equal(envExampleWrite.path, ".env.example");
   assert.equal(await readFile(join(workspaceRoot, ".env.example"), "utf8"), "EXAMPLE_SETTING=updated\n");
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "write",
+      path: "missing-parent/write.txt",
+      content: "no implicit parents\n",
+    }),
+    /Parent directory does not exist/,
+  );
+  const parentWrite = await runWorkspaceOperation(registry, worktreeEnabled, {
+    operation: "write",
+    path: "missing-parent/write.txt",
+    content: "explicit parents\n",
+    createParents: true,
+  }) as { path: string };
+  assert.equal(parentWrite.path, "missing-parent/write.txt");
+  assert.equal(await readFile(join(workspaceRoot, "missing-parent", "write.txt"), "utf8"), "explicit parents\n");
   await assert.rejects(
     () => runWorkspaceOperation(registry, worktreeEnabled, {
       operation: "write",
@@ -1232,6 +1301,23 @@ try {
   assert.equal(createdFile.sizeBytes, "created once\n".length);
   assert.match(createdFile.sha256, /^[a-f0-9]{64}$/);
   assert.equal(await readFile(join(workspaceRoot, "created-by-create-file.txt"), "utf8"), "created once\n");
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "create_file",
+      path: "missing-create/created.txt",
+      content: "no implicit parents\n",
+    }),
+    /Parent directory does not exist/,
+  );
+  const parentCreate = await runWorkspaceOperation(registry, worktreeEnabled, {
+    operation: "create_file",
+    path: "missing-create/created.txt",
+    content: "explicit create parents\n",
+    createParents: true,
+  }) as { path: string; created: boolean };
+  assert.equal(parentCreate.path, "missing-create/created.txt");
+  assert.equal(parentCreate.created, true);
+  assert.equal(await readFile(join(workspaceRoot, "missing-create", "created.txt"), "utf8"), "explicit create parents\n");
   await assert.rejects(
     () => runWorkspaceOperation(registry, worktreeEnabled, {
       operation: "create_file",
@@ -1734,6 +1820,6 @@ async function waitForProcessGone(pid: number): Promise<void> {
   throw new Error(`process did not exit: ${pid}`);
 }
 
-function sha256(content: string): string {
+function sha256(content: string | Buffer): string {
   return createHash("sha256").update(content).digest("hex");
 }

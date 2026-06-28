@@ -22,6 +22,8 @@ try {
   await mkdirPath(join(workspaceRoot, "src"), { recursive: true });
   await mkdirPath(join(workspaceRoot, ".codex", "skills", "api-helper"), { recursive: true });
   await writeFile(join(workspaceRoot, "hello.txt"), "hello from LocalPort\n", "utf8");
+  const apiBinaryFixture = Buffer.from([0, 159, 146, 150, 255]);
+  await writeFile(join(workspaceRoot, "binary.bin"), apiBinaryFixture);
   await writeFile(join(workspaceRoot, "lines.txt"), "one\ntwo\nthree\nfour\n", "utf8");
   await writeFile(join(workspaceRoot, "context.txt"), "before\nneedle\nAfter\n\nAgain\nneedle\nDone\n", "utf8");
   await writeFile(join(workspaceRoot, "command-fail.js"), [
@@ -315,8 +317,11 @@ try {
     assert.equal(genericFileRead.backendOperation, "read");
     assert.equal(genericFileRead.target, "path");
     assert.ok(genericFileRead.options.includes("maxBytes"));
+    assert.ok(genericFileRead.options.includes("encoding"));
     assert.equal(genericFileRead.networkAccess.mode, "not-required");
     assert.equal(genericFileRead.networkAccess.hostNetworkMayBeUsed, false);
+    const genericFileWrite = capabilities.body.data.computerOperationRegistry.find((entry: { op: string }) => entry.op === "file.write");
+    assert.ok(genericFileWrite.options.includes("createParents"));
     const genericFileSearch = capabilities.body.data.computerOperationRegistry.find((entry: { op: string }) => entry.op === "file.search");
     assert.equal(genericFileSearch.networkAccess.mode, "not-required");
     const genericCommandRun = capabilities.body.data.computerOperationRegistry.find((entry: { op: string }) => entry.op === "command.run");
@@ -447,7 +452,33 @@ try {
     assert.equal(computerRead.body.data.scope, "app");
     assert.equal(computerRead.body.data.op, "file.read");
     assert.equal(computerRead.body.data.data.content, "hello");
+    assert.equal(computerRead.body.data.data.encoding, "utf8");
     assert.equal(computerRead.body.data.data.truncated, true);
+
+    const computerBinaryTextRead = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "app",
+      op: "file.read",
+      target: "binary.bin",
+    });
+    assert.equal(computerBinaryTextRead.status, 200);
+    assert.equal(computerBinaryTextRead.body.data.ok, false);
+    assert.equal(computerBinaryTextRead.body.data.error.code, "invalid_request");
+    assert.match(computerBinaryTextRead.body.data.error.message, /not valid UTF-8/);
+
+    const computerBinaryRead = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "app",
+      op: "file.read",
+      target: "binary.bin",
+      options: { encoding: "base64", maxBytes: 3 },
+    });
+    assert.equal(computerBinaryRead.status, 200);
+    assert.equal(computerBinaryRead.body.data.ok, true);
+    assert.equal(computerBinaryRead.body.data.data.encoding, "base64");
+    assert.equal(computerBinaryRead.body.data.data.content, apiBinaryFixture.subarray(0, 3).toString("base64"));
+    assert.equal(computerBinaryRead.body.data.data.sizeBytes, apiBinaryFixture.length);
+    assert.equal(computerBinaryRead.body.data.data.truncated, true);
 
     const computerReadHistory = await postJson("/api/v1/control", {
       action: "get_operation_history",
@@ -595,6 +626,55 @@ try {
     assert.equal(computerCreateAgain.body.data.ok, false);
     assert.match(computerCreateAgain.body.data.error.message, /File already exists/);
     assert.equal(await readFile(join(workspaceRoot, "created-through-computer-operation.txt"), "utf8"), "created once\n");
+
+    const computerMissingParentWrite = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "writer",
+      op: "file.write",
+      target: "new-parent/write.txt",
+      input: { content: "missing parent\n" },
+    });
+    assert.equal(computerMissingParentWrite.status, 200);
+    assert.equal(computerMissingParentWrite.body.data.ok, false);
+    assert.equal(computerMissingParentWrite.body.data.error.code, "invalid_request");
+    assert.match(computerMissingParentWrite.body.data.error.message, /createParents=true/);
+
+    const computerParentWrite = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "writer",
+      op: "file.write",
+      target: "new-parent/write.txt",
+      input: { content: "explicit parent\n" },
+      options: { createParents: true },
+    });
+    assert.equal(computerParentWrite.status, 200);
+    assert.equal(computerParentWrite.body.data.ok, true);
+    assert.equal(await readFile(join(workspaceRoot, "new-parent", "write.txt"), "utf8"), "explicit parent\n");
+
+    const computerMissingParentCreate = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "writer",
+      op: "file.create",
+      target: "new-create/create.txt",
+      input: { content: "missing parent\n" },
+    });
+    assert.equal(computerMissingParentCreate.status, 200);
+    assert.equal(computerMissingParentCreate.body.data.ok, false);
+    assert.equal(computerMissingParentCreate.body.data.error.code, "invalid_request");
+    assert.match(computerMissingParentCreate.body.data.error.message, /createParents=true/);
+
+    const computerParentCreate = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "writer",
+      op: "file.create",
+      target: "new-create/create.txt",
+      input: { content: "explicit create parent\n" },
+      options: { createParents: true },
+    });
+    assert.equal(computerParentCreate.status, 200);
+    assert.equal(computerParentCreate.body.data.ok, true);
+    assert.equal(computerParentCreate.body.data.data.created, true);
+    assert.equal(await readFile(join(workspaceRoot, "new-create", "create.txt"), "utf8"), "explicit create parent\n");
 
     const computerDeleteRoot = await postJson("/api/v1/control", {
       action: "computer_operation",
@@ -946,13 +1026,29 @@ try {
       operation.requiredFields.includes("path") &&
       operation.optionalFields.includes("startLine") &&
       operation.optionalFields.includes("lineCount") &&
-      operation.optionalFields.includes("maxBytes")
+      operation.optionalFields.includes("maxBytes") &&
+      operation.optionalFields.includes("encoding")
     )));
     assert.ok(capabilities.body.data.operationCatalog.some((operation: { operation: string; permission: string; requiredFields: string[]; optionalFields: string[] }) => (
       operation.operation === "read_many" &&
       operation.permission === "read" &&
       operation.requiredFields.includes("paths") &&
-      operation.optionalFields.includes("maxBytes")
+      operation.optionalFields.includes("maxBytes") &&
+      operation.optionalFields.includes("encoding")
+    )));
+    assert.ok(capabilities.body.data.operationCatalog.some((operation: { operation: string; permission: string; requiredFields: string[]; optionalFields: string[] }) => (
+      operation.operation === "write" &&
+      operation.permission === "write" &&
+      operation.requiredFields.includes("path") &&
+      operation.requiredFields.includes("content") &&
+      operation.optionalFields.includes("createParents")
+    )));
+    assert.ok(capabilities.body.data.operationCatalog.some((operation: { operation: string; permission: string; requiredFields: string[]; optionalFields: string[] }) => (
+      operation.operation === "create_file" &&
+      operation.permission === "write" &&
+      operation.requiredFields.includes("path") &&
+      operation.requiredFields.includes("content") &&
+      operation.optionalFields.includes("createParents")
     )));
     assert.ok(capabilities.body.data.operationCatalog.some((operation: { operation: string; permission: string; requiredFields: string[] }) => (
       operation.operation === "write_if_unchanged" &&

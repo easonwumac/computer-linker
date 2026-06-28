@@ -52,6 +52,11 @@ Call `get_computer_info` before any workspace action. Read:
 The exact list can grow. Always prefer names returned by
 `computerOperationRegistry`.
 
+`file.read` and `file.read_many` default to UTF-8 text. Use
+`options.encoding:"base64"` only when the user needs bounded binary bytes.
+`file.write` and `file.create` do not create missing parent directories unless
+`options.createParents:true` is explicit.
+
 Before `package.run` or `package.start`, inspect
 `scope.policy.allowedPackageScripts` and `scope.policy.deniedPackageScripts`
 when present. Those fields match `package.json` script names; denied patterns

@@ -12,6 +12,9 @@ called out even when the package version is still `0.x`.
 - Added workspace package script allow/deny policy so `package.run` and
   `package.start` can allow scripts such as `test` while blocking scripts such
   as `deploy`, even when broad package-manager command patterns are allowed.
+- Added explicit `encoding:"base64"` support for `file.read` and
+  `file.read_many`, including raw byte bounds, raw-byte sha256, total
+  `sizeBytes`, and truncation metadata for binary file reads.
 - Added a practical usage guide and command policy guide so daily startup,
   MCP client setup, agent operation flow, troubleshooting, and command safety
   have dedicated teaching documents.
@@ -24,6 +27,10 @@ called out even when the package version is still `0.x`.
 - Command policy logic now lives in `src/command-policy.ts`, keeping wildcard
   matching, shell-metacharacter checks, runtime limits, and output limits out
   of the workspace operation dispatcher.
+- `file.write` and `file.create` now fail fast when parent directories are
+  missing unless the caller explicitly passes `createParents:true`.
+- Text file reads now fail with a clear invalid-request error when the file is
+  not valid UTF-8, instead of returning lossy replacement characters.
 - CLI help and version output now live in `src/cli-help.ts`, keeping long help
   copy and help-topic routing out of the main CLI command dispatcher.
 - Shell metacharacters and command chaining are blocked by default before

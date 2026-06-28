@@ -45,8 +45,27 @@
           "default": {}
         },
         "options": {
-          "$ref": "#/$defs/JsonObject",
+          "$ref": "#/$defs/ComputerOperationOptions",
           "default": {}
+        }
+      }
+    },
+    "ComputerOperationOptions": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum raw bytes to read or return for bounded file and text outputs."
+        },
+        "encoding": {
+          "enum": ["utf8", "base64"],
+          "description": "file.read and file.read_many default to utf8. Use base64 explicitly for binary files."
+        },
+        "createParents": {
+          "type": "boolean",
+          "description": "file.write and file.create create missing parent directories only when this is true."
         }
       }
     },

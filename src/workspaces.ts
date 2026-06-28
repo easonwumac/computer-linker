@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, opendir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, opendir, readFile as readFsFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import {
   assertPermission,
@@ -55,6 +55,10 @@ export interface WorkspaceInstructionFile {
 
 export interface WorkspaceInstructionsOptions {
   maxBytes?: number;
+}
+
+export interface WorkspaceWriteOptions {
+  createParents?: boolean;
 }
 
 export class WorkspaceRegistry {
@@ -137,41 +141,61 @@ export class WorkspaceRegistry {
     return absolutePath;
   }
 
-  async resolveWritablePath(workspace: Workspace, inputPath: string): Promise<string> {
+  async resolveWritablePath(workspace: Workspace, inputPath: string, options: WorkspaceWriteOptions = {}): Promise<string> {
     const absolutePath = this.resolvePath(workspace, inputPath);
     try {
       await assertRealPathInside(workspace, absolutePath, inputPath);
     } catch (error) {
       if (!isNotFoundError(error)) throw error;
       if (await pathExists(absolutePath)) throw error;
-      await assertRealPathInside(workspace, dirname(absolutePath), dirname(inputPath));
+      const parentPath = dirname(absolutePath);
+      if (options.createParents) {
+        await assertRealPathInside(workspace, await nearestExistingParent(parentPath), inputPath);
+      } else {
+        try {
+          await assertRealPathInside(workspace, parentPath, dirname(inputPath));
+        } catch (parentError) {
+          if (isNotFoundError(parentError)) {
+            throw operationError(
+              "invalid_request",
+              `Parent directory does not exist: ${dirname(inputPath)}. Use createParents=true to create missing parents intentionally.`,
+              { cause: parentError },
+            );
+          }
+          throw parentError;
+        }
+      }
     }
     return absolutePath;
   }
 
   async readFile(workspaceId: string, path: string): Promise<string> {
+    return decodeUtf8Bytes(await this.readFileBytes(workspaceId, path), path);
+  }
+
+  async readFileBytes(workspaceId: string, path: string): Promise<Buffer> {
     const workspace = this.getWorkspace(workspaceId);
     assertPermission(workspace.exposedPath, "read");
     const absolutePath = await this.resolveExistingPath(workspace, path);
     assertNonSensitiveWorkspacePath(formatWorkspacePath(absolutePath, workspace), "read");
-    return readFile(absolutePath, "utf8");
+    return readFsFile(absolutePath);
   }
 
-  async writeFile(workspaceId: string, path: string, content: string): Promise<void> {
+  async writeFile(workspaceId: string, path: string, content: string, options: WorkspaceWriteOptions = {}): Promise<void> {
     const workspace = this.getWorkspace(workspaceId);
     assertPermission(workspace.exposedPath, "write");
-    const absolutePath = await this.resolveWritablePath(workspace, path);
+    const absolutePath = await this.resolveWritablePath(workspace, path, options);
     assertSensitivePathMutationAllowed(formatWorkspacePath(absolutePath, workspace), workspace.exposedPath.policy, "write");
-    await mkdir(dirname(absolutePath), { recursive: true });
+    if (options.createParents) await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, content, "utf8");
   }
 
-  async createFile(workspaceId: string, path: string, content: string): Promise<void> {
+  async createFile(workspaceId: string, path: string, content: string, options: WorkspaceWriteOptions = {}): Promise<void> {
     const workspace = this.getWorkspace(workspaceId);
     assertPermission(workspace.exposedPath, "write");
-    const absolutePath = await this.resolveWritablePath(workspace, path);
+    const absolutePath = await this.resolveWritablePath(workspace, path, options);
     assertSensitivePathMutationAllowed(formatWorkspacePath(absolutePath, workspace), workspace.exposedPath.policy, "create");
-    await mkdir(dirname(absolutePath), { recursive: true });
+    if (options.createParents) await mkdir(dirname(absolutePath), { recursive: true });
     try {
       await writeFile(absolutePath, content, { encoding: "utf8", flag: "wx" });
     } catch (error) {
@@ -187,7 +211,7 @@ export class WorkspaceRegistry {
     assertPermission(workspace.exposedPath, "write");
     const absolutePath = await this.resolveExistingPath(workspace, path);
     assertSensitivePathMutationAllowed(formatWorkspacePath(absolutePath, workspace), workspace.exposedPath.policy, "write");
-    return readFile(absolutePath, "utf8");
+    return decodeUtf8Bytes(await readFsFile(absolutePath), path);
   }
 
   async editFile(workspaceId: string, path: string, oldText: string, newText: string): Promise<number> {
@@ -284,7 +308,7 @@ export class WorkspaceRegistry {
         try {
           const info = await lstat(instructionPath);
           if (!info.isFile()) continue;
-          const content = await readFile(instructionPath, "utf8");
+          const content = await readFsFile(instructionPath, "utf8");
           files.push({
             path: formatWorkspacePath(instructionPath, workspace),
             name,
@@ -292,7 +316,8 @@ export class WorkspaceRegistry {
             size: info.size,
             truncated: info.size > maxBytes,
           });
-        } catch {
+        } catch (error) {
+          if (!isNotFoundError(error)) throw error;
           // Missing instruction files are expected in most directories.
         }
       }
@@ -450,6 +475,18 @@ async function pathExists(path: string): Promise<boolean> {
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Error && "code" in error && (error as { code?: unknown }).code === "ENOENT";
+}
+
+function decodeUtf8Bytes(bytes: Buffer, path: string): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch (error) {
+    throw operationError(
+      "invalid_request",
+      `File is not valid UTF-8 text: ${path}. Use encoding=base64 for binary reads.`,
+      { cause: error },
+    );
+  }
 }
 
 function normalizePositiveInteger(value: number | undefined, fallback: number, max: number): number {
