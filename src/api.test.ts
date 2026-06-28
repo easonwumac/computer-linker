@@ -79,6 +79,11 @@ try {
         name: "Command runner",
         path: workspaceRoot,
         permissions: { read: true, write: false, shell: true, codex: false, screen: true },
+        policy: {
+          allowedCommands: ["node *", "npm *"],
+          allowedPackageScripts: ["test"],
+          deniedPackageScripts: ["deploy"],
+        },
       },
     ],
   });
@@ -181,10 +186,13 @@ try {
     assert.equal(workspaces.body.data.workspaces[0].capabilityPolicy.networkAccess.networkBlockedByComputerLinker, false);
     assert.equal(workspaces.body.data.workspaces[0].allowedOperations.includes("command"), false);
     const listedRunnerWorkspace = workspaces.body.data.workspaces.find((workspace: { id: string }) => workspace.id === "runner") as {
+      policy: { allowedPackageScripts?: string[]; deniedPackageScripts?: string[] };
       allowedOperations: string[];
       unavailableOperations: Array<{ operation: string; allowedByPolicy: boolean; availableNow: boolean; reason: string; action: string }>;
     };
     assert.ok(listedRunnerWorkspace.allowedOperations.includes("package_run"));
+    assert.deepEqual(listedRunnerWorkspace.policy.allowedPackageScripts, ["test"]);
+    assert.deepEqual(listedRunnerWorkspace.policy.deniedPackageScripts, ["deploy"]);
     assert.ok(Array.isArray(listedRunnerWorkspace.unavailableOperations));
 
     const capabilities = await getJson("/api/v1/capabilities");
@@ -210,6 +218,7 @@ try {
     assert.equal(capabilities.body.data.workspaces[0].capabilityPolicy.capabilities.includes("fs:write"), false);
     assert.ok(capabilities.body.data.workspaces.find((workspace: { id: string }) => workspace.id === "writer").capabilityPolicy.capabilities.includes("git:write"));
     const runnerCapabilities = capabilities.body.data.workspaces.find((workspace: { id: string }) => workspace.id === "runner") as {
+      policy: { allowedPackageScripts?: string[]; deniedPackageScripts?: string[] };
       capabilityPolicy: {
         capabilities: string[];
         networkAccess: {
@@ -223,6 +232,8 @@ try {
       allowedOperations: string[];
       unavailableOperations: Array<{ operation: string; allowedByPolicy: boolean; availableNow: boolean; reason: string; provider?: string; action: string }>;
     };
+    assert.deepEqual(runnerCapabilities.policy.allowedPackageScripts, ["test"]);
+    assert.deepEqual(runnerCapabilities.policy.deniedPackageScripts, ["deploy"]);
     assert.ok(runnerCapabilities.capabilityPolicy.capabilities.includes("screen:capture"));
     assert.equal(runnerCapabilities.capabilityPolicy.networkAccess.mode, "host-process-may-use-network");
     assert.equal(runnerCapabilities.capabilityPolicy.networkAccess.hostNetworkMayBeUsed, true);

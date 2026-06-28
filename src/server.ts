@@ -217,7 +217,8 @@ export function createLocalPortMcpServer(): McpServer {
           ? "Compatibility clients may still use legacy workspace tools, but new clients should prefer computer_operation. "
           : "Compatibility workspace tools are hidden by default; set COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility only for legacy clients. ") +
         "Start coding tasks with op=code.context. Use file.search, file.read, git.diff, and package.run as needed. " +
-        "Only use write, command, process, codex, or screen operations when the selected scope explicitly allows them.",
+        "Before package.run or package.start, inspect scope.policy package script allow/deny rules when present. " +
+        "Only use write, command, package, process, codex, or screen operations when the selected scope explicitly allows them.",
     },
   );
 
@@ -242,6 +243,7 @@ export function createLocalPortMcpServer(): McpServer {
       description: [
         "Step 2. Run one scoped operation with the stable envelope: scope, op, target, input, options.",
         "Use dotted ops returned by get_computer_info. Common ops: code.context, file.list, file.search, file.read, git.diff, package.run.",
+        "Honor scope policy before package, command, process, Codex, or write operations.",
       ].join(" "),
       inputSchema: {
         scope: z.string(),

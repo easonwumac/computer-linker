@@ -3183,7 +3183,7 @@ function validateConfig(args: string[]): void {
 function configPolicy(args: string[]): void {
   const [workspaceId] = args;
   if (!workspaceId || workspaceId.startsWith("--")) {
-    throw new Error("Usage: computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--allow-shell-metacharacters|--block-shell-metacharacters] [--allow-sensitive-path-metadata|--block-sensitive-path-metadata] [--allow-sensitive-path-writes|--block-sensitive-path-writes] [--clear|--clear-allowed|--clear-denied]");
+    throw new Error("Usage: computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--allow-package-script pattern] [--deny-package-script pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--allow-shell-metacharacters|--block-shell-metacharacters] [--allow-sensitive-path-metadata|--block-sensitive-path-metadata] [--allow-sensitive-path-writes|--block-sensitive-path-writes] [--clear|--clear-allowed|--clear-denied|--clear-allowed-package-scripts|--clear-denied-package-scripts]");
   }
   assertKnownConfigPolicyOptions(args.slice(1));
   const config = loadConfig();
@@ -3222,12 +3222,14 @@ function configPolicy(args: string[]): void {
 }
 
 function assertKnownConfigPolicyOptions(args: string[]): void {
-  const valueOptions = new Set(["--allow", "--deny", "--max-runtime-seconds", "--max-output-bytes"]);
+  const valueOptions = new Set(["--allow", "--deny", "--allow-package-script", "--deny-package-script", "--max-runtime-seconds", "--max-output-bytes"]);
   const flagOptions = new Set([
     "--json",
     "--clear",
     "--clear-allowed",
     "--clear-denied",
+    "--clear-allowed-package-scripts",
+    "--clear-denied-package-scripts",
     "--allow-shell-metacharacters",
     "--block-shell-metacharacters",
     "--allow-sensitive-path-metadata",
@@ -3252,8 +3254,12 @@ function configPolicyUpdates(args: string[]): {
   clear: boolean;
   clearAllowed: boolean;
   clearDenied: boolean;
+  clearAllowedPackageScripts: boolean;
+  clearDeniedPackageScripts: boolean;
   allowedCommands: string[];
   deniedCommands: string[];
+  allowedPackageScripts: string[];
+  deniedPackageScripts: string[];
   maxRuntimeSeconds?: number;
   maxOutputBytes?: number;
   allowShellMetacharacters?: boolean;
@@ -3273,8 +3279,12 @@ function configPolicyUpdates(args: string[]): {
     clear: args.includes("--clear"),
     clearAllowed: args.includes("--clear-allowed"),
     clearDenied: args.includes("--clear-denied"),
+    clearAllowedPackageScripts: args.includes("--clear-allowed-package-scripts"),
+    clearDeniedPackageScripts: args.includes("--clear-denied-package-scripts"),
     allowedCommands: readRepeatedOptions(args, "--allow", "config policy --allow"),
     deniedCommands: readRepeatedOptions(args, "--deny", "config policy --deny"),
+    allowedPackageScripts: readRepeatedOptions(args, "--allow-package-script", "config policy --allow-package-script"),
+    deniedPackageScripts: readRepeatedOptions(args, "--deny-package-script", "config policy --deny-package-script"),
     maxRuntimeSeconds: readOptionalIntegerOption(args, "--max-runtime-seconds", "config policy --max-runtime-seconds"),
     maxOutputBytes: readOptionalIntegerOption(args, "--max-output-bytes", "config policy --max-output-bytes"),
     allowShellMetacharacters: args.includes("--allow-shell-metacharacters")
@@ -3385,8 +3395,12 @@ function policyHasUpdates(updates: ReturnType<typeof configPolicyUpdates>): bool
     updates.clear ||
     updates.clearAllowed ||
     updates.clearDenied ||
+    updates.clearAllowedPackageScripts ||
+    updates.clearDeniedPackageScripts ||
     updates.allowedCommands.length > 0 ||
     updates.deniedCommands.length > 0 ||
+    updates.allowedPackageScripts.length > 0 ||
+    updates.deniedPackageScripts.length > 0 ||
     updates.maxRuntimeSeconds !== undefined ||
     updates.maxOutputBytes !== undefined ||
     updates.allowShellMetacharacters !== undefined ||
@@ -3402,6 +3416,8 @@ function applyPolicyUpdates(
   const next: WorkspacePolicy = updates.clear ? {} : { ...(policy ?? {}) };
   if (updates.clearAllowed) delete next.allowedCommands;
   if (updates.clearDenied) delete next.deniedCommands;
+  if (updates.clearAllowedPackageScripts) delete next.allowedPackageScripts;
+  if (updates.clearDeniedPackageScripts) delete next.deniedPackageScripts;
   if (updates.maxRuntimeSeconds !== undefined) next.maxRuntimeSeconds = updates.maxRuntimeSeconds;
   if (updates.maxOutputBytes !== undefined) next.maxOutputBytes = updates.maxOutputBytes;
   if (updates.allowShellMetacharacters !== undefined) next.allowShellMetacharacters = updates.allowShellMetacharacters;
@@ -3412,6 +3428,12 @@ function applyPolicyUpdates(
   }
   if (updates.deniedCommands.length > 0) {
     next.deniedCommands = mergePolicyList(next.deniedCommands, updates.deniedCommands);
+  }
+  if (updates.allowedPackageScripts.length > 0) {
+    next.allowedPackageScripts = mergePolicyList(next.allowedPackageScripts, updates.allowedPackageScripts);
+  }
+  if (updates.deniedPackageScripts.length > 0) {
+    next.deniedPackageScripts = mergePolicyList(next.deniedPackageScripts, updates.deniedPackageScripts);
   }
   return Object.keys(next).length > 0 ? next : undefined;
 }
@@ -3435,6 +3457,8 @@ function printPolicyLines(policy: WorkspacePolicy | undefined): void {
   console.log(`maxOutputBytes: ${policy?.maxOutputBytes ?? "not set"}`);
   console.log(`allowedCommands: ${policy?.allowedCommands?.join(", ") || "not set"}`);
   console.log(`deniedCommands: ${policy?.deniedCommands?.join(", ") || "not set"}`);
+  console.log(`allowedPackageScripts: ${policy?.allowedPackageScripts?.join(", ") || "not set"}`);
+  console.log(`deniedPackageScripts: ${policy?.deniedPackageScripts?.join(", ") || "not set"}`);
   console.log(`allowShellMetacharacters: ${policy?.allowShellMetacharacters === true ? "true" : "false"}`);
   console.log(`allowSensitivePathMetadata: ${policy?.allowSensitivePathMetadata === true ? "true" : "false"}`);
   console.log(`allowSensitivePathWrites: ${policy?.allowSensitivePathWrites === true ? "true" : "false"}`);

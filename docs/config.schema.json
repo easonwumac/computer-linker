@@ -127,6 +127,24 @@
                   "minLength": 1
                 }
               },
+              "allowedPackageScripts": {
+                "description": "package.json script-name allow patterns such as test, build, or build:*. When absent, package scripts keep legacy command-policy-only behavior.",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "deniedPackageScripts": {
+                "description": "package.json script-name deny patterns such as deploy, publish, or release:*. These take precedence over allowedPackageScripts.",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
               "allowShellMetacharacters": {
                 "description": "Allow command chaining, pipes, redirects, and shell metacharacters before allowlist evaluation.",
                 "type": "boolean"
@@ -212,6 +230,17 @@
               "format *",
               "shutdown *"
             ],
+            "allowedPackageScripts": [
+              "*"
+            ],
+            "deniedPackageScripts": [
+              "deploy",
+              "deploy:*",
+              "publish",
+              "publish:*",
+              "release",
+              "release:*"
+            ],
             "maxRuntimeSeconds": 600,
             "maxOutputBytes": 200000,
             "allowShellMetacharacters": false
@@ -243,6 +272,16 @@
             "deniedCommands": [
               "npm publish *",
               "git push *"
+            ],
+            "allowedPackageScripts": [
+              "test",
+              "build",
+              "lint"
+            ],
+            "deniedPackageScripts": [
+              "deploy",
+              "publish",
+              "release"
             ],
             "maxRuntimeSeconds": 1800,
             "maxOutputBytes": 500000,

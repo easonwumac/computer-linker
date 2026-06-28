@@ -16,6 +16,8 @@ export interface WorkspacePolicy {
   maxOutputBytes?: number;
   allowedCommands?: string[];
   deniedCommands?: string[];
+  allowedPackageScripts?: string[];
+  deniedPackageScripts?: string[];
   allowShellMetacharacters?: boolean;
   allowSensitivePathMetadata?: boolean;
   allowSensitivePathWrites?: boolean;
@@ -154,11 +156,15 @@ function normalizeWorkspacePolicy(policy: WorkspacePolicy | undefined): Workspac
   const maxOutputBytes = normalizePositiveInteger(policy.maxOutputBytes, 10 * 1024 * 1024);
   const allowedCommands = normalizeStringList(policy.allowedCommands);
   const deniedCommands = normalizeStringList(policy.deniedCommands);
+  const allowedPackageScripts = normalizeStringList(policy.allowedPackageScripts);
+  const deniedPackageScripts = normalizeStringList(policy.deniedPackageScripts);
 
   if (maxRuntimeSeconds !== undefined) normalized.maxRuntimeSeconds = maxRuntimeSeconds;
   if (maxOutputBytes !== undefined) normalized.maxOutputBytes = maxOutputBytes;
   if (allowedCommands.length > 0) normalized.allowedCommands = allowedCommands;
   if (deniedCommands.length > 0) normalized.deniedCommands = deniedCommands;
+  if (allowedPackageScripts.length > 0) normalized.allowedPackageScripts = allowedPackageScripts;
+  if (deniedPackageScripts.length > 0) normalized.deniedPackageScripts = deniedPackageScripts;
   if (typeof policy.allowShellMetacharacters === "boolean") {
     normalized.allowShellMetacharacters = policy.allowShellMetacharacters;
   }

@@ -5,7 +5,7 @@ import { basename, dirname, extname, join, relative, resolve, sep } from "node:p
 import { errorMessage, previewCommand, readAuditEvents, writeAuditEvent, type AuditEvent, type AuditEventInput, type AuditReplayTemplate } from "./audit.js";
 import { readCodexRunRecords, writeCodexRunRecord } from "./codex-runs.js";
 import { operationCapabilityPolicy, workspaceCapabilityPolicy, type CapabilityName, type CapabilityPolicy, type NetworkAccessPolicy } from "./capability-policy.js";
-import { commandPolicyLimits, managedCommandPolicyLimits } from "./command-policy.js";
+import { assertPackageScriptAllowedByPolicy, commandPolicyLimits, managedCommandPolicyLimits } from "./command-policy.js";
 import { historyInsightFromEvents } from "./history-insights.js";
 import { operationError } from "./operation-errors.js";
 import { assertPermission, type PathPermissions } from "./permissions.js";
@@ -477,7 +477,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
     operation: "package_run",
     permission: "shell",
-    description: "Run an existing package.json script from the nearest workspace package root without accepting arbitrary shell text.",
+    description: "Run an existing package.json script from the nearest workspace package root after checking package-script and command policy.",
     requiredFields: ["script"],
     optionalFields: ["path", "scriptArgs", "timeoutSeconds", "maxOutputBytes"],
     example: { operation: "package_run", path: ".", script: "test", scriptArgs: ["--watch=false"], timeoutSeconds: 120, maxOutputBytes: 200000 },
@@ -485,7 +485,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
     operation: "package_start",
     permission: "shell",
-    description: "Start an existing package.json script as a managed process without accepting arbitrary shell text.",
+    description: "Start an existing package.json script as a managed process after checking package-script and command policy.",
     requiredFields: ["script"],
     optionalFields: ["path", "scriptArgs", "timeoutSeconds", "maxOutputBytes"],
     example: { operation: "package_start", path: ".", script: "dev", scriptArgs: ["--host", "127.0.0.1"], timeoutSeconds: 3600, maxOutputBytes: 200000 },
@@ -2680,6 +2680,7 @@ async function packageRun(
   options: { script: string; scriptArgs?: string[]; timeoutSeconds?: number; maxOutputBytes?: number },
 ): Promise<unknown> {
   const resolved = await resolvePackageScript(registry, workspace, cwd, options);
+  assertPackageScriptAllowedByPolicy(workspace.exposedPath.policy, options.script);
   const commandText = `${resolved.packageManager} ${resolved.args.join(" ")}`;
   const limits = commandPolicyLimits(workspace.exposedPath.policy, commandText, options, 120);
   const process = await runProcess(resolved.packageManager, resolved.args, resolved.packageRootAbsolute, limits.timeoutMs, undefined, limits.maxOutputBytes);
@@ -2699,6 +2700,7 @@ async function packageStart(
   options: { script: string; scriptArgs?: string[]; timeoutSeconds?: number; maxOutputBytes?: number },
 ): Promise<unknown> {
   const resolved = await resolvePackageScript(registry, workspace, cwd, options);
+  assertPackageScriptAllowedByPolicy(workspace.exposedPath.policy, options.script);
   const commandText = `${resolved.packageManager} ${resolved.args.join(" ")}`;
   const limits = managedCommandPolicyLimits(workspace.exposedPath.policy, commandText, options);
   return {

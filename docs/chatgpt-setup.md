@@ -364,8 +364,10 @@ The generated profile also includes:
 For a coding task, ChatGPT can then use `computer_operation` with ops such as
 `code.context`, `code.search_symbols`, `file.search`, `file.read`,
 `file.patch`, `git.diff`, `package.run`, `command.run`, and, only when enabled
-for that workspace, `codex.run` or `codex.start`. When a run fails or the
-conversation loses context, ask it to call
+for that workspace, `codex.run` or `codex.start`. For `package.run` and
+`package.start`, ChatGPT should honor package script allow/deny policy reported
+on the selected scope. When a run fails or the conversation loses context, ask
+it to call
 `get_operation_history` with `view: "last"` first, then `view: "timeline"`,
 `view: "connections"` for tunnel/session/request correlation,
 `view: "failed_replay"`, `view: "sessions"` for compact session grouping, or

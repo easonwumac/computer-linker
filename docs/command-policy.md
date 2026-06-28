@@ -17,12 +17,22 @@ For normal coding scopes, Computer Linker creates a policy like this:
   "maxOutputBytes": 200000,
   "allowedCommands": ["npm *", "pnpm *", "yarn *", "bun *", "node *", "npx *", "git *"],
   "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
+  "allowedPackageScripts": ["*"],
+  "deniedPackageScripts": ["deploy", "deploy:*", "publish", "publish:*", "release", "release:*"],
   "allowShellMetacharacters": false
 }
 ```
 
 `allowedCommands` and `deniedCommands` use simple wildcard matching against the
 normalized command text. `deniedCommands` wins over `allowedCommands`.
+
+`allowedPackageScripts` and `deniedPackageScripts` match `package.json` script
+names before `package.run` or `package.start` launches the package manager.
+`deniedPackageScripts` wins over `allowedPackageScripts`. If both package
+script fields are absent, existing configs keep the old behavior: package
+scripts are governed by command policy only. Script arguments are still part of
+the package manager command, so command policy and shell metacharacter checks
+continue to apply.
 
 Shell metacharacters are blocked unless `allowShellMetacharacters` is explicitly
 enabled. This keeps broad patterns such as `npm *` and `git *` from permitting
@@ -57,7 +67,13 @@ computer-linker config policy app --json
 Set a compact coding policy:
 
 ```powershell
-computer-linker config policy app --allow "npm *" --allow "git *" --allow "node scripts/*" --deny "rm -rf *" --max-runtime-seconds 600 --max-output-bytes 200000
+computer-linker config policy app --allow "npm *" --allow "pnpm *" --allow "git *" --allow "node scripts/*" --deny "rm -rf *" --max-runtime-seconds 600 --max-output-bytes 200000
+```
+
+Allow only selected package scripts while blocking release-style scripts:
+
+```powershell
+computer-linker config policy app --allow-package-script "test" --allow-package-script "build" --deny-package-script "deploy" --deny-package-script "release:*"
 ```
 
 Keep shell metacharacters blocked:

@@ -44,6 +44,8 @@ try {
           maxOutputBytes: 999999999,
           allowedCommands: [" node * ", "node *", ""],
           deniedCommands: [" rm -rf / "],
+          allowedPackageScripts: [" test ", "test", "build:*", ""],
+          deniedPackageScripts: [" deploy "],
           allowShellMetacharacters: true,
         },
       },
@@ -69,6 +71,8 @@ try {
     maxOutputBytes: 10 * 1024 * 1024,
     allowedCommands: ["node *"],
     deniedCommands: ["rm -rf /"],
+    allowedPackageScripts: ["test", "build:*"],
+    deniedPackageScripts: ["deploy"],
     allowShellMetacharacters: true,
   });
   assert.deepEqual(config.workspaces[2].policy, {

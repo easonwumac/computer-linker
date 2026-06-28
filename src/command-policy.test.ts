@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   assertCommandAllowedByPolicy,
+  assertPackageScriptAllowedByPolicy,
   commandPolicyLimits,
   commandPolicyPatternMatches,
   detectDisallowedShellSyntax,
@@ -29,6 +30,30 @@ assert.throws(
 assert.throws(
   () => assertCommandAllowedByPolicy(defaultPolicy, "node test.js"),
   /Command permission denied by workspace policy: node test\.js/,
+);
+
+assert.doesNotThrow(() => assertPackageScriptAllowedByPolicy(undefined, "deploy"));
+assert.doesNotThrow(() => assertPackageScriptAllowedByPolicy(defaultPolicy, "deploy"));
+assert.doesNotThrow(() => assertPackageScriptAllowedByPolicy({
+  allowedPackageScripts: ["test", "build:*"],
+  deniedPackageScripts: ["deploy", "release:*"],
+}, "test"));
+assert.doesNotThrow(() => assertPackageScriptAllowedByPolicy({
+  allowedPackageScripts: ["test", "build:*"],
+  deniedPackageScripts: ["deploy", "release:*"],
+}, "build:prod"));
+assert.throws(
+  () => assertPackageScriptAllowedByPolicy({
+    allowedPackageScripts: ["*"],
+    deniedPackageScripts: ["deploy"],
+  }, "deploy"),
+  /Package script denied by workspace policy \(deploy\): deploy/,
+);
+assert.throws(
+  () => assertPackageScriptAllowedByPolicy({
+    allowedPackageScripts: ["test"],
+  }, "deploy"),
+  /Package script denied by workspace policy: deploy/,
 );
 
 for (const command of [

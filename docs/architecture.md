@@ -307,7 +307,12 @@ package, managed process, and Codex execution check `allowedCommands` and
 `deniedCommands` wildcard patterns before launch, reject shell metacharacters
 and command chaining unless `allowShellMetacharacters` is explicitly enabled,
 cap runtime with `maxRuntimeSeconds`, and bound command stdout/stderr with
-`maxOutputBytes`.
+`maxOutputBytes`. `package_run` and `package_start` first check
+`allowedPackageScripts` and `deniedPackageScripts` against the `package.json`
+script name when those fields are configured, then still check the resolved
+package manager command through normal command policy. Denied package script
+patterns win over allowed patterns. If the package script fields are absent,
+legacy command-policy-only behavior is preserved.
 `computer-linker here`, `computer-linker start <folder>`, and
 `computer-linker setup <folder>` attach a default execution policy when
 `--shell` or `--codex` is enabled. Manual `workspace add/update` flows keep
@@ -501,10 +506,11 @@ Search is a first-class coding API:
   Batch is non-atomic: each child keeps its normal permission check, and side
   effects from earlier successful children remain even if a later child fails
 - `package_run`: run an existing `package.json` script through the detected
-  package manager; this requires `shell` permission because package scripts can
-  execute arbitrary local commands
+  package manager after package-script and command policy checks; this requires
+  `shell` permission because package scripts can execute arbitrary local
+  commands
 - `package_start`: start an existing `package.json` script as a managed process
-  for dev servers and watch tasks
+  for dev servers and watch tasks after the same policy checks
 - `process_start` / `process_list` / `process_read` / `process_stop`: manage
   long-running workspace shell processes such as dev servers and watch tasks
 - `codex_start`: start a long-running managed Codex job that can be inspected

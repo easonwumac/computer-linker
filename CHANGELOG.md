@@ -9,6 +9,9 @@ called out even when the package version is still `0.x`.
 
 ### Added
 
+- Added workspace package script allow/deny policy so `package.run` and
+  `package.start` can allow scripts such as `test` while blocking scripts such
+  as `deploy`, even when broad package-manager command patterns are allowed.
 - Added a practical usage guide and command policy guide so daily startup,
   MCP client setup, agent operation flow, troubleshooting, and command safety
   have dedicated teaching documents.
@@ -72,6 +75,9 @@ called out even when the package version is still `0.x`.
 - MCP tool text responses now stay bounded for large payloads: small responses
   remain readable JSON, while large responses keep complete data in
   `structuredContent` and expose only a compact text preview.
+- README now stays focused on first-run install, folder startup, MCP client
+  setup, tunnel basics, and pasteable agent instructions, with deeper material
+  linked through the docs map.
 
 ## 0.1.11 - 2026-06-27
 

@@ -458,9 +458,10 @@ Computer Linker also exposes coding-oriented dotted ops over the same stable
 - `git.show`: bounded commit or object view.
 - `git.stage` / `git.unstage`: mutate the index for scoped paths.
 - `git.commit`: commit already staged scoped files.
-- `package.run`: run an existing `package.json` script.
+- `package.run`: run an existing `package.json` script after package-script
+  and command policy checks.
 - `package.start`: start an existing `package.json` script as a managed
-  process.
+  process after the same policy checks.
 
 These are product-level generic names. Compatibility workspace operation names
 such as `coding_context`, `repo_status`, `git_diff`, and `package_run` remain
@@ -709,7 +710,8 @@ Capability requirements:
   require `fs:write`.
 - `git.stage`, `git.unstage`, and `git.commit` require `git:write`.
 - `package.run`, `package.start`, `command.run`, and `process.start` require
-  `command:run` or `package:run` according to scope policy.
+  local execution capabilities according to scope policy. Package operations
+  also honor package script allow/deny patterns when configured.
 - `command.start` requires `command:run` and `process:manage`.
 - `command.read`, `command.stop`, `command.list`, `process.read`,
   `process.stop`, and `process.list` require `process:manage`.

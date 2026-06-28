@@ -202,6 +202,8 @@ try {
         policy: {
           allowedCommands: ["npm *", "git *"],
           deniedCommands: ["rm -rf *"],
+          allowedPackageScripts: ["test", "build:*"],
+          deniedPackageScripts: ["deploy", "release:*"],
           maxRuntimeSeconds: 600,
           maxOutputBytes: 200000,
           allowShellMetacharacters: false,
@@ -255,6 +257,14 @@ try {
         workspaces: [{ ...validShape.workspaces[0], policy: { ...validShape.workspaces[0].policy, maxRuntimeSeconds: "600" } }],
       },
       path: "$.workspaces[0].policy.maxRuntimeSeconds",
+    },
+    {
+      name: "bad package script policy field type",
+      config: {
+        ...validShape,
+        workspaces: [{ ...validShape.workspaces[0], policy: { ...validShape.workspaces[0].policy, allowedPackageScripts: "test" } }],
+      },
+      path: "$.workspaces[0].policy.allowedPackageScripts",
     },
   ];
   for (const entry of invalidCases) {

@@ -25,7 +25,8 @@ Use Computer Linker through the generic MCP contract.
 First call get_computer_info and choose one reported scope.
 Use computer_operation with dotted operation names from computerOperationRegistry.
 Prefer code.context, file.tree, file.search, file.read, git.status, and git.diff before edits.
-Use write, command, package, Codex, or screen operations only when the selected scope reports the required permission.
+Use write, command, package, Codex, or screen operations only when the selected scope reports the required permission and policy allows the specific action.
+Before package.run or package.start, inspect scope.policy.allowedPackageScripts and scope.policy.deniedPackageScripts when present.
 If a policy-allowed operation is listed in scope unavailableOperations, report the provider/runtime reason and choose an available operation.
 Use get_operation_history when connection or operation behavior is unclear.
 Do not call compatibility tools unless the server explicitly exposes them.
@@ -93,7 +94,7 @@ Review local changes:
 }
 ```
 
-Run tests when command execution is allowed:
+Run tests when package execution is allowed:
 
 ```json
 {
@@ -129,6 +130,8 @@ Inspect history:
 - Prefer read-only operations before mutation.
 - Treat write, shell, package, Codex, and screen operations as explicit trust
   boundaries.
+- Before package operations, honor `allowedPackageScripts` and
+  `deniedPackageScripts` when the selected scope reports them.
 - Do not treat `network:false` as network isolation. Host processes may still
   use the host network unless an external OS, container, firewall, proxy, or
   network policy blocks them.

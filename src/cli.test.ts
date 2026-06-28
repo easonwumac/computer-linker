@@ -1826,6 +1826,10 @@ try {
     "git *",
     "--deny",
     "rm -rf *",
+    "--allow-package-script",
+    "test",
+    "--deny-package-script",
+    "deploy",
     "--max-runtime-seconds",
     "600",
     "--max-output-bytes",
@@ -1837,19 +1841,25 @@ try {
     maxOutputBytes: 200000,
     allowedCommands: ["npm *", "git *"],
     deniedCommands: ["rm -rf *"],
+    allowedPackageScripts: ["test"],
+    deniedPackageScripts: ["deploy"],
   });
   const policyText = (await runCliOutput("config", "policy", "app")).stdout;
   assert.match(policyText, /allowedCommands: npm \*, git \*/);
+  assert.match(policyText, /allowedPackageScripts: test/);
+  assert.match(policyText, /deniedPackageScripts: deploy/);
   assert.match(policyText, /allowShellMetacharacters: false/);
   const advancedPolicy = JSON.parse((await runCliOutput("config", "policy", "app", "--allow-shell-metacharacters", "--json")).stdout) as {
     policy: { allowShellMetacharacters?: boolean };
   };
   assert.equal(advancedPolicy.policy.allowShellMetacharacters, true);
-  const updatedPolicy = JSON.parse((await runCliOutput("config", "policy", "app", "--clear-allowed", "--block-shell-metacharacters", "--json")).stdout) as {
-    policy: { allowedCommands?: string[]; deniedCommands?: string[]; maxRuntimeSeconds?: number; allowShellMetacharacters?: boolean };
+  const updatedPolicy = JSON.parse((await runCliOutput("config", "policy", "app", "--clear-allowed", "--clear-allowed-package-scripts", "--block-shell-metacharacters", "--json")).stdout) as {
+    policy: { allowedCommands?: string[]; deniedCommands?: string[]; allowedPackageScripts?: string[]; deniedPackageScripts?: string[]; maxRuntimeSeconds?: number; allowShellMetacharacters?: boolean };
   };
   assert.equal(updatedPolicy.policy.allowedCommands, undefined);
   assert.deepEqual(updatedPolicy.policy.deniedCommands, ["rm -rf *"]);
+  assert.equal(updatedPolicy.policy.allowedPackageScripts, undefined);
+  assert.deepEqual(updatedPolicy.policy.deniedPackageScripts, ["deploy"]);
   assert.equal(updatedPolicy.policy.maxRuntimeSeconds, 600);
   assert.equal(updatedPolicy.policy.allowShellMetacharacters, false);
   const sensitivePathPolicy = JSON.parse((await runCliOutput(
@@ -1885,6 +1895,10 @@ try {
   await assert.rejects(
     () => runCliOutput("config", "policy", "app", "--allow"),
     /config policy --allow requires a value/,
+  );
+  await assert.rejects(
+    () => runCliOutput("config", "policy", "app", "--allow-package-script"),
+    /config policy --allow-package-script requires a value/,
   );
   await assert.rejects(
     () => runCliOutput("config", "policy", "app", "--allow-shell-metacharacters", "--block-shell-metacharacters"),

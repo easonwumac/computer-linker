@@ -121,6 +121,7 @@ const genericAgentInstructions = [
   "Call computer_operation with dotted ops from computerOperationRegistry and the stable envelope {scope, op, target, input, options}.",
   "Stay inside configured scopes. Prefer file.search, file.read, code.context, and get_operation_history before write.",
   "Use write, shell, command, or codex operations only when the reported permissions allow them.",
+  "Before package.run or package.start, inspect scope.policy.allowedPackageScripts and scope.policy.deniedPackageScripts when present.",
   "Do not call workspace_operation, read, ls, grep, glob, or create_file unless the server explicitly exposes compatibility tools.",
   "If tunnel or connection behavior is unclear, inspect get_operation_history before changing anything.",
 ];

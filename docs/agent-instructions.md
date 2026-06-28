@@ -10,6 +10,7 @@ Call `get_computer_info` before any workspace action. Read:
 - available scopes
 - scope ids, names, display paths, and path privacy
 - permissions
+- `scope.policy`, including package script allow/deny rules when present
 - `computerOperationRegistry`
 - local/public MCP URL status
 - safety boundaries
@@ -33,8 +34,9 @@ Call `get_computer_info` before any workspace action. Read:
 ```
 
 3. Use dotted operation names from `computerOperationRegistry`.
-4. Use write, shell, command, Codex, or screen operations only when the selected
-   scope reports the required permission.
+4. Use write, shell, command, package, Codex, or screen operations only when
+   the selected scope reports the required permission and policy allows the
+   specific action.
 5. Call `get_operation_history` when debugging recent actions or connection
    behavior.
 
@@ -49,6 +51,11 @@ Call `get_computer_info` before any workspace action. Read:
 
 The exact list can grow. Always prefer names returned by
 `computerOperationRegistry`.
+
+Before `package.run` or `package.start`, inspect
+`scope.policy.allowedPackageScripts` and `scope.policy.deniedPackageScripts`
+when present. Those fields match `package.json` script names; denied patterns
+win.
 
 ## Sensitive Files
 

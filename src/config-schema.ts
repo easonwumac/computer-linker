@@ -37,6 +37,10 @@ const policySchema = z.object({
     .describe("Command allow patterns such as npm *, pnpm *, node *, or git *."),
   deniedCommands: z.array(nonBlankString).max(100).optional()
     .describe("Command deny patterns that take precedence over allowedCommands."),
+  allowedPackageScripts: z.array(nonBlankString).max(100).optional()
+    .describe("package.json script-name allow patterns such as test, build, or build:*. When absent, package scripts keep legacy command-policy-only behavior."),
+  deniedPackageScripts: z.array(nonBlankString).max(100).optional()
+    .describe("package.json script-name deny patterns such as deploy, publish, or release:*. These take precedence over allowedPackageScripts."),
   allowShellMetacharacters: z.boolean().optional()
     .describe("Allow command chaining, pipes, redirects, and shell metacharacters before allowlist evaluation."),
   allowSensitivePathMetadata: z.boolean().optional()
@@ -92,6 +96,8 @@ export const CONFIG_SCHEMA_EXAMPLES = [
         policy: {
           allowedCommands: ["npm *", "pnpm *", "yarn *", "bun *", "node *", "npx *", "git *"],
           deniedCommands: ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
+          allowedPackageScripts: ["*"],
+          deniedPackageScripts: ["deploy", "deploy:*", "publish", "publish:*", "release", "release:*"],
           maxRuntimeSeconds: 600,
           maxOutputBytes: 200000,
           allowShellMetacharacters: false,
@@ -110,6 +116,8 @@ export const CONFIG_SCHEMA_EXAMPLES = [
         policy: {
           allowedCommands: ["npm *", "node *", "git *", "codex *"],
           deniedCommands: ["npm publish *", "git push *"],
+          allowedPackageScripts: ["test", "build", "lint"],
+          deniedPackageScripts: ["deploy", "publish", "release"],
           maxRuntimeSeconds: 1800,
           maxOutputBytes: 500000,
           allowSensitivePathMetadata: false,

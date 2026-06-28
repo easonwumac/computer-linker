@@ -152,7 +152,9 @@ Example package script request:
 
 Prefer `package.run`, Git operations, file operations, and search operations
 before raw `command.run`. They are easier to constrain and easier for agents to
-explain.
+explain. Before `package.run` or `package.start`, honor
+`scope.policy.allowedPackageScripts` and `scope.policy.deniedPackageScripts`
+when present.
 
 ## Daily Checks
 

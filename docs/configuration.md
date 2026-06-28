@@ -69,6 +69,8 @@ is still `workspaces[]`; product and MCP docs call each entry a scope.
       "policy": {
         "allowedCommands": ["npm *", "pnpm *", "yarn *", "bun *", "node *", "npx *", "git *"],
         "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
+        "allowedPackageScripts": ["*"],
+        "deniedPackageScripts": ["deploy", "deploy:*", "publish", "publish:*", "release", "release:*"],
         "maxRuntimeSeconds": 600,
         "maxOutputBytes": 200000,
         "allowShellMetacharacters": false
@@ -98,6 +100,8 @@ is still `workspaces[]`; product and MCP docs call each entry a scope.
       "policy": {
         "allowedCommands": ["npm *", "node *", "git *", "codex *"],
         "deniedCommands": ["npm publish *", "git push *"],
+        "allowedPackageScripts": ["test", "build", "lint"],
+        "deniedPackageScripts": ["deploy", "publish", "release"],
         "maxRuntimeSeconds": 1800,
         "maxOutputBytes": 500000,
         "allowSensitivePathMetadata": false,

@@ -76,6 +76,8 @@ export function defaultExecutionPolicyForPermissions(
     maxOutputBytes: 200000,
     allowedCommands,
     deniedCommands: ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
+    allowedPackageScripts: ["*"],
+    deniedPackageScripts: ["deploy", "deploy:*", "publish", "publish:*", "release", "release:*"],
     allowShellMetacharacters: false,
   };
 }
@@ -93,6 +95,8 @@ export function repairedExecutionPolicy(
     maxOutputBytes: policy.maxOutputBytes ?? defaults.maxOutputBytes,
     allowedCommands: policy.allowedCommands?.length ? policy.allowedCommands : defaults.allowedCommands,
     deniedCommands: mergePolicyList(policy.deniedCommands, defaults.deniedCommands ?? []),
+    allowedPackageScripts: policy.allowedPackageScripts?.length ? policy.allowedPackageScripts : defaults.allowedPackageScripts,
+    deniedPackageScripts: mergePolicyList(policy.deniedPackageScripts, defaults.deniedPackageScripts ?? []),
     allowShellMetacharacters: policy.allowShellMetacharacters ?? defaults.allowShellMetacharacters,
   };
 }

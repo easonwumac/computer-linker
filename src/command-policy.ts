@@ -63,6 +63,17 @@ export function assertCommandAllowedByPolicy(policy: WorkspacePolicy | undefined
   }
 }
 
+export function assertPackageScriptAllowedByPolicy(policy: WorkspacePolicy | undefined, script: string): void {
+  if (!policy) return;
+  const deniedPattern = policy.deniedPackageScripts?.find((pattern) => commandPolicyPatternMatches(pattern, script));
+  if (deniedPattern) {
+    throw new Error(`Package script denied by workspace policy (${deniedPattern}): ${script}`);
+  }
+  if (policy.allowedPackageScripts?.length && !policy.allowedPackageScripts.some((pattern) => commandPolicyPatternMatches(pattern, script))) {
+    throw new Error(`Package script denied by workspace policy: ${script}`);
+  }
+}
+
 export function commandPolicyPatternMatches(pattern: string, command: string): boolean {
   const normalizedPattern = normalizeCommandPolicyText(pattern);
   if (!normalizedPattern) return false;

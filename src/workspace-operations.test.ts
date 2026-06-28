@@ -161,6 +161,7 @@ try {
     scripts: {
       build: "tsc -p tsconfig.json",
       test: "node --test",
+      deploy: "node deploy.js",
     },
   }, null, 2), "utf8");
   await writeFile(join(workspaceRoot, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n", "utf8");
@@ -382,9 +383,11 @@ try {
         path: workspaceRoot,
         permissions: { read: true, write: false, shell: true, codex: false },
         policy: {
-          allowedCommands: ["node *", "npm *", "git *"],
+          allowedCommands: ["node *", "npm *", "pnpm *", "git *"],
           deniedCommands: ["node blocked*"],
-          maxRuntimeSeconds: 1,
+          allowedPackageScripts: ["test", "build"],
+          deniedPackageScripts: ["deploy"],
+          maxRuntimeSeconds: 5,
           maxOutputBytes: 5,
         },
       },
@@ -638,6 +641,33 @@ try {
   assert.equal(policyNpmCommand.exitCode, 0);
   assert.equal(policyNpmCommand.stdout, "npm-a");
   assert.equal(policyNpmCommand.stdoutTruncated, true);
+
+  const policyPackageRun = await runWorkspaceOperation(registry, policyLimited, {
+    operation: "package_run",
+    script: "test",
+    maxOutputBytes: 80,
+  }) as { packageManager: string; script: string; process: ProcessResult };
+  assert.equal(policyPackageRun.packageManager, "pnpm");
+  assert.equal(policyPackageRun.script, "test");
+  assert.equal(policyPackageRun.process.exitCode, 3);
+  assert.equal(policyPackageRun.process.stdout, "pnpm-");
+  assert.equal(policyPackageRun.process.stdoutTruncated, true);
+
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, policyLimited, {
+      operation: "package_run",
+      script: "deploy",
+    }),
+    /Package script denied by workspace policy \(deploy\): deploy/,
+  );
+
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, policyLimited, {
+      operation: "package_start",
+      script: "deploy",
+    }),
+    /Package script denied by workspace policy \(deploy\): deploy/,
+  );
 
   const policyGitCommand = await runWorkspaceOperation(registry, policyLimited, {
     operation: "command",
@@ -1356,7 +1386,7 @@ try {
   assert.equal(overview.packageName, "overview-app");
   assert.equal(overview.packageType, "module");
   assert.deepEqual(overview.packageManagers, ["pnpm"]);
-  assert.deepEqual(overview.packageScripts, ["build", "test"]);
+  assert.deepEqual(overview.packageScripts, ["build", "deploy", "test"]);
   assert.ok(overview.configFiles.includes("package.json"));
   assert.ok(overview.configFiles.includes("tsconfig.json"));
   assert.deepEqual(overview.instructionFiles, ["AGENTS.md"]);
