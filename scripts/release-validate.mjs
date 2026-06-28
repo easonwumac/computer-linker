@@ -75,6 +75,7 @@ function assertNonEmptyFile(path) {
 const packageJson = readJson("package.json");
 const lockJson = readJson("package-lock.json");
 const schemaJson = readJson("docs/computer-operation-v1.schema.json");
+const configSchemaJson = readJson("docs/config.schema.json");
 
 assert(packageJson.name === "@easonwumac/computer-linker", "package name must be @easonwumac/computer-linker");
 assert(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(packageJson.version), `package version is not semver-like: ${packageJson.version}`);
@@ -108,6 +109,7 @@ for (const path of [
   "docs/cli-reference.md",
   "docs/tutorials.md",
   "docs/command-policy.md",
+  "docs/configuration.md",
   "docs/agent-playbook.md",
   "docs/developer-guide.md",
   "docs/architecture.md",
@@ -121,6 +123,7 @@ for (const path of [
   "docs/client-sdk.md",
   "docs/client-recipes.md",
   "docs/computer-operation-v1.schema.json",
+  "docs/config.schema.json",
   "examples/minimal-mcp-client.mjs",
   "scripts/alpha-evidence.mjs",
   "scripts/alpha-evidence.test.mjs",
@@ -223,6 +226,8 @@ assert(readme.includes("docs/README.md"), "README must link the documentation ma
 assert(readme.includes("docs/learning-paths.md"), "README must link the learning paths guide");
 assert(readme.includes("docs/getting-started.md"), "README must link the step-by-step tutorial");
 assert(readme.includes("docs/cli-reference.md"), "README must link the CLI quick reference");
+assert(readme.includes("docs/configuration.md"), "README must link configuration guide");
+assert(readme.includes("docs/config.schema.json"), "README must link config schema");
 assert(readme.includes("docs/agent-playbook.md"), "README must link the agent playbook");
 assert(readme.includes("docs/sdk-quickstart.md"), "README must link the SDK quickstart");
 assert(readme.includes("docs/developer-guide.md"), "README must link the developer guide");
@@ -257,6 +262,7 @@ assert(docsIndex.includes("Getting Started") && docsIndex.includes("Developer Gu
 assert(docsIndex.includes("Learning Paths"), "docs index must route unsure readers to the learning paths guide");
 assert(docsIndex.includes("Client SDK"), "docs index must route SDK consumers to the client SDK guide");
 assert(docsIndex.includes("CLI Quick Reference"), "docs index must route CLI users to the quick reference");
+assert(docsIndex.includes("Configuration"), "docs index must route manual config editors to the configuration guide");
 assert(docsIndex.includes("Agent Playbook"), "docs index must route agents to the playbook");
 assert(docsIndex.includes("SDK Quickstart"), "docs index must route SDK consumers to the short quickstart");
 
@@ -404,6 +410,10 @@ assert(schemaJson.title === "Computer Linker computer_operation v1", "computer_o
 assert(schemaJson.$defs?.ComputerOperationRequest, "computer_operation schema must define ComputerOperationRequest");
 assert(schemaJson.$defs?.ComputerOperationSuccess, "computer_operation schema must define ComputerOperationSuccess");
 assert(schemaJson.$defs?.ComputerOperationFailure, "computer_operation schema must define ComputerOperationFailure");
+assert(configSchemaJson.$id === "https://github.com/easonwumac/computer-linker/schemas/config.schema.json", "config schema id must be stable");
+assert(configSchemaJson.properties?.workspaces?.type === "array", "config schema must document workspaces[] scopes");
+assert(configSchemaJson.properties?.workspaces?.items?.properties?.permissions?.required?.includes("read"), "config schema must require permission booleans");
+assert(configSchemaJson.properties?.workspaces?.items?.properties?.policy?.properties?.allowSensitivePathWrites?.type === "boolean", "config schema must include sensitive path policy fields");
 
 const ciWorkflow = readText(".github/workflows/ci.yml");
 assertBoundedCiActionsWorkflow(ciWorkflow, "CI");

@@ -7,6 +7,7 @@ import { basename, join, resolve } from "node:path";
 import { expandHomePath, isBootstrapDefaultWorkspace, isSafeBootstrapDefaultWorkspace } from "./permissions.js";
 import type { LocalPortConfig, WorkspacePolicy } from "./permissions.js";
 import { configPath, generateOwnerToken, loadConfig, loadConfigFile, runtimeConfigSources, writeConfig, writeDefaultConfig } from "./config.js";
+import { validateConfigFileAt, type ConfigSchemaValidation } from "./config-schema.js";
 import { getLocalPortDoctor } from "./capabilities.js";
 import { chatGptSmoke, chatGptUrl, chatGptVerify, formatChatGptSmoke, formatChatGptUrl, formatChatGptVerify, parseChatGptVerifyMode } from "./chatgpt.js";
 import { formatCliCommand, invocationCommand, invocationCommandParts } from "./cli-format.js";
@@ -3016,6 +3017,21 @@ function validateConfig(args: string[]): void {
   if (unknown.length > 0) {
     throw new Error(`Unknown config validate option: ${unknown[0]}`);
   }
+  if (!existsSync(configPath())) {
+    loadConfigFile();
+  }
+  const schemaValidation = validateConfigFileAt(configPath());
+  if (!schemaValidation.valid) {
+    const report = invalidConfigValidationReport(schemaValidation);
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      printConfigValidationReport(report);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
   const doctor = getLocalPortDoctor() as {
     configDiagnostics: { criticalCount: number; warningCount: number; findings: unknown[] };
     security: { criticalCount: number; warningCount: number; findings: unknown[] };
@@ -3033,6 +3049,7 @@ function validateConfig(args: string[]): void {
     configPath: configPath(),
     ready: doctor.releaseReadiness.ready,
     status: doctor.releaseReadiness.status,
+    schemaValidation,
     configDiagnostics: doctor.configDiagnostics,
     security: doctor.security,
     releaseReadiness: doctor.releaseReadiness,
@@ -3041,23 +3058,7 @@ function validateConfig(args: string[]): void {
   if (args.includes("--json")) {
     console.log(JSON.stringify(report, null, 2));
   } else {
-    console.log("Computer Linker config validation");
-    console.log(`configPath: ${report.configPath}`);
-    console.log(`status: ${report.status} ready=${report.ready ? "yes" : "no"}`);
-    console.log(`config: critical=${report.configDiagnostics.criticalCount} warning=${report.configDiagnostics.warningCount}`);
-    console.log(`security: critical=${report.security.criticalCount} warning=${report.security.warningCount}`);
-    if (doctor.releaseReadiness.blockingReasons.length > 0) {
-      console.log("blocking reasons:");
-      for (const reason of doctor.releaseReadiness.blockingReasons) {
-        console.log(`  - ${reason}`);
-      }
-    }
-    if (doctor.releaseReadiness.warnings.length > 0) {
-      console.log("warnings:");
-      for (const warning of doctor.releaseReadiness.warnings) {
-        console.log(`  - ${warning}`);
-      }
-    }
+    printConfigValidationReport(report);
   }
 
   if (doctor.releaseReadiness.status === "blocked") {
@@ -3178,6 +3179,91 @@ function configPolicyUpdates(args: string[]): {
         ? false
         : undefined,
   };
+}
+
+function invalidConfigValidationReport(schemaValidation: ConfigSchemaValidation): {
+  kind: "computer-linker-config-validation";
+  schemaVersion: 1;
+  configPath: string;
+  ready: false;
+  status: "blocked";
+  schemaValidation: ConfigSchemaValidation;
+  configDiagnostics: {
+    criticalCount: number;
+    warningCount: 0;
+    findings: Array<{ id: string; severity: "critical"; title: string; detail: string; path: string }>;
+  };
+  security: { criticalCount: 0; warningCount: 0; findings: [] };
+  releaseReadiness: {
+    ready: false;
+    status: "blocked";
+    blockingReasons: string[];
+    warnings: [];
+    recommendedGate: string;
+  };
+} {
+  return {
+    kind: "computer-linker-config-validation",
+    schemaVersion: 1,
+    configPath: configPath(),
+    ready: false,
+    status: "blocked",
+    schemaValidation,
+    configDiagnostics: {
+      criticalCount: schemaValidation.issues.length,
+      warningCount: 0,
+      findings: schemaValidation.issues.map((issue) => ({
+        id: "config-schema-invalid",
+        severity: "critical",
+        title: "Config file does not match docs/config.schema.json",
+        detail: `${issue.path}: ${issue.message}`,
+        path: issue.path,
+      })),
+    },
+    security: { criticalCount: 0, warningCount: 0, findings: [] },
+    releaseReadiness: {
+      ready: false,
+      status: "blocked",
+      blockingReasons: ["config schema validation failed"],
+      warnings: [],
+      recommendedGate: "npm run product:check",
+    },
+  };
+}
+
+function printConfigValidationReport(report: {
+  configPath: string;
+  ready: boolean;
+  status: string;
+  schemaValidation: ConfigSchemaValidation;
+  configDiagnostics: { criticalCount: number; warningCount: number };
+  security: { criticalCount: number; warningCount: number };
+  releaseReadiness: { blockingReasons: string[]; warnings: string[] };
+}): void {
+  console.log("Computer Linker config validation");
+  console.log(`configPath: ${report.configPath}`);
+  console.log(`status: ${report.status} ready=${report.ready ? "yes" : "no"}`);
+  console.log(`schema: ${report.schemaValidation.valid ? "valid" : "invalid"} (${report.schemaValidation.schemaPath})`);
+  if (!report.schemaValidation.valid) {
+    console.log("schema errors:");
+    for (const issue of report.schemaValidation.issues) {
+      console.log(`  - ${issue.path}: ${issue.message}`);
+    }
+  }
+  console.log(`config: critical=${report.configDiagnostics.criticalCount} warning=${report.configDiagnostics.warningCount}`);
+  console.log(`security: critical=${report.security.criticalCount} warning=${report.security.warningCount}`);
+  if (report.releaseReadiness.blockingReasons.length > 0) {
+    console.log("blocking reasons:");
+    for (const reason of report.releaseReadiness.blockingReasons) {
+      console.log(`  - ${reason}`);
+    }
+  }
+  if (report.releaseReadiness.warnings.length > 0) {
+    console.log("warnings:");
+    for (const warning of report.releaseReadiness.warnings) {
+      console.log(`  - ${warning}`);
+    }
+  }
 }
 
 function policyHasUpdates(updates: ReturnType<typeof configPolicyUpdates>): boolean {

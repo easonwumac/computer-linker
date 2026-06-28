@@ -65,6 +65,13 @@ try {
     }, null, 2),
     "utf8",
   );
+  await writeFile(
+    join(sourceRoot, "docs", "config.schema.json"),
+    JSON.stringify({
+      $id: "https://github.com/easonwumac/computer-linker/schemas/config.schema.json",
+    }, null, 2),
+    "utf8",
+  );
   await git(["add", "-A"]);
   await git(["commit", "--no-verify", "-m", "Initial"]);
   const sourceHead = (await gitOutput(sourceRoot, ["rev-parse", "--short=12", "HEAD"])).trim();
@@ -114,6 +121,8 @@ try {
   assert.doesNotMatch(issueConfig, /easonwumac\/computer-linker/);
   const schemaJson = JSON.parse(await readFile(join(outputRoot, "docs", "computer-operation-v1.schema.json"), "utf8"));
   assert.equal(schemaJson.$id, "https://github.com/example/computer-linker-public/schemas/computer-operation-v1.schema.json");
+  const configSchemaJson = JSON.parse(await readFile(join(outputRoot, "docs", "config.schema.json"), "utf8"));
+  assert.equal(configSchemaJson.$id, "https://github.com/example/computer-linker-public/schemas/config.schema.json");
 
   const dryRunWithExistingOutput = await runSnapshot(["--dry-run", "--skip-audit", "--output", outputRoot]);
   assert.equal(dryRunWithExistingOutput.code, 0, dryRunWithExistingOutput.stderr);

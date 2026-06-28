@@ -444,6 +444,12 @@ The config lives at:
 ~/.computer-linker/config.json
 ```
 
+Manual config editing is documented in
+[docs/configuration.md](docs/configuration.md). The published JSON Schema is
+[docs/config.schema.json](docs/config.schema.json), and
+`computer-linker config validate` checks the file shape against that schema
+before running readiness/security diagnostics.
+
 `config show` is file-focused and redacts the owner token by default; use
 `--show-token` only on a trusted local setup screen. Runtime environment
 overrides such as `COMPUTER_LINKER_OWNER_TOKEN` and

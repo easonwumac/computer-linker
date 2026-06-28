@@ -1733,13 +1733,40 @@ try {
     configPath: string;
     status: string;
     ready: boolean;
+    schemaValidation: { valid: boolean };
     configDiagnostics: { criticalCount: number; findings: Array<{ id: string }> };
     releaseReadiness: { recommendedGate: string };
   };
   assert.equal(configValidationJson.kind, "computer-linker-config-validation");
   assert.equal(configValidationJson.configPath, join(root, "config", "config.json"));
+  assert.equal(configValidationJson.schemaValidation.valid, true);
   assert.equal(configValidationJson.configDiagnostics.criticalCount, 0);
   assert.equal(configValidationJson.releaseReadiness.recommendedGate, "npm run product:check");
+  const validConfigText = await readFile(join(root, "config", "config.json"), "utf8");
+  await writeFile(join(root, "config", "config.json"), JSON.stringify({
+    machineName: "bad-config",
+    port: 70000,
+    workspaces: [
+      {
+        id: "app",
+        name: "App",
+        path: workspaceRoot,
+        permissions: { read: true, write: false, shell: false, codex: false },
+      },
+    ],
+  }, null, 2), "utf8");
+  const invalidConfigValidation = runCliFailure("config", "validate", "--json");
+  assert.notEqual(invalidConfigValidation.status, 0);
+  const invalidConfigValidationJson = JSON.parse(invalidConfigValidation.stdout) as {
+    status: string;
+    schemaValidation: { valid: boolean; issues: Array<{ path: string; message: string }> };
+    releaseReadiness: { blockingReasons: string[] };
+  };
+  assert.equal(invalidConfigValidationJson.status, "blocked");
+  assert.equal(invalidConfigValidationJson.schemaValidation.valid, false);
+  assert.ok(invalidConfigValidationJson.schemaValidation.issues.some((issue) => issue.path === "$.port"));
+  assert.ok(invalidConfigValidationJson.releaseReadiness.blockingReasons.includes("config schema validation failed"));
+  await writeFile(join(root, "config", "config.json"), validConfigText, "utf8");
 
   const emptyPolicy = JSON.parse((await runCliOutput("config", "policy", "app", "--json")).stdout) as {
     kind: string;

@@ -694,7 +694,7 @@ export function printConfigValidateHelp(): void {
       "  computer-linker config validate [--json]",
       "",
       "What it does:",
-      "  Checks config and security diagnostics without modifying the config.",
+      "  Checks config.json against docs/config.schema.json, then runs security and readiness diagnostics.",
     ].join("\n"),
   );
 }

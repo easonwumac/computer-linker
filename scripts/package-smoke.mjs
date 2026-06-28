@@ -133,6 +133,8 @@ const requiredFiles = [
   "docs/client-sdk.md",
   "docs/client-recipes.md",
   "docs/computer-operation-v1.schema.json",
+  "docs/config.schema.json",
+  "docs/configuration.md",
   "docs/release-checklist.md",
   "examples/minimal-mcp-client.mjs",
   "dist/cli.js",

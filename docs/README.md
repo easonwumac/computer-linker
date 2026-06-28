@@ -17,6 +17,8 @@ Start with the smallest document that matches the job:
   setup, agent operation flow, safety boundaries, and troubleshooting.
 - [Command Policy](command-policy.md): shell allowlists, denied patterns,
   runtime/output limits, and shell metacharacter handling.
+- [Configuration](configuration.md): manual `config.json` editing, schema
+  validation, and common config examples.
 - [Agent Instructions](agent-instructions.md): pasteable guidance for MCP
   clients and coding agents.
 - [Agent Playbook](agent-playbook.md): operation recipes, safety rules, and
@@ -46,7 +48,8 @@ For normal setup, use [Getting Started](getting-started.md). For daily
 operation, use [Usage Guide](usage-guide.md). For copyable commands, use
 [CLI Quick Reference](cli-reference.md). For scenario walkthroughs, use
 [Tutorials](tutorials.md). For command execution safety, use
-[Command Policy](command-policy.md). For a fuller user guide, use
+[Command Policy](command-policy.md). For manual config edits, use
+[Configuration](configuration.md). For a fuller user guide, use
 [User Manual](user-manual.md). For agents, start with
 [Agent Playbook](agent-playbook.md). For SDK integrations, start with
 [SDK Quickstart](sdk-quickstart.md). For development, read

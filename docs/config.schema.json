@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/easonwumac/computer-linker/schemas/config.schema.json",
+  "title": "Computer Linker config.json",
+  "description": "Durable Computer Linker configuration. Normal setup commands write this file automatically; the schema is for manual editing, service deployments, and diagnostics.",
+  "type": "object",
+  "properties": {
+    "machineId": {
+      "description": "Stable generated machine id. Created automatically when omitted.",
+      "type": "string",
+      "minLength": 1
+    },
+    "machineName": {
+      "description": "Human-readable computer name. Defaults to the OS hostname when omitted.",
+      "type": "string",
+      "minLength": 1
+    },
+    "host": {
+      "description": "Local bind host. The default is 127.0.0.1.",
+      "type": "string",
+      "minLength": 1
+    },
+    "port": {
+      "description": "Local HTTP server port. The default is 3939.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "publicBaseUrl": {
+      "description": "Public HTTPS origin or base URL used by public URL tunnels.",
+      "type": "string",
+      "format": "uri"
+    },
+    "publicMcpOnly": {
+      "description": "When true, public-host requests expose only /mcp.",
+      "type": "boolean"
+    },
+    "ownerToken": {
+      "description": "Bearer token for HTTP MCP/API access. Keep this secret.",
+      "type": "string",
+      "minLength": 1
+    },
+    "workspaces": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable scope id used by MCP clients."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-friendly scope name."
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Folder path exposed by this scope. ~ is expanded by Computer Linker."
+          },
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "read": {
+                "type": "boolean",
+                "description": "Allow file reads and read-only project inspection."
+              },
+              "write": {
+                "type": "boolean",
+                "description": "Allow file creation, edits, moves, and deletes inside the configured scope."
+              },
+              "shell": {
+                "type": "boolean",
+                "description": "Allow command and package-script execution inside the configured scope."
+              },
+              "codex": {
+                "type": "boolean",
+                "description": "Allow Codex operations inside the configured scope."
+              },
+              "screen": {
+                "description": "Allow screenshot operations when a runtime provider is available.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "read",
+              "write",
+              "shell",
+              "codex"
+            ],
+            "additionalProperties": false,
+            "description": "Permission flags for one folder-backed scope."
+          },
+          "policy": {
+            "type": "object",
+            "properties": {
+              "maxRuntimeSeconds": {
+                "description": "Maximum runtime for command-like operations in seconds.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 86400
+              },
+              "maxOutputBytes": {
+                "description": "Maximum captured stdout/stderr bytes for command-like operations.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10485760
+              },
+              "allowedCommands": {
+                "description": "Command allow patterns such as npm *, pnpm *, node *, or git *.",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "deniedCommands": {
+                "description": "Command deny patterns that take precedence over allowedCommands.",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "allowShellMetacharacters": {
+                "description": "Allow command chaining, pipes, redirects, and shell metacharacters before allowlist evaluation.",
+                "type": "boolean"
+              },
+              "allowSensitivePathMetadata": {
+                "description": "Allow list/tree/stat style metadata for secret-like path names.",
+                "type": "boolean"
+              },
+              "allowSensitivePathWrites": {
+                "description": "Allow write, patch, move, and delete operations for secret-like paths.",
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "description": "Optional execution and sensitive-path policy for one scope."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "path",
+          "permissions"
+        ],
+        "additionalProperties": false,
+        "description": "A folder-backed Computer Linker scope. The durable 0.x config field is workspaces[]."
+      },
+      "description": "Configured folder-backed scopes. Product docs call these scopes; workspaces[] remains the durable 0.x config field."
+    }
+  },
+  "required": [
+    "workspaces"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "machineName": "office",
+      "workspaces": [
+        {
+          "id": "app",
+          "name": "App",
+          "path": "C:\\Projects\\my-app",
+          "permissions": {
+            "read": true,
+            "write": false,
+            "shell": false,
+            "codex": false,
+            "screen": false
+          }
+        }
+      ]
+    },
+    {
+      "machineName": "office",
+      "ownerToken": "replace-with-generated-token",
+      "publicMcpOnly": true,
+      "publicBaseUrl": "https://mcp.example.com",
+      "workspaces": [
+        {
+          "id": "app",
+          "name": "App",
+          "path": "C:\\Projects\\my-app",
+          "permissions": {
+            "read": true,
+            "write": true,
+            "shell": true,
+            "codex": false,
+            "screen": false
+          },
+          "policy": {
+            "allowedCommands": [
+              "npm *",
+              "pnpm *",
+              "yarn *",
+              "bun *",
+              "node *",
+              "npx *",
+              "git *"
+            ],
+            "deniedCommands": [
+              "rm -rf *",
+              "del /s *",
+              "rmdir /s *",
+              "format *",
+              "shutdown *"
+            ],
+            "maxRuntimeSeconds": 600,
+            "maxOutputBytes": 200000,
+            "allowShellMetacharacters": false
+          }
+        }
+      ]
+    },
+    {
+      "machineName": "office",
+      "workspaces": [
+        {
+          "id": "codex-app",
+          "name": "Codex App",
+          "path": "C:\\Projects\\my-app",
+          "permissions": {
+            "read": true,
+            "write": true,
+            "shell": true,
+            "codex": true,
+            "screen": true
+          },
+          "policy": {
+            "allowedCommands": [
+              "npm *",
+              "node *",
+              "git *",
+              "codex *"
+            ],
+            "deniedCommands": [
+              "npm publish *",
+              "git push *"
+            ],
+            "maxRuntimeSeconds": 1800,
+            "maxOutputBytes": 500000,
+            "allowSensitivePathMetadata": false,
+            "allowSensitivePathWrites": false
+          }
+        }
+      ]
+    }
+  ]
+}

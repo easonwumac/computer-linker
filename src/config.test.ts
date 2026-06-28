@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { configJsonSchema, validateConfigJsonText, validateConfigShape } from "./config-schema.js";
 import { configDiagnostics } from "./config-diagnostics.js";
 import { configPath, loadConfig, loadConfigFile, runtimeConfigSources, writeDefaultConfig } from "./config.js";
 
@@ -57,6 +58,7 @@ try {
   assert.ok((rawConfig.ownerToken ?? "").length >= 32);
   assert.equal(rawConfig.workspaces[0].permissions.write, false);
   assert.equal(rawConfig.workspaces[0].permissions.shell, false);
+  assert.deepEqual(validateConfigShape(rawConfig).issues, []);
 
   const loaded = loadConfig();
   assert.equal(loaded.machineId, rawConfig.machineId);
@@ -180,6 +182,90 @@ try {
   });
   assert.equal(safeDiagnostics.length, 1);
   assert.equal(safeDiagnostics[0].id, "config-baseline-ok");
+
+  const publishedConfigSchema = JSON.parse(await readFile(join(process.cwd(), "docs", "config.schema.json"), "utf8")) as unknown;
+  assert.deepEqual(publishedConfigSchema, configJsonSchema());
+
+  const validShape = {
+    machineName: "schema",
+    host: "127.0.0.1",
+    port: 3939,
+    publicBaseUrl: "https://mcp.example.com",
+    publicMcpOnly: true,
+    ownerToken: "token",
+    workspaces: [
+      {
+        id: "app",
+        name: "App",
+        path: root,
+        permissions: { read: true, write: true, shell: true, codex: false, screen: false },
+        policy: {
+          allowedCommands: ["npm *", "git *"],
+          deniedCommands: ["rm -rf *"],
+          maxRuntimeSeconds: 600,
+          maxOutputBytes: 200000,
+          allowShellMetacharacters: false,
+          allowSensitivePathMetadata: false,
+          allowSensitivePathWrites: false,
+        },
+      },
+    ],
+  };
+  assert.equal(validateConfigShape(validShape).valid, true);
+
+  const invalidCases: Array<{ name: string; config: unknown; path: string }> = [
+    {
+      name: "invalid port",
+      config: { ...validShape, port: 70000 },
+      path: "$.port",
+    },
+    {
+      name: "malformed public URL",
+      config: { ...validShape, publicBaseUrl: "not a url" },
+      path: "$.publicBaseUrl",
+    },
+    {
+      name: "invalid permission type",
+      config: {
+        ...validShape,
+        workspaces: [{ ...validShape.workspaces[0], permissions: { ...validShape.workspaces[0].permissions, read: "true" } }],
+      },
+      path: "$.workspaces[0].permissions.read",
+    },
+    {
+      name: "missing workspace id",
+      config: {
+        ...validShape,
+        workspaces: [{ name: "App", path: root, permissions: validShape.workspaces[0].permissions }],
+      },
+      path: "$.workspaces[0].id",
+    },
+    {
+      name: "missing workspace path",
+      config: {
+        ...validShape,
+        workspaces: [{ id: "app", name: "App", permissions: validShape.workspaces[0].permissions }],
+      },
+      path: "$.workspaces[0].path",
+    },
+    {
+      name: "bad policy field type",
+      config: {
+        ...validShape,
+        workspaces: [{ ...validShape.workspaces[0], policy: { ...validShape.workspaces[0].policy, maxRuntimeSeconds: "600" } }],
+      },
+      path: "$.workspaces[0].policy.maxRuntimeSeconds",
+    },
+  ];
+  for (const entry of invalidCases) {
+    const result = validateConfigShape(entry.config);
+    assert.equal(result.valid, false, entry.name);
+    assert.ok(result.issues.some((issue) => issue.path === entry.path), `${entry.name} should report ${entry.path}`);
+  }
+  const invalidJson = validateConfigJsonText("{");
+  assert.equal(invalidJson.valid, false);
+  assert.equal(invalidJson.issues[0].path, "$");
+  assert.equal(invalidJson.issues[0].code, "invalid_json");
 } finally {
   if (originalWorkspaceConfigDir === undefined) delete process.env.COMPUTER_LINKER_CONFIG_DIR;
   else process.env.COMPUTER_LINKER_CONFIG_DIR = originalWorkspaceConfigDir;

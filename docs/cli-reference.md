@@ -129,3 +129,6 @@ computer-linker doctor --fix
 
 For normal use, prefer `here` or `start <folder>`. `serve`, low-level config,
 and compatibility commands are for diagnostics and automation.
+`config validate` checks `~/.computer-linker/config.json` against
+[`config.schema.json`](config.schema.json), then runs readiness and security
+diagnostics.

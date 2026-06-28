@@ -83,11 +83,12 @@ or tunnel brands:
     default execution policy live outside the main command dispatcher so new
     command modules can reuse them without growing `src/cli.ts`.
 - Config, scope, and command policy model: `src/config.ts`,
-  `src/config-diagnostics.ts`, `src/workspaces.ts`, `src/permissions.ts`,
-  `src/capability-policy.ts`, `src/command-policy.ts`
+  `src/config-diagnostics.ts`, `src/config-schema.ts`, `src/workspaces.ts`,
+  `src/permissions.ts`, `src/capability-policy.ts`, `src/command-policy.ts`
   - Own config load/write, machine identity, folder scopes, permission
-    presets, command policy normalization, command allow/deny matching,
-    shell-metacharacter policy, runtime/output limits, and diagnostics.
+    presets, config schema validation, command policy normalization, command
+    allow/deny matching, shell-metacharacter policy, runtime/output limits, and
+    diagnostics.
 - MCP and HTTP transport: `src/server.ts`, `src/mcp-surface.ts`,
   `src/api.ts`, `src/oauth-provider.ts`, `src/http-auth.ts`
   - Own protocol adapters, authentication, public MCP-only behavior, OAuth
