@@ -1,8 +1,8 @@
 # Computer Linker
 
-Computer Linker exposes one approved local folder to an MCP client.
+Computer Linker lets an MCP client work inside one folder on your computer.
 
-Most users only need three commands:
+The normal path is three commands:
 
 ```powershell
 npm install -g @easonwumac/computer-linker
@@ -10,19 +10,12 @@ cd C:\Projects\my-app
 computer-linker here
 ```
 
-Then connect your MCP client to:
-
-```text
-http://127.0.0.1:3939/mcp
-```
-
-The server runs on your computer. It creates the config, owner token, workspace
-entry, and default coding policy automatically. The workspace name defaults to
-the folder name.
+That starts a local MCP server. Computer Linker creates the config, owner
+token, workspace entry, folder name, and default coding policy for you.
 
 ## Quick Start
 
-### 1. Check The Install
+### 1. Install
 
 Computer Linker requires Node.js 20.12 or newer.
 
@@ -31,19 +24,18 @@ npm install -g @easonwumac/computer-linker
 computer-linker check
 ```
 
-`check` starts a temporary local server and deletes the temporary files after
-the test. It does not expose your real projects.
+`check` uses a temporary folder and does not expose your projects.
 
-### 2. Start A Folder
+### 2. Open One Folder
 
-From the folder you want to expose:
+Run this inside the folder you want to expose:
 
 ```powershell
 cd C:\Projects\my-app
 computer-linker here
 ```
 
-From anywhere:
+Or point to a folder from anywhere:
 
 ```powershell
 computer-linker start C:\Projects\my-app
@@ -52,55 +44,62 @@ computer-linker start C:\Projects\my-app
 Leave that terminal running. In another terminal, run client setup or
 diagnosis commands.
 
-### 3. Connect The Client
+By default, the workspace name is the folder name. Normal mode allows file
+edits plus approved project commands such as test/build scripts.
 
-In another terminal:
+### 3. Connect Your MCP Client
 
-```powershell
-computer-linker client setup
-computer-linker diagnose client
+Use this MCP URL for local clients:
+
+```text
+http://127.0.0.1:3939/mcp
 ```
 
-If your client asks for a bearer token, print it only on a trusted local screen:
+If your client asks for an auth header, print the setup values on a trusted
+local screen:
 
 ```powershell
 computer-linker client setup --show-token
 ```
 
-Use these client settings:
+The auth header format is:
 
-| Setting | Value |
-| --- | --- |
-| MCP URL | `http://127.0.0.1:3939/mcp` |
-| Auth header | `Authorization: Bearer <ownerToken>` |
-| Agent prompt | [docs/agent-instructions.md](docs/agent-instructions.md) |
+```text
+Authorization: Bearer <ownerToken>
+```
 
-## Common Commands
+To verify the connection path:
 
-| Task | Command |
+```powershell
+computer-linker diagnose client
+```
+
+## Most Useful Commands
+
+| Need | Command |
 | --- | --- |
 | Start current folder | `computer-linker here` |
 | Start another folder | `computer-linker start C:\Projects\my-app` |
-| Inspect only | `computer-linker here --read-only` |
+| Read-only access | `computer-linker here --read-only` |
 | Full local trust | `computer-linker here --full-trust` |
-| Show client settings | `computer-linker client setup` |
-| Diagnose connection | `computer-linker diagnose client` |
-| Show status | `computer-linker status` |
-| Show recent activity | `computer-linker history --view connections` |
-| Show tunnels | `computer-linker tunnel status` |
-| Rotate token | `computer-linker config token rotate --show-token` |
+| Show MCP client settings | `computer-linker client setup --show-token` |
+| Check status | `computer-linker status` |
+| Diagnose client setup | `computer-linker diagnose client` |
+| See recent connections | `computer-linker history --view connections` |
+| See tunnel status | `computer-linker tunnel status` |
 
-Normal coding is the default: file read/write plus approved project commands.
-Use `--read-only` for review. Use `--full-trust` only for folders where Codex
-operations and screen capture are intended.
+Use `--read-only` when the agent should inspect but not edit. Use
+`--full-trust` only when you intentionally want Codex operations and screen
+capture for that folder.
 
-## Cloud Clients
+## Cloud MCP Clients
 
-Cloud MCP clients cannot reach `127.0.0.1`, so add a tunnel only when needed.
-Public tunnel mode exposes `/mcp` to public-host requests. Local `/api` and
-`/healthz` stay loopback diagnostics.
+Cloud clients cannot reach `127.0.0.1`, so start with a tunnel only when you
+need cloud access.
 
-OpenAI Secure MCP Tunnel:
+### OpenAI Secure MCP Tunnel
+
+Use this when your MCP client supports OpenAI tunnel mode:
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
@@ -108,98 +107,73 @@ cd C:\Projects\my-app
 computer-linker here --tunnel openai --tunnel-id tunnel_...
 ```
 
-Use Tunnel mode in ChatGPT or another OpenAI tunnel-aware client. Do not paste
-the Computer Linker bearer token into OpenAI Tunnel mode. On first use,
-Computer Linker downloads and verifies the official OpenAI `tunnel-client`.
+This mode does not print a public URL. In the client, choose Tunnel mode and
+use the `tunnel_...` id. Do not paste the Computer Linker bearer token into
+OpenAI Tunnel mode.
 
-Tailscale Funnel:
+Computer Linker downloads and verifies the official OpenAI `tunnel-client`
+automatically when needed.
+
+### Tailscale Funnel
+
+Use this when you want a public HTTPS URL from Tailscale:
 
 ```powershell
 cd C:\Projects\my-app
 computer-linker here --tunnel tailscale
 ```
 
-Cloudflare quick tunnel:
+### Cloudflare
+
+Quick temporary URL:
 
 ```powershell
 cd C:\Projects\my-app
 computer-linker here --tunnel cloudflare
 ```
 
-Cloudflare hostname:
+Hostname you own:
 
 ```powershell
 cd C:\Projects\my-app
 computer-linker here --url https://mcp.your-domain.com --tunnel cloudflare
 ```
 
-## Agent Instructions
+Public tunnel mode exposes only `/mcp` to public-host requests. Local `/api`
+and `/healthz` stay local diagnostics.
 
-Computer Linker's recommended MCP surface has three tools:
+## What The Agent Should Do
+
+Tell the MCP agent to start with:
+
+```text
+First call get_computer_info. Then use computer_operation with {scope, op, target, input, options}. Stay inside the configured scope. Prefer code.context, file.search, file.read, git.diff, and get_operation_history before making changes.
+Call computer_operation with dotted ops from computerOperationRegistry.
+Do not call workspace_operation, read, ls, grep, glob, or create_file unless the server explicitly exposes compatibility tools.
+```
+
+The main MCP tools are:
 
 | Tool | Purpose |
 | --- | --- |
 | `get_computer_info` | Inspect scopes, permissions, URLs, policy, and available operations. |
-| `computer_operation` | Run one scoped operation through `{ scope, op, target, input, options }`. |
-| `get_operation_history` | Inspect redacted recent activity and connection history. |
+| `computer_operation` | Run one operation inside an approved scope. |
+| `get_operation_history` | Read redacted recent activity and connection history. |
 
-Paste this into an MCP agent when it needs guidance:
+For the full prompt, use [docs/agent-instructions.md](docs/agent-instructions.md).
 
-```text
-You are connected to Computer Linker, a local MCP server for this computer.
-First call get_computer_info to inspect available scopes, permissions, policy, and safety boundaries.
-Call computer_operation with dotted ops from computerOperationRegistry and the stable envelope {scope, op, target, input, options}.
-Stay inside configured scopes. Prefer code.context, file.search, file.read, git.diff, and get_operation_history before write.
-Use write, shell, command, package, or codex operations only when the reported permissions and policy allow them.
-Before package.run or package.start, inspect scope.policy.allowedPackageScripts and scope.policy.deniedPackageScripts when present.
-Do not call workspace_operation, read, ls, grep, glob, or create_file unless the server explicitly exposes compatibility tools.
-If tunnel or connection behavior is unclear, inspect get_operation_history before changing anything.
-```
+## Safety Defaults
 
-Example:
-
-```json
-{
-  "scope": "my-app",
-  "op": "package.run",
-  "target": ".",
-  "input": {
-    "script": "test"
-  },
-  "options": {
-    "timeoutSeconds": 600
-  }
-}
-```
-
-## Config And Safety
-
-Config lives at:
-
-```text
-~/.computer-linker/config.json
-```
-
-Usually use the CLI instead of editing JSON:
-
-```powershell
-computer-linker workspace list
-computer-linker config validate
-computer-linker config policy <workspace-id> --json
-```
-
-Safety defaults:
-
+- One command exposes one folder.
 - Tokens are redacted unless you pass `--show-token`.
-- Public tunnel mode exposes MCP only, not the local diagnostic API.
 - Sensitive file content is blocked by default, including `.env*`, private
-  keys, credential JSON files, and cloud CLI credential directories.
-- Sensitive path metadata and writes are blocked by default.
-- New coding scopes allow common local project commands and deny release-style
-  package scripts such as `deploy`, `publish`, and `release`.
-- Shell and Codex operations are normal local host processes inside the
-  configured folder. Use OS, container, firewall, proxy, or network controls
-  when network isolation matters.
+  keys, credential JSON files, and cloud CLI credentials.
+- Public tunnel mode exposes MCP only, not the local diagnostic API.
+- Package release scripts such as `deploy`, `publish`, and `release` are
+  denied by default in normal coding scopes.
+- Shell, package, process, and Codex operations run as local host processes.
+  Use OS, container, firewall, proxy, or network controls when network
+  isolation matters.
 
 ## Develop From Source
 
@@ -208,7 +182,7 @@ git clone https://github.com/easonwumac/computer-linker.git
 cd computer-linker
 npm install
 npm run dev -- check
-npm run dev -- start C:\Projects\my-app
+npm run dev -- here
 ```
 
 Before pushing code changes:
@@ -229,9 +203,9 @@ and pull requests targeting `main`.
 - [Getting Started](docs/getting-started.md)
 - [Usage Guide](docs/usage-guide.md)
 - [CLI Reference](docs/cli-reference.md)
+- [Client Recipes](docs/client-recipes.md)
 - [Agent Instructions](docs/agent-instructions.md)
 - [Agent Playbook](docs/agent-playbook.md)
-- [Client Recipes](docs/client-recipes.md)
 - [SDK Quickstart](docs/sdk-quickstart.md)
 - [Command Policy](docs/command-policy.md)
 - [Configuration](docs/configuration.md)
