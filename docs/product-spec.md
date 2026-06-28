@@ -598,6 +598,8 @@ Safety requirements:
 
 - report platform permission state.
 - fail clearly when the OS blocks screen recording.
+- report missing Linux screenshot tools or missing Wayland/X11 sessions without
+  attempting hidden pixel capture probes.
 - allow future redaction/masking before returning images.
 - audit every screenshot request.
 

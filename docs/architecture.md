@@ -410,11 +410,13 @@ simple local integrations that do not speak MCP. Screen operations report
 provider readiness, list known capture targets, and advertise only the capture
 target types the current platform provider can run.
 The current screenshot providers are macOS `screencapture` for display/window
-capture and Windows PowerShell for primary-display capture in an interactive
-desktop session. Linux reports capability status until a desktop/session
-provider is added. Window and process capture remain provider-specific; generic
-clients should follow `computerOperationRegistry`, while legacy direct calls
-return clear unsupported errors when the platform cannot supply that target.
+capture, Windows PowerShell for primary-display capture in an interactive
+desktop session, and Linux primary-display capture through detected desktop
+tools (`grim`, `gnome-screenshot`, or ImageMagick `import`) when an active
+Wayland or X11 session is available. Window and process capture remain
+provider-specific; generic clients should follow `computerOperationRegistry`,
+while legacy direct calls return clear unsupported errors when the platform
+cannot supply that target.
 
 Workspace operations support both the original direct-field payload and a
 generic envelope for clients that want a stable outer shape:

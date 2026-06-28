@@ -21,6 +21,9 @@ called out even when the package version is still `0.x`.
 - Added a learning-paths guide that routes new users, tunnel users, agent
   authors, SDK consumers, and maintainers to the right setup and architecture
   documents.
+- Added Linux screenshot provider detection and primary-display capture through
+  `grim`, `gnome-screenshot`, or ImageMagick `import` when an active desktop
+  session is available.
 
 ### Changed
 

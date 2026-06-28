@@ -12,6 +12,7 @@ import { screenshotRetentionPolicy } from "./retention.js";
 const execFileAsync = promisify(execFile);
 const windowsScreenshotCommandEnv = "COMPUTER_LINKER_WINDOWS_SCREENSHOT_COMMAND";
 const legacyWindowsScreenshotCommandEnv = "WORKSPACE_LINKER_WINDOWS_SCREENSHOT_COMMAND";
+const screenshotPlatformEnv = "COMPUTER_LINKER_SCREENSHOT_PLATFORM";
 
 export interface ScreenshotPermission {
   status: "granted" | "unknown" | "unsupported" | "os_permission_required";
@@ -137,7 +138,11 @@ export async function captureScreenshot(options: ScreenshotCaptureOptions): Prom
     });
   } catch (error) {
     await rm(file, { force: true });
-    throw new Error(`screenshot capture failed: ${error instanceof Error ? error.message : String(error)}`);
+    const message = `screenshot capture failed: ${error instanceof Error ? error.message : String(error)}`;
+    if (provider.name.startsWith("linux-")) {
+      throw operationError("os_permission_required", message, { cause: error });
+    }
+    throw new Error(message);
   }
 
   try {
@@ -261,7 +266,8 @@ function screenshotProvider(): {
   permission: ScreenshotPermission;
   captureArgs: (options: ScreenshotCaptureOptions, file: string) => string[];
 } {
-  if (platform() === "darwin") {
+  const runtimePlatform = screenshotRuntimePlatform();
+  if (runtimePlatform === "darwin") {
     const command = findExecutableCommand("screencapture") ?? "/usr/sbin/screencapture";
     return {
       name: "macos-screencapture",
@@ -278,7 +284,7 @@ function screenshotProvider(): {
     };
   }
 
-  if (platform() === "win32") {
+  if (runtimePlatform === "win32") {
     const command = process.env[windowsScreenshotCommandEnv]
       ?? process.env[legacyWindowsScreenshotCommandEnv]
       ?? findExecutableCommand("powershell")
@@ -320,14 +326,89 @@ function screenshotProvider(): {
     };
   }
 
+  if (runtimePlatform === "linux") {
+    return linuxScreenshotProvider();
+  }
+
   return {
-    name: `${platform()}-screenshot`,
+    name: `${runtimePlatform}-screenshot`,
     available: false,
     command: "",
     modes: [],
     permission: {
       status: "unsupported",
-      detail: `screenshot capture provider is not implemented for ${platform()} yet`,
+      detail: `screenshot capture provider is not implemented for ${runtimePlatform} yet`,
+    },
+    captureArgs: () => [],
+  };
+}
+
+function linuxScreenshotProvider(): ReturnType<typeof screenshotProvider> {
+  const hasWaylandSession = Boolean(process.env.WAYLAND_DISPLAY);
+  const hasX11Session = Boolean(process.env.DISPLAY);
+  const providers = [
+    {
+      name: "linux-grim",
+      command: findExecutableCommand("grim"),
+      sessionAvailable: hasWaylandSession,
+      sessionDetail: "grim requires an active Wayland/wlroots session (WAYLAND_DISPLAY).",
+      permissionDetail: "Linux screenshot capture uses grim through the active Wayland session; compositor permission may be required.",
+      captureArgs: (_options: ScreenshotCaptureOptions, file: string) => [file],
+    },
+    {
+      name: "linux-gnome-screenshot",
+      command: findExecutableCommand("gnome-screenshot"),
+      sessionAvailable: hasWaylandSession || hasX11Session,
+      sessionDetail: "gnome-screenshot requires an active desktop session (WAYLAND_DISPLAY or DISPLAY).",
+      permissionDetail: "Linux screenshot capture uses gnome-screenshot through the active desktop session.",
+      captureArgs: (_options: ScreenshotCaptureOptions, file: string) => ["-f", file],
+    },
+    {
+      name: "linux-imagemagick-import",
+      command: findExecutableCommand("import"),
+      sessionAvailable: hasX11Session,
+      sessionDetail: "ImageMagick import requires an active X11 session (DISPLAY).",
+      permissionDetail: "Linux screenshot capture uses ImageMagick import against the X11 root window.",
+      captureArgs: (_options: ScreenshotCaptureOptions, file: string) => ["-window", "root", file],
+    },
+  ];
+
+  for (const provider of providers) {
+    if (!provider.command) continue;
+    if (!provider.sessionAvailable) {
+      return {
+        name: provider.name,
+        available: false,
+        command: provider.command,
+        modes: [],
+        permission: {
+          status: "os_permission_required",
+          detail: provider.sessionDetail,
+        },
+        captureArgs: provider.captureArgs,
+      };
+    }
+    return {
+      name: provider.name,
+      available: true,
+      command: provider.command,
+      modes: ["display"],
+      permission: {
+        status: "unknown",
+        detail: provider.permissionDetail,
+      },
+      captureArgs: provider.captureArgs,
+    };
+  }
+
+  return {
+    name: "linux-screenshot",
+    available: false,
+    command: "",
+    modes: [],
+    permission: {
+      status: "unknown",
+      detail: "Install grim, gnome-screenshot, or ImageMagick import and run inside an active graphical session to enable Linux display capture.",
     },
     captureArgs: () => [],
   };
@@ -347,12 +428,13 @@ async function downscaleScreenshotIfNeeded(file: string, options: ScreenshotCapt
 
   const tempFile = join(screenshotArtifactDirectory(), `screenshot-resized-${randomUUID()}.png`);
   try {
-    if (platform() === "win32") {
+    const runtimePlatform = screenshotRuntimePlatform();
+    if (runtimePlatform === "win32") {
       await downscalePngWithPowerShell(file, tempFile, target);
-    } else if (platform() === "darwin") {
+    } else if (runtimePlatform === "darwin") {
       await downscalePngWithSips(file, tempFile, target);
     } else {
-      throw operationError("unsupported_platform", `screenshot downscaling is not supported on ${platform()} yet`);
+      throw operationError("unsupported_platform", `screenshot downscaling is not supported on ${runtimePlatform} yet`);
     }
     await rename(tempFile, file);
   } catch (error) {
@@ -360,6 +442,12 @@ async function downscaleScreenshotIfNeeded(file: string, options: ScreenshotCapt
     if (isOperationError(error)) throw error;
     throw new Error(`screenshot downscaling failed: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+function screenshotRuntimePlatform(): NodeJS.Platform {
+  const override = process.env[screenshotPlatformEnv];
+  if (override === "darwin" || override === "win32" || override === "linux") return override;
+  return platform();
 }
 
 function downscaledDimensions(width: number, height: number, options: ScreenshotCaptureOptions): { width: number; height: number } {
