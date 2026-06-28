@@ -36,6 +36,8 @@ try {
     ],
   });
   const defaultComputerInfo = getComputerInfo() as {
+    kind: string;
+    schemaVersion: number;
     scopes: Array<{
       id: string;
       displayPath: string;
@@ -71,7 +73,15 @@ try {
       };
       compatibility: { mcpTools: string[] };
     };
+    status: {
+      ready: boolean;
+      status: string;
+      blockingReasons: string[];
+      warnings: string[];
+    };
   };
+  assert.equal(defaultComputerInfo.kind, "computer-linker-computer-info");
+  assert.equal(defaultComputerInfo.schemaVersion, 1);
   assert.equal(defaultComputerInfo.scopes[0].id, "app");
   assert.equal(defaultComputerInfo.scopes[0].displayPath, "workspace");
   assert.equal(defaultComputerInfo.scopes[0].pathPrivacy.rootsRedacted, true);
@@ -112,6 +122,9 @@ try {
   const fileSearch = defaultComputerInfo.operationRegistry.find((operation) => operation.op === "file.search");
   assert.equal(fileSearch?.networkAccess.mode, "not-required");
   assert.equal(fileSearch?.networkAccess.hostNetworkMayBeUsed, false);
+  assert.equal(defaultComputerInfo.status.ready, true);
+  assert.match(defaultComputerInfo.status.status, /ready|needs_attention/);
+  assert.deepEqual(defaultComputerInfo.status.blockingReasons, []);
   assert.equal(JSON.stringify(defaultComputerInfo).includes(root), false);
 
   const detailedComputerInfo = getComputerInfo({ include: ["roots"] }) as {
@@ -119,6 +132,38 @@ try {
   };
   assert.equal(detailedComputerInfo.scopes[0].pathPrivacy.rootsRedacted, false);
   assert.deepEqual(detailedComputerInfo.scopes[0].roots, [join(root, "workspace")]);
+
+  const filteredComputerInfo = getComputerInfo({ include: ["identity", "scopes"] }) as Record<string, unknown> & {
+    machineId?: string;
+    machineName?: string;
+    scopes?: Array<{ id: string; roots?: string[]; pathPrivacy: { rootsRedacted: boolean } }>;
+  };
+  assert.deepEqual(Object.keys(filteredComputerInfo).sort(), ["kind", "machineId", "machineName", "schemaVersion", "scopes"]);
+  assert.equal(filteredComputerInfo.kind, "computer-linker-computer-info");
+  assert.equal(filteredComputerInfo.schemaVersion, 1);
+  assert.equal(filteredComputerInfo.machineName, "client-setup-test");
+  assert.equal(filteredComputerInfo.scopes?.[0].id, "app");
+  assert.equal(filteredComputerInfo.scopes?.[0].pathPrivacy.rootsRedacted, true);
+  assert.equal(filteredComputerInfo.scopes?.[0].roots, undefined);
+
+  const filteredRootComputerInfo = getComputerInfo({ include: ["identity", "scopes", "roots"] }) as {
+    scopes?: Array<{ roots?: string[]; pathPrivacy: { rootsRedacted: boolean } }>;
+  };
+  assert.equal(filteredRootComputerInfo.scopes?.[0].pathPrivacy.rootsRedacted, false);
+  assert.deepEqual(filteredRootComputerInfo.scopes?.[0].roots, [join(root, "workspace")]);
+
+  const filteredOperationsInfo = getComputerInfo({ include: ["operations", "status"] }) as Record<string, unknown> & {
+    operationRegistry?: Array<{ op: string }>;
+    status?: { ready: boolean };
+  };
+  assert.deepEqual(Object.keys(filteredOperationsInfo).sort(), ["kind", "operationContract", "operationRegistry", "schemaVersion", "status"]);
+  assert.ok(filteredOperationsInfo.operationRegistry?.some((operation) => operation.op === "file.read"));
+  assert.equal(filteredOperationsInfo.status?.ready, true);
+
+  assert.throws(
+    () => getComputerInfo({ include: ["identity", "not-a-section"] }),
+    /unknown section: not-a-section/,
+  );
 
   const localSetup = getMcpClientSetup({ tunnels: [] }) as {
     ready: boolean;
@@ -166,6 +211,12 @@ try {
   };
   assert.equal(remoteSetupWithSecrets.auth.bearerHeader, "Authorization: Bearer owner-token");
   assert.equal(remoteSetupWithSecrets.auth.alternateBearerHeader, "x-computer-linker-token: owner-token");
+  const noScopeComputerInfo = getComputerInfo({ include: ["identity", "status"] }) as {
+    status?: { ready: boolean; status: string; blockingReasons: string[] };
+  };
+  assert.equal(noScopeComputerInfo.status?.ready, false);
+  assert.equal(noScopeComputerInfo.status?.status, "blocked");
+  assert.ok(noScopeComputerInfo.status?.blockingReasons.some((reason) => reason.includes("No readable scopes")));
 
   writeConfig({
     machineName: "client-setup-test",
@@ -229,6 +280,32 @@ try {
   assert.equal(insecureRemoteSetup.remoteReady, false);
   assert.deepEqual(insecureRemoteSetup.blockingReasons, []);
   assert.ok(insecureRemoteSetup.remoteBlockingReasons.some((reason) => reason.includes("https://")));
+  const insecurePublicComputerInfo = getComputerInfo({ include: ["status"] }) as {
+    status?: { ready: boolean; blockingReasons: string[]; warnings: string[] };
+  };
+  assert.equal(insecurePublicComputerInfo.status?.ready, false);
+  assert.ok(insecurePublicComputerInfo.status?.warnings.some((warning) => warning.includes("https://")));
+
+  writeConfig({
+    machineName: "client-setup-test",
+    host: "127.0.0.1",
+    port: 3991,
+    ownerToken: undefined,
+    publicBaseUrl: "https://mcp.example.com",
+    workspaces: [
+      {
+        id: "app",
+        name: "Contract app",
+        path: join(root, "workspace"),
+        permissions: { read: true, write: false, shell: false, codex: false },
+      },
+    ],
+  });
+  const publicWithoutOwnerTokenInfo = getComputerInfo({ include: ["status"] }) as {
+    status?: { ready: boolean; blockingReasons: string[] };
+  };
+  assert.equal(publicWithoutOwnerTokenInfo.status?.ready, false);
+  assert.ok(publicWithoutOwnerTokenInfo.status?.blockingReasons.some((reason) => reason.includes("ownerToken")));
 } finally {
   if (originalConfigDir === undefined) delete process.env.LOCALPORT_CONFIG_DIR;
   else process.env.LOCALPORT_CONFIG_DIR = originalConfigDir;

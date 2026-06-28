@@ -340,6 +340,16 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   assert.equal(detailedComputerInfo.scopes[0].pathPrivacy.rootsRedacted, false);
   assert.deepEqual(detailedComputerInfo.scopes[0].roots, [workspaceRoot]);
 
+  const filteredComputerInfoResult = await client.callTool({ name: "get_computer_info", arguments: { include: ["identity", "scopes"] } });
+  const filteredComputerInfo = toolJson(filteredComputerInfoResult) as Record<string, unknown> & {
+    machineName?: string;
+    scopes?: Array<{ id: string; roots?: string[] }>;
+  };
+  assert.deepEqual(Object.keys(filteredComputerInfo).sort(), ["kind", "machineId", "machineName", "schemaVersion", "scopes"]);
+  assert.equal(filteredComputerInfo.machineName, "mcp-test");
+  assert.equal(filteredComputerInfo.scopes?.[0].id, "app");
+  assert.equal(filteredComputerInfo.scopes?.[0].roots, undefined);
+
   const genericReadResult = await client.callTool({
     name: "computer_operation",
     arguments: {

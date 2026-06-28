@@ -97,16 +97,16 @@ const workspaceOutputSchema = z.object({
 const computerInfoOutputSchema = z.object({
   kind: z.literal("computer-linker-computer-info"),
   schemaVersion: z.number(),
-  machineId: z.string(),
-  machineName: z.string(),
-  platform: looseObjectOutputSchema,
+  machineId: z.string().optional(),
+  machineName: z.string().optional(),
+  platform: looseObjectOutputSchema.optional(),
   service: z.object({
     name: z.string(),
     version: z.string(),
     transports: z.array(z.string()),
     localUrl: z.string(),
     publicUrl: z.string().nullable(),
-  }).passthrough(),
+  }).passthrough().optional(),
   scopes: z.array(z.object({
     id: z.string(),
     name: z.string(),
@@ -120,16 +120,16 @@ const computerInfoOutputSchema = z.object({
     capabilityPolicy: capabilityPolicyOutputSchema,
     allowedOperations: z.array(z.string()),
     unavailableOperations: z.array(looseObjectOutputSchema).optional(),
-  }).passthrough()),
-  tools: looseObjectOutputSchema,
-  operationContract: looseObjectOutputSchema,
-  operationRegistry: z.array(looseObjectOutputSchema),
-  discovery: looseObjectOutputSchema,
+  }).passthrough()).optional(),
+  tools: looseObjectOutputSchema.optional(),
+  operationContract: looseObjectOutputSchema.optional(),
+  operationRegistry: z.array(looseObjectOutputSchema).optional(),
+  discovery: looseObjectOutputSchema.optional(),
   compatibility: z.object({
     workspaceTools: z.array(z.string()),
     genericTools: z.array(z.string()),
-  }).passthrough(),
-  status: looseObjectOutputSchema,
+  }).passthrough().optional(),
+  status: looseObjectOutputSchema.optional(),
 }).passthrough();
 
 const computerOperationOutputSchema = z.object({

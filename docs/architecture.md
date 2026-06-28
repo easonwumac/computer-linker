@@ -143,6 +143,17 @@ clients can choose a scope without seeing local usernames or directory layout.
 Callers that explicitly need owner-level diagnostics can request
 `include: ["roots"]` or use local `get_capabilities` / `list_workspaces`
 surfaces, which still expose configured paths.
+Callers can also pass section filters such as
+`include: ["identity", "scopes"]` or `include: ["operations", "status"]` to
+keep the first discovery response small. The required envelope fields remain
+present, unknown section names fail explicitly, and `include: ["roots"]` remains
+a modifier rather than a section filter.
+
+The `get_computer_info.status` block is derived from config and runtime
+capabilities instead of being hardcoded. It blocks when no readable scope is
+available or when public exposure is configured without an owner token, and it
+warns about missing recommended tools, insecure public URLs, or allowed
+operations that are unavailable in the current runtime.
 
 `releaseReadiness` is the productization summary for CLI, API, smoke checks, and
 CI handoff. It combines Node runtime support, config diagnostics, security

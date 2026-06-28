@@ -40,6 +40,47 @@ export interface ComputerInfoOptions {
   includeRoots?: boolean;
 }
 
+type ComputerInfoSection =
+  | "identity"
+  | "platform"
+  | "service"
+  | "tools"
+  | "scopes"
+  | "operations"
+  | "discovery"
+  | "compatibility"
+  | "status";
+
+interface ComputerInfoInclude {
+  includeRoots: boolean;
+  sections?: Set<ComputerInfoSection>;
+}
+
+interface ComputerInfoScope {
+  id: string;
+  name: string;
+  type: "folder";
+  displayPath: string;
+  pathPrivacy: {
+    rootsRedacted: boolean;
+    reason: string;
+    fullRootsAvailableWith: { include: string[] };
+    localDiagnostics: string;
+  };
+  permissions: {
+    read: boolean;
+    write: boolean;
+    shell: boolean;
+    codex: boolean;
+    screen?: boolean;
+  };
+  policy: unknown;
+  capabilityPolicy: unknown;
+  allowedOperations: string[];
+  unavailableOperations: Array<{ operation: string; reason?: string }>;
+  roots?: string[];
+}
+
 export type ComputerOperationErrorCode =
   | "invalid_request"
   | "unknown_scope"
@@ -94,15 +135,42 @@ const genericAgentInstructions = [
 export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
   const config = loadConfig();
   const registry = new WorkspaceRegistry(config);
-  const includeRoots = shouldIncludeComputerInfoRoots(options);
+  const include = parseComputerInfoInclude(options);
+  const includeRoots = include.includeRoots;
   const capabilities = getLocalPortCapabilities() as {
-    toolReadiness?: unknown;
+    toolReadiness?: {
+      ready?: boolean;
+      requiredMissing?: string[];
+      recommendedMissing?: string[];
+    };
     exposure?: { publicMcpUrl?: string | null };
     startup?: { localMcpUrl?: string };
     operationRegistry?: unknown;
   };
   const activeMcpToolSurface = mcpToolSurface();
-  return {
+  const scopes: ComputerInfoScope[] = registry.listDefinedWorkspaces().map((workspace) => {
+    const scope: ComputerInfoScope = {
+      id: workspace.id,
+      name: workspace.name,
+      type: "folder",
+      displayPath: displayWorkspacePath(workspace.path, workspace.name, workspace.id),
+      pathPrivacy: {
+        rootsRedacted: !includeRoots,
+        reason: includeRoots
+          ? "Full roots were explicitly requested by this caller."
+          : "Full local roots are redacted from default computer discovery to avoid leaking local usernames, directory layout, or project paths.",
+        fullRootsAvailableWith: { include: ["roots"] },
+        localDiagnostics: "Use local get_capabilities or list_workspaces diagnostics when the owner needs full configured paths.",
+      },
+      permissions: workspace.permissions,
+      policy: workspace.policy ?? {},
+      capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
+      allowedOperations: allowedWorkspaceOperations(workspace.permissions),
+      unavailableOperations: unavailableWorkspaceOperations(workspace.permissions),
+    };
+    return includeRoots ? { ...scope, roots: [workspace.path] } : scope;
+  });
+  const fullInfo = {
     kind: "computer-linker-computer-info",
     schemaVersion: 1,
     machineId: config.machineId,
@@ -122,28 +190,7 @@ export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
       localUrl: capabilities.startup?.localMcpUrl ?? `http://${config.host ?? "127.0.0.1"}:${config.port ?? 3939}/mcp`,
       publicUrl: capabilities.exposure?.publicMcpUrl ?? null,
     },
-    scopes: registry.listDefinedWorkspaces().map((workspace) => {
-      const scope = {
-        id: workspace.id,
-        name: workspace.name,
-        type: "folder",
-        displayPath: displayWorkspacePath(workspace.path, workspace.name, workspace.id),
-        pathPrivacy: {
-          rootsRedacted: !includeRoots,
-          reason: includeRoots
-            ? "Full roots were explicitly requested by this caller."
-            : "Full local roots are redacted from default computer discovery to avoid leaking local usernames, directory layout, or project paths.",
-          fullRootsAvailableWith: { include: ["roots"] },
-          localDiagnostics: "Use local get_capabilities or list_workspaces diagnostics when the owner needs full configured paths.",
-        },
-        permissions: workspace.permissions,
-        policy: workspace.policy ?? {},
-        capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
-        allowedOperations: allowedWorkspaceOperations(workspace.permissions),
-        unavailableOperations: unavailableWorkspaceOperations(workspace.permissions),
-      };
-      return includeRoots ? { ...scope, roots: [workspace.path] } : scope;
-    }),
+    scopes,
     tools: {
       ...(capabilities.toolReadiness && typeof capabilities.toolReadiness === "object" ? capabilities.toolReadiness : {}),
       screenshot: screenshotCapability(),
@@ -161,28 +208,160 @@ export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
       workspaceTools: [...compatibilityMcpTools],
       genericTools: [...genericMcpTools],
     },
-    status: {
-      ready: true,
-      blockingReasons: [],
-      warnings: [],
-    },
+    status: computerInfoStatus(config, scopes, capabilities),
+  };
+  return filterComputerInfo(fullInfo, include);
+}
+
+function parseComputerInfoInclude(options: ComputerInfoOptions): ComputerInfoInclude {
+  const values = computerInfoIncludeValues(options.include);
+  const includeRoots = options.includeRoots === true || includeListIncludesRoots(values);
+  const sections = new Set<ComputerInfoSection>();
+  const unknown: string[] = [];
+  for (const value of values) {
+    const normalized = normalizeComputerInfoInclude(value);
+    if (!normalized || isComputerInfoRootInclude(normalized)) continue;
+    if (normalized === "all" || normalized === "full") return { includeRoots, sections: undefined };
+    if (isComputerInfoSection(normalized)) {
+      sections.add(normalized);
+      continue;
+    }
+    unknown.push(value);
+  }
+  if (unknown.length > 0) {
+    throw new Error(`get_computer_info include contains unknown section: ${unknown.join(", ")}. Supported values: ${supportedComputerInfoIncludes().join(", ")}`);
+  }
+  return {
+    includeRoots,
+    sections: sections.size > 0 ? sections : undefined,
   };
 }
 
-function shouldIncludeComputerInfoRoots(options: ComputerInfoOptions): boolean {
-  if (options.includeRoots === true) return true;
-  const include = options.include;
+function computerInfoIncludeValues(include: unknown): string[] {
   if (typeof include === "string") {
-    return includeListIncludesRoots([include]);
+    return [include];
   }
-  if (!Array.isArray(include)) return false;
-  return includeListIncludesRoots(include);
+  if (!Array.isArray(include)) return [];
+  return include.map((item) => String(item ?? "").trim()).filter(Boolean);
 }
 
-function includeListIncludesRoots(include: unknown[]): boolean {
-  return include
-    .map((item) => String(item ?? "").trim().toLowerCase())
-    .some((item) => ["root", "roots", "path", "paths", "localroot", "localroots", "details", "debug"].includes(item));
+function includeListIncludesRoots(include: string[]): boolean {
+  return include.map(normalizeComputerInfoInclude).some(isComputerInfoRootInclude);
+}
+
+function normalizeComputerInfoInclude(value: string): string {
+  return value.trim().toLowerCase().replace(/[-\s]+/g, "_");
+}
+
+function isComputerInfoRootInclude(value: string): boolean {
+  return ["root", "roots", "path", "paths", "localroot", "localroots", "local_root", "local_roots", "details", "debug"].includes(value);
+}
+
+function isComputerInfoSection(value: string): value is ComputerInfoSection {
+  return supportedComputerInfoSections().includes(value as ComputerInfoSection);
+}
+
+function supportedComputerInfoSections(): ComputerInfoSection[] {
+  return ["identity", "platform", "service", "tools", "scopes", "operations", "discovery", "compatibility", "status"];
+}
+
+function supportedComputerInfoIncludes(): string[] {
+  return [...supportedComputerInfoSections(), "roots", "all"];
+}
+
+function filterComputerInfo(
+  fullInfo: Record<string, unknown>,
+  include: ComputerInfoInclude,
+): Record<string, unknown> {
+  if (!include.sections) return fullInfo;
+  const filtered: Record<string, unknown> = {
+    kind: fullInfo.kind,
+    schemaVersion: fullInfo.schemaVersion,
+  };
+  for (const section of include.sections) {
+    switch (section) {
+      case "identity":
+        filtered.machineId = fullInfo.machineId;
+        filtered.machineName = fullInfo.machineName;
+        break;
+      case "platform":
+        filtered.platform = fullInfo.platform;
+        break;
+      case "service":
+        filtered.service = fullInfo.service;
+        break;
+      case "tools":
+        filtered.tools = fullInfo.tools;
+        break;
+      case "scopes":
+        filtered.scopes = fullInfo.scopes;
+        break;
+      case "operations":
+        filtered.operationContract = fullInfo.operationContract;
+        filtered.operationRegistry = fullInfo.operationRegistry;
+        break;
+      case "discovery":
+        filtered.discovery = fullInfo.discovery;
+        break;
+      case "compatibility":
+        filtered.compatibilityOperationRegistry = fullInfo.compatibilityOperationRegistry;
+        filtered.mcpToolSurface = fullInfo.mcpToolSurface;
+        filtered.compatibility = fullInfo.compatibility;
+        break;
+      case "status":
+        filtered.status = fullInfo.status;
+        break;
+    }
+  }
+  return filtered;
+}
+
+function computerInfoStatus(
+  config: ReturnType<typeof loadConfig>,
+  scopes: ComputerInfoScope[],
+  capabilities: {
+    toolReadiness?: {
+      ready?: boolean;
+      requiredMissing?: string[];
+      recommendedMissing?: string[];
+    };
+  },
+): { ready: boolean; status: "ready" | "needs_attention" | "blocked"; blockingReasons: string[]; warnings: string[] } {
+  const blockingReasons: string[] = [];
+  const warnings: string[] = [];
+  const readableScopes = scopes.filter((scope) => scope.permissions.read && scope.allowedOperations.length > 0);
+  if (readableScopes.length === 0) {
+    blockingReasons.push("No readable scopes are configured; expose a folder with read permission before using computer_operation.");
+  }
+  if (config.publicBaseUrl && !config.ownerToken) {
+    blockingReasons.push("publicBaseUrl is configured but ownerToken is missing; remote MCP exposure requires authentication.");
+  }
+  if (config.publicBaseUrl && !config.publicBaseUrl.startsWith("https://")) {
+    warnings.push("publicBaseUrl should use https:// for remote MCP clients.");
+  }
+  for (const tool of capabilities.toolReadiness?.requiredMissing ?? []) {
+    blockingReasons.push(`Required local tool is missing: ${tool}.`);
+  }
+  for (const tool of capabilities.toolReadiness?.recommendedMissing ?? []) {
+    warnings.push(`Recommended local tool is missing: ${tool}.`);
+  }
+  const unavailable = uniqueStrings(scopes.flatMap((scope) => (
+    scope.unavailableOperations.map((operation) => operation.operation)
+  )));
+  if (unavailable.length > 0) {
+    warnings.push(`Some allowed operations are unavailable in this runtime: ${unavailable.slice(0, 5).join(", ")}${unavailable.length > 5 ? ", ..." : ""}.`);
+  }
+  const ready = blockingReasons.length === 0;
+  return {
+    ready,
+    status: ready ? (warnings.length > 0 ? "needs_attention" : "ready") : "blocked",
+    blockingReasons,
+    warnings,
+  };
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function displayWorkspacePath(path: string, name: string, id: string): string {

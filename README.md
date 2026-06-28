@@ -219,6 +219,14 @@ Every `computer_operation` response includes an `operationId`. Use that id as
 the `query` value for `get_operation_history` when you need to find the exact
 success or failure event later.
 
+`get_computer_info` returns the full discovery payload by default. Small
+clients can request sections with `include`, for example
+`include: ["identity", "scopes"]` or `include: ["operations", "status"]`.
+Supported sections are `identity`, `platform`, `service`, `tools`, `scopes`,
+`operations`, `discovery`, `compatibility`, and `status`. `include: ["roots"]`
+is a local-owner diagnostic modifier that reveals full configured folder roots;
+unknown include values fail clearly instead of being ignored.
+
 For any MCP client, configure:
 
 - Server URL: `http://127.0.0.1:3939/mcp` for local clients, or the public
@@ -350,6 +358,9 @@ Default `get_computer_info` discovery is privacy-conscious for cloud clients:
 scope ids, names, permissions, and non-absolute display paths are returned, but
 full local folder roots are redacted unless explicitly requested for owner
 diagnostics.
+Its `status` block is derived from the current config: missing readable scopes
+or unauthenticated public exposure are blockers, while missing recommended tools
+or runtime-unsupported optional operations appear as warnings.
 
 Compatibility tools such as `get_capabilities`, `list_workspaces`,
 `open_workspace`, `workspace_operation`, `read`, `ls`, `grep`, `glob`, and
