@@ -26,6 +26,13 @@ export interface AuditEvent {
   provider?: string;
   tunnelId?: string;
   externalSessionId?: string;
+  operationId?: string;
+  mcpSessionId?: string;
+  clientId?: string;
+  clientName?: string;
+  userAgent?: string;
+  authType?: string;
+  surface?: string;
   requestId?: string;
   cmdRequestId?: string;
   rpcRequestId?: string;
@@ -83,6 +90,7 @@ export function writeAuthFailureEvent(input: {
     type: "auth_failure",
     success: false,
     tool: input.surface,
+    surface: input.surface,
     requestPath: input.requestPath,
     remoteAddress: input.remoteAddress,
     detail: input.detail ?? "unauthorized",
@@ -104,6 +112,7 @@ export function writeAdminActionEvent(input: {
     type: "admin_action",
     success: input.success ?? true,
     tool: "cli",
+    surface: "cli",
     workspaceId: input.workspaceId,
     path: input.path,
     detail,
@@ -197,6 +206,13 @@ function auditSearchText(event: AuditEvent): string {
     event.provider,
     event.tunnelId,
     event.externalSessionId,
+    event.operationId,
+    event.mcpSessionId,
+    event.clientId,
+    event.clientName,
+    event.userAgent,
+    event.authType,
+    event.surface,
     event.requestId,
     event.cmdRequestId,
     event.rpcRequestId,

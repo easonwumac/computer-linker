@@ -54,6 +54,10 @@ called out even when the package version is still `0.x`.
   redacted and capped, screenshot `fileRef` artifacts expire from the temp
   directory, exited managed process snapshots are pruned, and service logs are
   tailed with size diagnostics.
+- Operation history now records `computer_operation` ids and HTTP MCP
+  session/client metadata, so exact success/failure events can be queried by
+  `operationId` and concurrent MCP clients are separated in connection
+  summaries without storing full session headers or bearer tokens.
 
 ## 0.1.11 - 2026-06-27
 

@@ -105,6 +105,8 @@ async function runHttpMcpFlow(): Promise<void> {
     await assertHttpMcpAuthBackoff();
     await client.connect(transport);
     await assertMcpToolFlow(client);
+    await assertHttpMcpSessionHistory(client, "localport-http-test-client 0.1.0");
+    await assertTwoHttpMcpSessions(client);
   } finally {
     await client.close();
     server.close();
@@ -147,6 +149,82 @@ async function postMcpWithBearer(token: string): Promise<{ status: number; body:
     }),
   });
   return { status: response.status, body: await response.json(), headers: response.headers };
+}
+
+async function assertHttpMcpSessionHistory(client: Client, clientName: string): Promise<void> {
+  const result = toolJson(await client.callTool({
+    name: "computer_operation",
+    arguments: {
+      scope: "app",
+      op: "file.read",
+      target: "hello.txt",
+      options: { maxBytes: 5 },
+    },
+  })) as { ok: boolean; operationId: string };
+  assert.equal(result.ok, true);
+
+  const history = toolJson(await client.callTool({
+    name: "get_operation_history",
+    arguments: {
+      scope: "app",
+      view: "raw",
+      query: result.operationId,
+      limit: 20,
+    },
+  })) as { events: Array<{ tool?: string; operationId?: string; surface?: string; mcpSessionId?: string; clientName?: string; authType?: string; success?: boolean }> };
+  assert.ok(history.events.some((event) => (
+    event.tool === "computer_operation" &&
+    event.operationId === result.operationId &&
+    event.surface === "mcp-http" &&
+    /^[A-Za-z0-9_-]{8}$/.test(event.mcpSessionId ?? "") &&
+    event.clientName === clientName &&
+    event.authType === "owner-token" &&
+    event.success === true
+  )));
+}
+
+async function assertTwoHttpMcpSessions(primaryClient: Client): Promise<void> {
+  const secondClientName = "localport-http-second-client 0.1.0";
+  const secondClient = new Client({ name: "localport-http-second-client", version: "0.1.0" });
+  const secondTransport = new StreamableHTTPClientTransport(new URL("http://127.0.0.1:3969/mcp"), {
+    requestInit: {
+      headers: {
+        authorization: "Bearer test-token",
+      },
+    },
+  });
+
+  try {
+    await secondClient.connect(secondTransport);
+    await assertHttpMcpSessionHistory(secondClient, secondClientName);
+
+    const connections = toolJson(await primaryClient.callTool({
+      name: "get_operation_history",
+      arguments: {
+        view: "connections",
+        limit: 100,
+      },
+    })) as { connections: Array<{ scope?: string; mcpSessionId?: string; clientName?: string; authType?: string; surface?: string; totalEvents?: number }> };
+    const mcpConnections = connections.connections.filter((connection) => connection.scope === "mcp");
+    assert.ok(mcpConnections.some((connection) => (
+      connection.clientName === "localport-http-test-client 0.1.0" &&
+      connection.surface === "mcp-http" &&
+      connection.authType === "owner-token" &&
+      /^[A-Za-z0-9_-]{8}$/.test(connection.mcpSessionId ?? "") &&
+      (connection.totalEvents ?? 0) >= 1
+    )));
+    assert.ok(mcpConnections.some((connection) => (
+      connection.clientName === secondClientName &&
+      connection.surface === "mcp-http" &&
+      connection.authType === "owner-token" &&
+      /^[A-Za-z0-9_-]{8}$/.test(connection.mcpSessionId ?? "") &&
+      (connection.totalEvents ?? 0) >= 1
+    )));
+    const sessionRefs = new Set(mcpConnections.map((connection) => connection.mcpSessionId).filter(Boolean));
+    assert.ok(sessionRefs.size >= 2);
+  } finally {
+    await secondClient.close();
+  }
 }
 
 async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibility" = "generic"): Promise<void> {
@@ -279,6 +357,22 @@ async function assertMcpToolFlow(client: Client, surface: "generic" | "compatibi
   assert.equal(genericRead.op, "file.read");
   assert.equal(genericRead.data.content, "hello");
   assert.equal(genericRead.data.truncated, true);
+
+  const genericReadHistory = toolJson(await client.callTool({
+    name: "get_operation_history",
+    arguments: {
+      scope: "app",
+      view: "raw",
+      query: genericRead.operationId,
+      limit: 20,
+    },
+  })) as { events: Array<{ tool?: string; operationId?: string; success?: boolean; operation?: string }> };
+  assert.ok(genericReadHistory.events.some((event) => (
+    event.tool === "computer_operation" &&
+    event.operationId === genericRead.operationId &&
+    event.success === true &&
+    event.operation === "file.read"
+  )));
 
   const genericSearch = toolJson(await client.callTool({
     name: "computer_operation",

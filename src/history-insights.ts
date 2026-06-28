@@ -34,6 +34,13 @@ export interface CompactAuditEvent {
   provider?: string;
   tunnelId?: string;
   externalSessionId?: string;
+  operationId?: string;
+  mcpSessionId?: string;
+  clientId?: string;
+  clientName?: string;
+  userAgent?: string;
+  authType?: string;
+  surface?: string;
   requestId?: string;
   cmdRequestId?: string;
   rpcRequestId?: string;
@@ -62,10 +69,15 @@ export interface FailedReplayItem {
 
 export interface HistorySessionSummary {
   key: string;
-  scope: "workspace" | "surface";
+  scope: "workspace" | "mcp" | "surface";
   workspaceId?: string;
   workspaceRef?: string;
   surface?: string;
+  mcpSessionId?: string;
+  clientId?: string;
+  clientName?: string;
+  userAgent?: string;
+  authType?: string;
   startedAt: string;
   lastActivityAt: string;
   totalEvents: number;
@@ -83,6 +95,12 @@ export interface HistoryConnectionSummary {
   provider?: string;
   tunnelId?: string;
   externalSessionId?: string;
+  mcpSessionId?: string;
+  clientId?: string;
+  clientName?: string;
+  userAgent?: string;
+  authType?: string;
+  surface?: string;
   remoteAddress?: string;
   startedAt: string;
   lastActivityAt: string;
@@ -294,6 +312,13 @@ function compactAuditEvent(event: AuditEvent): CompactAuditEvent {
     provider: event.provider,
     tunnelId: event.tunnelId,
     externalSessionId: event.externalSessionId,
+    operationId: event.operationId,
+    mcpSessionId: event.mcpSessionId,
+    clientId: event.clientId,
+    clientName: event.clientName,
+    userAgent: event.userAgent,
+    authType: event.authType,
+    surface: event.surface,
     requestId: event.requestId,
     cmdRequestId: event.cmdRequestId,
     rpcRequestId: event.rpcRequestId,
@@ -384,6 +409,13 @@ function historySearchText(event: AuditEvent): string {
     event.provider,
     event.tunnelId,
     event.externalSessionId,
+    event.operationId,
+    event.mcpSessionId,
+    event.clientId,
+    event.clientName,
+    event.userAgent,
+    event.authType,
+    event.surface,
     event.requestId,
     event.cmdRequestId,
     event.rpcRequestId,
@@ -416,13 +448,22 @@ function buildSessionSummaries(events: CompactAuditEvent[]): HistorySessionSumma
       const workspaceRef = newest.workspaceRef ?? newest.workspaceId;
       const workspaceId = newest.workspaceId;
       const surface = sessionSurface(newest);
-      const scope: HistorySessionSummary["scope"] = key.startsWith("workspace:") ? "workspace" : "surface";
+      const scope: HistorySessionSummary["scope"] = key.startsWith("workspace:")
+        ? "workspace"
+        : key.startsWith("mcp:")
+          ? "mcp"
+          : "surface";
       return {
         key,
         scope,
         workspaceId,
         workspaceRef,
         surface,
+        mcpSessionId: firstString(sessionEvents.map((event) => event.mcpSessionId ?? mcpSessionIdFromEvent(event))),
+        clientId: firstString(sessionEvents.map((event) => event.clientId)),
+        clientName: firstString(sessionEvents.map((event) => event.clientName)),
+        userAgent: firstString(sessionEvents.map((event) => event.userAgent)),
+        authType: firstString(sessionEvents.map((event) => event.authType)),
         startedAt: oldest.timestamp,
         lastActivityAt: newest.timestamp,
         totalEvents: sessionEvents.length,
@@ -458,6 +499,12 @@ function buildConnectionSummaries(events: CompactAuditEvent[]): HistoryConnectio
         provider: newest.provider,
         tunnelId: newest.tunnelId,
         externalSessionId: newest.externalSessionId,
+        mcpSessionId: firstString(connectionEvents.map((event) => event.mcpSessionId ?? mcpSessionIdFromEvent(event))),
+        clientId: firstString(connectionEvents.map((event) => event.clientId)),
+        clientName: firstString(connectionEvents.map((event) => event.clientName)),
+        userAgent: firstString(connectionEvents.map((event) => event.userAgent)),
+        authType: firstString(connectionEvents.map((event) => event.authType)),
+        surface: firstString(connectionEvents.map((event) => event.surface ?? sessionSurface(event))),
         remoteAddress: newest.remoteAddress,
         startedAt: oldest.timestamp,
         lastActivityAt: newest.timestamp,
@@ -493,19 +540,22 @@ function connectionScope(key: string): HistoryConnectionSummary["scope"] {
 }
 
 function mcpSessionIdFromEvent(event: CompactAuditEvent): string | undefined {
+  if (event.mcpSessionId) return event.mcpSessionId;
   if (event.type !== "mcp_session" || !event.detail) return undefined;
   const match = /(?:created|session):\s*([A-Za-z0-9_.:-]+)/.exec(event.detail);
   return match?.[1];
 }
 
 function sessionKey(event: CompactAuditEvent): string {
+  const mcpSessionId = mcpSessionIdFromEvent(event);
+  if (mcpSessionId) return `mcp:${mcpSessionId}`;
   const workspace = event.workspaceId ?? event.workspaceRef;
   if (workspace) return `workspace:${workspace}`;
   return `surface:${sessionSurface(event)}`;
 }
 
 function sessionSurface(event: CompactAuditEvent): string {
-  return event.tool ?? event.requestPath ?? event.type;
+  return event.surface ?? event.tool ?? event.requestPath ?? event.type;
 }
 
 function buildFailedReplay(events: CompactAuditEvent[]): FailedReplayItem[] {
@@ -611,6 +661,10 @@ function counts(values: string[]): Record<string, number> {
     result[value] = (result[value] ?? 0) + 1;
   }
   return result;
+}
+
+function firstString(values: Array<string | undefined>): string | undefined {
+  return values.find((value): value is string => typeof value === "string" && value.length > 0);
 }
 
 function normalizeLimit(value: number | undefined): number {

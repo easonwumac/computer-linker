@@ -1,5 +1,6 @@
 import type express from "express";
 import type { Request, Response } from "express";
+import { auditResultFields, currentAuditContextFields, withAuditContext } from "./audit-context.js";
 import { errorMessage, readAuditEvents, writeAuditEvent, writeAuthFailureEvent, type AuditEventInput } from "./audit.js";
 import { workspaceCapabilityPolicy } from "./capability-policy.js";
 import { getLocalPortCapabilities, getLocalPortDoctor } from "./capabilities.js";
@@ -81,9 +82,11 @@ function apiRoute(
   handler: (req: Request) => Promise<unknown>,
 ): (req: Request, res: Response) => void {
   return (req, res) => {
-    handler(req)
-      .then((data) => res.json({ ok: true, data }))
-      .catch((error) => sendApiError(res, error));
+    withAuditContext(apiAuditContext(req), () => {
+      handler(req)
+        .then((data) => res.json({ ok: true, data }))
+        .catch((error) => sendApiError(res, error));
+    });
   };
 }
 
@@ -341,12 +344,15 @@ async function auditedApiCall<T>(
   const startedAt = performance.now();
   try {
     const result = await run();
+    const resultFields = auditResultFields(result);
     writeAuditEvent({
       type: "tool_call",
       tool,
       success: success ? success(result) : true,
       durationMs: Math.round(performance.now() - startedAt),
+      ...currentAuditContextFields({ surface: "json-api" }),
       ...fields,
+      ...resultFields,
     });
     return result;
   } catch (error) {
@@ -356,6 +362,7 @@ async function auditedApiCall<T>(
       success: false,
       durationMs: Math.round(performance.now() - startedAt),
       error: errorMessage(error),
+      ...currentAuditContextFields({ surface: "json-api" }),
       ...fields,
     });
     throw error;
@@ -423,4 +430,13 @@ function optionalStringArray(value: unknown): string[] | undefined {
 
 function requestPath(req: Request): string {
   return `${req.baseUrl}${req.path}`;
+}
+
+function apiAuditContext(req: Request): ReturnType<typeof currentAuditContextFields> {
+  return {
+    surface: "json-api",
+    requestPath: requestPath(req),
+    remoteAddress: req.ip,
+    userAgent: req.header("user-agent"),
+  };
 }

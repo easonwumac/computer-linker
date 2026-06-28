@@ -624,9 +624,10 @@ error reason. Request body contents are not copied into audit events.
 
 Computer Linker writes local JSONL audit events to `~/.computer-linker/audit.jsonl`.
 Events cover MCP sessions, workspace opens, tool calls, auth failures, admin
-actions, success/failure, timing, workspace identifiers, operation names,
-targets, paths, request paths, remote addresses, and command previews. File
-contents, write payloads, screenshot image bytes, and tokens are not logged.
+actions, success/failure, timing, workspace identifiers, operation ids,
+operation names, targets, paths, request paths, remote addresses, and command
+previews. File contents, write payloads, screenshot image bytes, and tokens are
+not logged.
 CLI/API history readers use this file directly, so history survives restarts and
 can be exported or filtered without changing the permission boundary.
 The file is bounded by a default 10 MB retention cap. Normal recent-history
@@ -635,9 +636,16 @@ writes compact oversized history opportunistically while preserving the newest
 events.
 The generic `computer_operation` and compatibility `workspace_operation`
 surfaces write into the same audit/history stream. Generic events keep the
-dotted op name, resolved scope id/root, target, and mapped path so
-`get_operation_history` and debug bundles work even when a client never calls
-the older workspace tools.
+dotted op name, returned `operationId`, resolved scope id/root, target, and
+mapped path so `get_operation_history` and debug bundles work even when a
+client never calls the older workspace tools. `operationId` is searchable
+through `get_operation_history` for both success and failure envelopes.
+
+HTTP MCP tool calls add request context from the active session: a short MCP
+session reference, client id/name when the client provides them, auth type,
+user agent, remote address, and surface. The short session reference is enough
+to separate concurrent clients in the `connections` view without writing the
+full `mcp-session-id` header value.
 
 Compatibility `batch` writes one outer `workspace_operation` event plus one
 `workspace_operation.batch_item` event for each child operation. This preserves

@@ -215,6 +215,10 @@ Use this flow for every MCP client:
 3. Call `computer_operation`.
 4. Call `get_operation_history` when you need to inspect what happened.
 
+Every `computer_operation` response includes an `operationId`. Use that id as
+the `query` value for `get_operation_history` when you need to find the exact
+success or failure event later.
+
 For any MCP client, configure:
 
 - Server URL: `http://127.0.0.1:3939/mcp` for local clients, or the public
@@ -406,6 +410,17 @@ policy:
 }
 ```
 
+The audit/history stream stores the returned `operationId`, so this works for
+both successful and failed calls:
+
+```json
+{
+  "scope": "app",
+  "view": "raw",
+  "query": "op_..."
+}
+```
+
 The same policy can be maintained without editing JSON by hand:
 
 ```bash
@@ -506,6 +521,9 @@ size, recent history reads scan from the tail, Codex workflow records are
 redacted and capped, screenshot `fileRef` artifacts are temporary, and exited
 managed process snapshots are removed after the recent debugging window. Run
 `computer-linker doctor --json` to inspect the exact maintenance policy.
+HTTP MCP tool-call history includes the short MCP session reference, client
+name/id when available, auth type, user agent, and remote address, but not the
+full session header or bearer token.
 
 The release readiness block is intended for productization gates:
 

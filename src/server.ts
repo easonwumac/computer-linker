@@ -10,6 +10,7 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import * as z from "zod";
 import { registerApiRoutes } from "./api.js";
+import { auditResultFields, currentAuditContextFields, withAuditContext, type AuditContext } from "./audit-context.js";
 import { errorMessage, writeAuditEvent, writeAuthFailureEvent, type AuditEventInput } from "./audit.js";
 import { workspaceCapabilityPolicy } from "./capability-policy.js";
 import { getLocalPortCapabilities } from "./capabilities.js";
@@ -24,8 +25,10 @@ import { stopAllManagedProcesses } from "./processes.js";
 import { stopAllTunnelProcesses } from "./tunnels.js";
 import {
   closeActiveSession,
+  getActiveSession,
   registerActiveSession,
   touchActiveSession,
+  type ActiveSession,
   type SessionAuthType,
 } from "./sessions.js";
 import { WorkspaceRegistry } from "./workspaces.js";
@@ -526,12 +529,15 @@ async function auditedToolCall<T>(
   const startedAt = performance.now();
   try {
     const result = await run();
+    const resultFields = auditResultFields(result);
     writeAuditEvent({
       type: "tool_call",
       tool,
       success: success ? success(result) : true,
       durationMs: Math.round(performance.now() - startedAt),
+      ...currentAuditContextFields({ surface: "mcp-stdio" }),
       ...fields,
+      ...resultFields,
     });
     return result;
   } catch (error) {
@@ -541,6 +547,7 @@ async function auditedToolCall<T>(
       success: false,
       durationMs: Math.round(performance.now() - startedAt),
       error: errorMessage(error),
+      ...currentAuditContextFields({ surface: "mcp-stdio" }),
       ...fields,
     });
     throw error;
@@ -694,6 +701,7 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
 
     try {
       let transport: StreamableHTTPServerTransport | undefined;
+      let activeSession: ActiveSession | undefined;
 
       if (sessionId) {
         transport = transports.get(sessionId);
@@ -702,12 +710,13 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
           return;
         }
         touchActiveSession(sessionId);
+        activeSession = getActiveSession(sessionId);
       } else if (initializeRequest) {
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (newSessionId) => {
             if (transport) transports.set(newSessionId, transport);
-            registerActiveSession({
+            const session = registerActiveSession({
               id: newSessionId,
               authType: authType ?? "owner-token",
               clientId: authReq.auth?.clientId,
@@ -718,6 +727,7 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
             writeAuditEvent({
               type: "mcp_session",
               success: true,
+              ...activeSessionAuditFields(session),
               detail: `created:${newSessionId.slice(0, 8)}`,
             });
           },
@@ -726,11 +736,16 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
         transport.onclose = () => {
           const closedSessionId = transport?.sessionId;
           if (closedSessionId) {
+            const session = getActiveSession(closedSessionId);
             transports.delete(closedSessionId);
             closeActiveSession(closedSessionId);
             writeAuditEvent({
               type: "mcp_session",
               success: true,
+              ...(session ? activeSessionAuditFields(session) : {
+                surface: "mcp-http",
+                mcpSessionId: shortMcpSessionId(closedSessionId),
+              }),
               detail: `closed:${closedSessionId.slice(0, 8)}`,
             });
           }
@@ -742,7 +757,9 @@ export function serveHttp(): { url: string; publicUrl: string; apiUrl: string; c
         return;
       }
 
-      await transport.handleRequest(req, res, req.body);
+      await withAuditContext(httpMcpAuditContext(req, authType, authReq, activeSession, sessionId), () => (
+        transport.handleRequest(req, res, req.body)
+      ));
     } catch (error) {
       if (!res.headersSent) {
         const message = error instanceof Error ? error.message : String(error);
@@ -884,6 +901,41 @@ function initializeClientName(body: unknown): string | undefined {
   const version = (clientInfo as { version?: unknown }).version;
   if (typeof name !== "string" || !name.trim()) return undefined;
   return typeof version === "string" && version.trim() ? `${name} ${version}` : name;
+}
+
+function httpMcpAuditContext(
+  req: Request,
+  authType: SessionAuthType | undefined,
+  authReq: AuthenticatedRequest,
+  session: ActiveSession | undefined,
+  sessionId: string | undefined,
+): AuditContext {
+  return {
+    surface: "mcp-http",
+    requestPath: req.path,
+    remoteAddress: session?.remoteAddress ?? req.ip,
+    mcpSessionId: session?.idPrefix ?? shortMcpSessionId(sessionId),
+    clientId: session?.clientId ?? authReq.auth?.clientId,
+    clientName: session?.clientName ?? initializeClientName(req.body),
+    userAgent: session?.userAgent ?? req.header("user-agent"),
+    authType: session?.authType ?? authType,
+  };
+}
+
+function activeSessionAuditFields(session: ActiveSession): Partial<AuditEventInput> {
+  return {
+    surface: "mcp-http",
+    mcpSessionId: session.idPrefix,
+    clientId: session.clientId,
+    clientName: session.clientName,
+    userAgent: session.userAgent,
+    authType: session.authType,
+    remoteAddress: session.remoteAddress,
+  };
+}
+
+function shortMcpSessionId(sessionId: string | undefined): string | undefined {
+  return sessionId?.slice(0, 8);
 }
 
 function isExecError(error: unknown): error is Error & { code: number } {

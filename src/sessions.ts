@@ -49,6 +49,10 @@ export function touchActiveSession(id: string): void {
   session.requestCount += 1;
 }
 
+export function getActiveSession(id: string): ActiveSession | undefined {
+  return activeSessions.get(id);
+}
+
 export function closeActiveSession(id: string): void {
   activeSessions.delete(id);
 }

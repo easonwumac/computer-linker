@@ -446,6 +446,25 @@ try {
       event.target === "hello.txt"
     )));
 
+    const computerReadIdHistory = await postJson("/api/v1/control", {
+      action: "get_operation_history",
+      input: { scope: "app", view: "raw", query: computerRead.body.data.operationId, limit: 20 },
+    });
+    assert.equal(computerReadIdHistory.status, 200);
+    assert.ok(computerReadIdHistory.body.data.events.some((event: {
+      tool?: string;
+      success?: boolean;
+      operationId?: string;
+      surface?: string;
+      operation?: string;
+    }) => (
+      event.tool === "computer_operation" &&
+      event.success === true &&
+      event.operationId === computerRead.body.data.operationId &&
+      event.surface === "json-api" &&
+      event.operation === "file.read"
+    )));
+
     const computerSearch = await postJson("/api/v1/control", {
       action: "computer_operation",
       scope: "app",
@@ -491,9 +510,29 @@ try {
     });
     assert.equal(computerUnknownOperation.status, 200);
     assert.equal(computerUnknownOperation.body.data.ok, false);
+    assert.match(computerUnknownOperation.body.data.operationId, /^op_/);
     assert.equal(computerUnknownOperation.body.data.scope, "app");
     assert.equal(computerUnknownOperation.body.data.op, "file.nope");
     assert.equal(computerUnknownOperation.body.data.error.code, "unknown_operation");
+
+    const computerFailedIdHistory = await postJson("/api/v1/control", {
+      action: "get_operation_history",
+      input: { scope: "app", view: "raw", query: computerUnknownOperation.body.data.operationId, limit: 20 },
+    });
+    assert.equal(computerFailedIdHistory.status, 200);
+    assert.ok(computerFailedIdHistory.body.data.events.some((event: {
+      tool?: string;
+      success?: boolean;
+      operationId?: string;
+      error?: string;
+      surface?: string;
+    }) => (
+      event.tool === "computer_operation" &&
+      event.success === false &&
+      event.operationId === computerUnknownOperation.body.data.operationId &&
+      event.surface === "json-api" &&
+      event.error?.includes("unknown_operation")
+    )));
 
     const computerOutsidePath = await postJson("/api/v1/control", {
       action: "computer_operation",
