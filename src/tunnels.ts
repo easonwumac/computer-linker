@@ -33,6 +33,15 @@ export interface TunnelToolStatus {
   name: "cloudflared" | "tailscale" | "tunnel-client";
   available: boolean;
   version?: string;
+  path?: string;
+  source?: "managed" | "downloaded" | "override" | "path";
+  releaseTag?: string;
+  releaseUrl?: string;
+  assetName?: string;
+  sha256?: string;
+  installedAt?: string;
+  manifestPath?: string;
+  warning?: string;
   status?: string;
   error?: string;
 }
@@ -378,6 +387,21 @@ export interface OpenAiTunnelClientInstallInfo {
   releaseUrl?: string;
   assetName?: string;
   sha256?: string;
+  installedAt?: string;
+  manifestPath?: string;
+  warning?: string;
+}
+
+interface OpenAiTunnelClientManifest {
+  schemaVersion?: number;
+  provider?: string;
+  repository?: string;
+  tag?: string;
+  releaseTag?: string;
+  releaseUrl?: string;
+  assetName?: string;
+  sha256?: string;
+  installedAt?: string;
 }
 
 interface GitHubReleaseAsset {
@@ -397,7 +421,7 @@ const openAiTunnelIdEnv = "COMPUTER_LINKER_OPENAI_TUNNEL_ID";
 const legacyOpenAiTunnelClientOverrideEnv = "WORKSPACE_LINKER_OPENAI_TUNNEL_CLIENT";
 const legacyOpenAiTunnelIdEnv = "WORKSPACE_LINKER_OPENAI_TUNNEL_ID";
 
-export async function ensureOpenAiTunnelClientInstalled(options: { clientPath?: string } = {}): Promise<OpenAiTunnelClientInstallInfo> {
+export async function ensureOpenAiTunnelClientInstalled(options: { clientPath?: string; refresh?: boolean } = {}): Promise<OpenAiTunnelClientInstallInfo> {
   const override = normalizeOptionalPath(options.clientPath)
     ?? normalizeOptionalPath(process.env[openAiTunnelClientOverrideEnv])
     ?? normalizeOptionalPath(process.env[legacyOpenAiTunnelClientOverrideEnv]);
@@ -413,77 +437,88 @@ export async function ensureOpenAiTunnelClientInstalled(options: { clientPath?: 
   }
 
   const managedPath = openAiTunnelClientManagedPath();
-  if (existsSync(managedPath)) {
+  if (existsSync(managedPath) && !options.refresh) {
+    return managedOpenAiTunnelClientInstallInfo();
+  }
+
+  try {
+    const release = await fetchOpenAiTunnelClientLatestRelease();
+    const target = openAiTunnelClientTarget();
+    const assetSuffix = `${target.os}-${target.arch}.zip`;
+    const asset = release.assets.find((item) => item.name.endsWith(assetSuffix) && item.name.startsWith("tunnel-client-"));
+    const sumsAsset = release.assets.find((item) => item.name === "SHA256SUMS.txt");
+    if (!asset) {
+      throw new Error(`OpenAI tunnel-client release ${release.tag_name} does not include an asset for ${assetSuffix}`);
+    }
+    if (!sumsAsset) {
+      throw new Error(`OpenAI tunnel-client release ${release.tag_name} does not include SHA256SUMS.txt`);
+    }
+
+    const [archive, sha256Sums] = await Promise.all([
+      fetchBinary(asset.browser_download_url),
+      fetchText(sumsAsset.browser_download_url),
+    ]);
+    const expectedSha256 = sha256FromSums(sha256Sums, asset.name);
+    if (!expectedSha256) {
+      throw new Error(`SHA256SUMS.txt does not include ${asset.name}`);
+    }
+    const actualSha256 = createHash("sha256").update(archive).digest("hex");
+    if (actualSha256.toLowerCase() !== expectedSha256.toLowerCase()) {
+      throw new Error(`OpenAI tunnel-client checksum mismatch for ${asset.name}`);
+    }
+
+    const toolsDir = openAiTunnelClientToolsDir();
+    const downloadDir = join(toolsDir, "downloads");
+    const extractDir = join(toolsDir, "extract");
+    mkdirSync(downloadDir, { recursive: true });
+    rmSync(extractDir, { recursive: true, force: true });
+    mkdirSync(extractDir, { recursive: true });
+
+    const archivePath = join(downloadDir, asset.name);
+    writeFileSync(archivePath, archive, { mode: 0o600 });
+    extractZipArchive(archivePath, extractDir);
+
+    const extractedBinary = findOpenAiTunnelClientBinary(extractDir);
+    if (!extractedBinary) {
+      throw new Error(`OpenAI tunnel-client archive did not contain ${openAiTunnelClientBinaryName()}`);
+    }
+
+    mkdirSync(toolsDir, { recursive: true });
+    copyFileSync(extractedBinary, managedPath);
+    if (process.platform !== "win32") chmodSync(managedPath, 0o755);
+    writeOpenAiTunnelClientManifest({
+      schemaVersion: 1,
+      provider: "openai",
+      repository: "openai/tunnel-client",
+      releaseTag: release.tag_name,
+      releaseUrl: release.html_url,
+      assetName: asset.name,
+      sha256: actualSha256,
+      installedAt: new Date().toISOString(),
+    });
+    rmSync(extractDir, { recursive: true, force: true });
+
     return {
       path: managedPath,
-      source: "managed",
+      source: "downloaded",
       version: readTunnelClientVersion(managedPath),
+      releaseTag: release.tag_name,
+      releaseUrl: release.html_url,
+      assetName: asset.name,
+      sha256: actualSha256,
+      installedAt: readOpenAiTunnelClientManifest()?.installedAt,
+      manifestPath: openAiTunnelClientManifestPath(),
     };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    if (existsSync(managedPath)) {
+      return {
+        ...managedOpenAiTunnelClientInstallInfo(),
+        warning: `OpenAI tunnel-client ${options.refresh ? "refresh" : "download"} failed; using cached managed binary. ${detail}`,
+      };
+    }
+    throw new Error(`OpenAI tunnel-client first-use download failed. ${detail} Provide a pinned binary with --tunnel-client or set ${openAiTunnelClientOverrideEnv}.`);
   }
-
-  const release = await fetchOpenAiTunnelClientLatestRelease();
-  const target = openAiTunnelClientTarget();
-  const assetSuffix = `${target.os}-${target.arch}.zip`;
-  const asset = release.assets.find((item) => item.name.endsWith(assetSuffix) && item.name.startsWith("tunnel-client-"));
-  const sumsAsset = release.assets.find((item) => item.name === "SHA256SUMS.txt");
-  if (!asset) {
-    throw new Error(`OpenAI tunnel-client release ${release.tag_name} does not include an asset for ${assetSuffix}`);
-  }
-  if (!sumsAsset) {
-    throw new Error(`OpenAI tunnel-client release ${release.tag_name} does not include SHA256SUMS.txt`);
-  }
-
-  const [archive, sha256Sums] = await Promise.all([
-    fetchBinary(asset.browser_download_url),
-    fetchText(sumsAsset.browser_download_url),
-  ]);
-  const expectedSha256 = sha256FromSums(sha256Sums, asset.name);
-  if (!expectedSha256) {
-    throw new Error(`SHA256SUMS.txt does not include ${asset.name}`);
-  }
-  const actualSha256 = createHash("sha256").update(archive).digest("hex");
-  if (actualSha256.toLowerCase() !== expectedSha256.toLowerCase()) {
-    throw new Error(`OpenAI tunnel-client checksum mismatch for ${asset.name}`);
-  }
-
-  const toolsDir = openAiTunnelClientToolsDir();
-  const downloadDir = join(toolsDir, "downloads");
-  const extractDir = join(toolsDir, "extract");
-  mkdirSync(downloadDir, { recursive: true });
-  rmSync(extractDir, { recursive: true, force: true });
-  mkdirSync(extractDir, { recursive: true });
-
-  const archivePath = join(downloadDir, asset.name);
-  writeFileSync(archivePath, archive, { mode: 0o600 });
-  extractZipArchive(archivePath, extractDir);
-
-  const extractedBinary = findOpenAiTunnelClientBinary(extractDir);
-  if (!extractedBinary) {
-    throw new Error(`OpenAI tunnel-client archive did not contain ${openAiTunnelClientBinaryName()}`);
-  }
-
-  mkdirSync(toolsDir, { recursive: true });
-  copyFileSync(extractedBinary, managedPath);
-  if (process.platform !== "win32") chmodSync(managedPath, 0o755);
-  writeFileSync(join(toolsDir, "release.json"), `${JSON.stringify({
-    tag: release.tag_name,
-    releaseUrl: release.html_url,
-    assetName: asset.name,
-    sha256: actualSha256,
-    installedAt: new Date().toISOString(),
-  }, null, 2)}\n`, { mode: 0o600 });
-  securePrivateFile(join(toolsDir, "release.json"), 0o600);
-  rmSync(extractDir, { recursive: true, force: true });
-
-  return {
-    path: managedPath,
-    source: "downloaded",
-    version: readTunnelClientVersion(managedPath),
-    releaseTag: release.tag_name,
-    releaseUrl: release.html_url,
-    assetName: asset.name,
-    sha256: actualSha256,
-  };
 }
 
 export function openAiTunnelClientManagedPath(): string {
@@ -505,17 +540,31 @@ function openAiTunnelPidFile(tunnelId: string): string {
 }
 
 function openAiTunnelClientStatus(): TunnelToolStatus {
-  const candidates = [
-    normalizeOptionalPath(process.env[openAiTunnelClientOverrideEnv]),
-    normalizeOptionalPath(process.env[legacyOpenAiTunnelClientOverrideEnv]),
-    existsSync(openAiTunnelClientManagedPath()) ? openAiTunnelClientManagedPath() : undefined,
-    "tunnel-client",
-  ].filter((item): item is string => Boolean(item));
+  const override = normalizeOptionalPath(process.env[openAiTunnelClientOverrideEnv])
+    ?? normalizeOptionalPath(process.env[legacyOpenAiTunnelClientOverrideEnv]);
+  if (override) {
+    return {
+      ...commandStatus("tunnel-client", ["--version"], override),
+      path: override,
+      source: "override",
+    };
+  }
 
+  const managedPath = openAiTunnelClientManagedPath();
+  if (existsSync(managedPath)) {
+    return {
+      ...commandStatus("tunnel-client", ["--version"], managedPath),
+      ...managedOpenAiTunnelClientManifestFields(),
+      path: managedPath,
+      source: "managed",
+    };
+  }
+
+  const candidates = ["tunnel-client"];
   let lastError: string | undefined;
   for (const candidate of candidates) {
     const status = commandStatus("tunnel-client", ["--version"], candidate);
-    if (status.available) return status;
+    if (status.available) return { ...status, source: "path" };
     lastError = status.error;
   }
   return {
@@ -544,6 +593,49 @@ function openAiTunnelIdFromOptions(options: TunnelOptions): string {
 
 function openAiTunnelClientToolsDir(): string {
   return join(configDir(), "tools", "openai-tunnel-client");
+}
+
+function openAiTunnelClientManifestPath(): string {
+  return join(openAiTunnelClientToolsDir(), "release.json");
+}
+
+function managedOpenAiTunnelClientInstallInfo(): OpenAiTunnelClientInstallInfo {
+  return {
+    path: openAiTunnelClientManagedPath(),
+    source: "managed",
+    version: readTunnelClientVersion(openAiTunnelClientManagedPath()),
+    ...managedOpenAiTunnelClientManifestFields(),
+  };
+}
+
+function managedOpenAiTunnelClientManifestFields(): Pick<OpenAiTunnelClientInstallInfo, "releaseTag" | "releaseUrl" | "assetName" | "sha256" | "installedAt" | "manifestPath"> {
+  const manifest = readOpenAiTunnelClientManifest();
+  return {
+    releaseTag: manifest?.releaseTag ?? manifest?.tag,
+    releaseUrl: manifest?.releaseUrl,
+    assetName: manifest?.assetName,
+    sha256: manifest?.sha256,
+    installedAt: manifest?.installedAt,
+    manifestPath: openAiTunnelClientManifestPath(),
+  };
+}
+
+function readOpenAiTunnelClientManifest(): OpenAiTunnelClientManifest | undefined {
+  const manifestPath = openAiTunnelClientManifestPath();
+  if (!existsSync(manifestPath)) return undefined;
+  try {
+    const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as Partial<OpenAiTunnelClientManifest>;
+    if (!parsed || typeof parsed !== "object") return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeOpenAiTunnelClientManifest(manifest: OpenAiTunnelClientManifest): void {
+  const manifestPath = openAiTunnelClientManifestPath();
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
+  securePrivateFile(manifestPath, 0o600);
 }
 
 function openAiTunnelRuntimeDir(): string {

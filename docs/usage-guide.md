@@ -77,6 +77,15 @@ cd C:\Projects\my-app
 computer-linker here --tunnel openai --tunnel-id tunnel_...
 ```
 
+The managed OpenAI `tunnel-client` is downloaded once, verified, and reused
+from the Computer Linker config directory. It is not updated implicitly on
+every start:
+
+```powershell
+computer-linker tunnel openai-client status
+computer-linker tunnel openai-client install --refresh
+```
+
 Tailscale Funnel:
 
 ```powershell

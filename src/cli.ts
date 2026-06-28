@@ -113,7 +113,7 @@ async function main(argv: string[]): Promise<void> {
       await expose(args);
       return;
     case "tunnel":
-      tunnel(args);
+      await tunnel(args);
       return;
     case "service":
       service(args);
@@ -752,7 +752,7 @@ function workspaceDuplicatePathGroups(workspaces: WorkspaceConfigEntry[]): Works
   return [...byPath.values()].filter((group) => group.length > 1);
 }
 
-function tunnel(args: string[]): void {
+async function tunnel(args: string[]): Promise<void> {
   const [subcommand] = args;
   if (subcommand === "help") {
     printTunnelHelpTopic(args.slice(1));
@@ -764,6 +764,10 @@ function tunnel(args: string[]): void {
   }
   if (hasHelpFlag(args.slice(1))) {
     printTunnelHelpTopic([subcommand]);
+    return;
+  }
+  if (subcommand === "openai-client") {
+    await tunnelOpenAiClient(args.slice(1));
     return;
   }
   if (!subcommand || subcommand === "status") {
@@ -799,6 +803,14 @@ function tunnel(args: string[]): void {
     }
     for (const tool of diagnostics.tools) {
       console.log(`${tool.name}: ${tool.available ? "available" : "missing"}${tool.version ? ` (${tool.version})` : ""}`);
+      if (tool.source) console.log(`  source: ${tool.source}`);
+      if (tool.path) console.log(`  path: ${tool.path}`);
+      if (tool.releaseTag) console.log(`  release: ${tool.releaseTag}`);
+      if (tool.assetName) console.log(`  asset: ${tool.assetName}`);
+      if (tool.sha256) console.log(`  sha256: ${tool.sha256}`);
+      if (tool.installedAt) console.log(`  installedAt: ${tool.installedAt}`);
+      if (tool.manifestPath) console.log(`  manifest: ${tool.manifestPath}`);
+      if (tool.warning) console.log(`  warning: ${tool.warning}`);
       if (tool.status) console.log(`  status: ${tool.status.split("\n")[0]}`);
     }
     console.log("providers:");
@@ -813,6 +825,92 @@ function tunnel(args: string[]): void {
   }
 
   throw new Error(`Unknown tunnel command: ${subcommand}`);
+}
+
+async function tunnelOpenAiClient(args: string[]): Promise<void> {
+  const [rawAction, ...rest] = args;
+  const action = rawAction || "status";
+  if (action === "--help" || action === "-h" || hasHelpFlag(rest)) {
+    printTunnelHelpTopic(["openai-client"]);
+    return;
+  }
+
+  if (action === "status") {
+    const unknown = rest.filter((arg) => arg !== "--json");
+    if (unknown.length > 0) throw new Error(`Unknown tunnel openai-client status option: ${unknown[0]}`);
+    const config = loadConfig();
+    const tunnelClient = tunnelDiagnostics({ localPort: config.port ?? 3939 }).tools.find((tool) => tool.name === "tunnel-client");
+    const report = {
+      kind: "openai-tunnel-client-status",
+      schemaVersion: 1,
+      tunnelClient,
+      updateBehavior: "cached managed binary is reused until `computer-linker tunnel openai-client install --refresh` is run",
+    };
+    if (rest.includes("--json")) {
+      console.log(JSON.stringify(report, null, 2));
+      return;
+    }
+    console.log("OpenAI tunnel-client status");
+    formatOpenAiTunnelClientStatus(report.tunnelClient);
+    console.log(`updateBehavior: ${report.updateBehavior}`);
+    return;
+  }
+
+  if (action === "install" || action === "refresh") {
+    const refresh = action === "refresh" || rest.includes("--refresh");
+    const unknown = rest.filter((arg) => arg !== "--json" && arg !== "--refresh");
+    if (unknown.length > 0) throw new Error(`Unknown tunnel openai-client ${action} option: ${unknown[0]}`);
+    const install = await ensureOpenAiTunnelClientInstalled({ refresh });
+    const report = {
+      kind: "openai-tunnel-client-install",
+      schemaVersion: 1,
+      refresh,
+      tunnelClient: install,
+      updateBehavior: "cached managed binary is reused until this refresh command is run",
+    };
+    if (rest.includes("--json")) {
+      console.log(JSON.stringify(report, null, 2));
+      return;
+    }
+    console.log(`OpenAI tunnel-client ${refresh ? "refresh" : "install"}`);
+    formatOpenAiTunnelClientStatus(install);
+    console.log(`updateBehavior: ${report.updateBehavior}`);
+    return;
+  }
+
+  throw new Error(`Unknown tunnel openai-client command: ${action}`);
+}
+
+function formatOpenAiTunnelClientStatus(tool: {
+  available?: boolean;
+  version?: string;
+  path?: string;
+  source?: string;
+  releaseTag?: string;
+  releaseUrl?: string;
+  assetName?: string;
+  sha256?: string;
+  installedAt?: string;
+  manifestPath?: string;
+  warning?: string;
+  error?: string;
+} | undefined): void {
+  if (!tool) {
+    console.log("  status: unknown");
+    return;
+  }
+  console.log(`  status: ${tool.available === false ? "missing" : "ready"}`);
+  if (tool.source) console.log(`  source: ${tool.source}`);
+  if (tool.path) console.log(`  path: ${tool.path}`);
+  if (tool.version) console.log(`  version: ${tool.version}`);
+  if (tool.releaseTag) console.log(`  release: ${tool.releaseTag}`);
+  if (tool.releaseUrl) console.log(`  releaseUrl: ${tool.releaseUrl}`);
+  if (tool.assetName) console.log(`  asset: ${tool.assetName}`);
+  if (tool.sha256) console.log(`  sha256: ${tool.sha256}`);
+  if (tool.installedAt) console.log(`  installedAt: ${tool.installedAt}`);
+  if (tool.manifestPath) console.log(`  manifest: ${tool.manifestPath}`);
+  if (tool.warning) console.log(`  warning: ${tool.warning}`);
+  if (tool.error) console.log(`  error: ${tool.error}`);
 }
 
 function service(args: string[]): void {

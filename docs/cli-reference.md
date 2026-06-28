@@ -91,10 +91,19 @@ computer-linker workspace list
 computer-linker history --view last
 computer-linker history --view connections
 computer-linker tunnel status
+computer-linker tunnel openai-client status
 ```
 
 Use `status` for the short human view. Use `status --details` when a tunnel,
 workspace, or readiness warning needs inspection.
+
+`tunnel openai-client status` shows the managed OpenAI tunnel-client path,
+source, release tag, checksum, and install time when the managed binary exists.
+Refresh it explicitly with:
+
+```powershell
+computer-linker tunnel openai-client install --refresh
+```
 
 ## Token Maintenance
 

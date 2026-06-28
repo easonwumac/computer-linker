@@ -844,6 +844,46 @@ try {
     provider.lifecycle.stop
   )));
   assert.ok(tunnelStatusJson.providers.some((provider) => provider.provider === "cloudflare"));
+  const cliManagedClientDir = join(root, "config", "tools", "openai-tunnel-client");
+  const cliManagedClientPath = join(cliManagedClientDir, process.platform === "win32" ? "tunnel-client.exe" : "tunnel-client");
+  await mkdir(cliManagedClientDir, { recursive: true });
+  await writeFile(cliManagedClientPath, "not a real tunnel-client binary\n", "utf8");
+  await writeFile(join(cliManagedClientDir, "release.json"), `${JSON.stringify({
+    schemaVersion: 1,
+    provider: "openai",
+    repository: "openai/tunnel-client",
+    releaseTag: "v1.2.3",
+    releaseUrl: "https://github.com/openai/tunnel-client/releases/tag/v1.2.3",
+    assetName: "tunnel-client-windows-amd64.zip",
+    sha256: "b".repeat(64),
+    installedAt: "2026-06-28T00:00:00.000Z",
+  }, null, 2)}\n`, "utf8");
+  const openAiClientStatusText = (await runCliOutput("tunnel", "openai-client", "status")).stdout;
+  assert.match(openAiClientStatusText, /OpenAI tunnel-client status/);
+  assert.match(openAiClientStatusText, /source: managed/);
+  assert.match(openAiClientStatusText, /release: v1\.2\.3/);
+  assert.match(openAiClientStatusText, /sha256: b{64}/);
+  assert.match(openAiClientStatusText, /updateBehavior: cached managed binary is reused/);
+  const openAiClientStatusJson = JSON.parse((await runCliOutput("tunnel", "openai-client", "status", "--json")).stdout) as {
+    kind: string;
+    tunnelClient: { source: string; path: string; releaseTag: string; sha256: string; installedAt: string };
+    updateBehavior: string;
+  };
+  assert.equal(openAiClientStatusJson.kind, "openai-tunnel-client-status");
+  assert.equal(openAiClientStatusJson.tunnelClient.source, "managed");
+  assert.equal(openAiClientStatusJson.tunnelClient.path, cliManagedClientPath);
+  assert.equal(openAiClientStatusJson.tunnelClient.releaseTag, "v1.2.3");
+  assert.equal(openAiClientStatusJson.tunnelClient.sha256, "b".repeat(64));
+  assert.equal(openAiClientStatusJson.tunnelClient.installedAt, "2026-06-28T00:00:00.000Z");
+  assert.match(openAiClientStatusJson.updateBehavior, /refresh/);
+  const tunnelStatusWithClientJson = JSON.parse((await runCliOutput("tunnel", "status", "--json")).stdout) as {
+    tools: Array<{ name: string; source?: string; releaseTag?: string; sha256?: string }>;
+  };
+  const openAiTool = tunnelStatusWithClientJson.tools.find((tool) => tool.name === "tunnel-client");
+  assert.equal(openAiTool?.source, "managed");
+  assert.equal(openAiTool?.releaseTag, "v1.2.3");
+  assert.equal(openAiTool?.sha256, "b".repeat(64));
+  await rm(cliManagedClientDir, { recursive: true, force: true });
   await assert.rejects(
     () => runCliOutput("tunnel", "status", "--bad"),
     /Unknown tunnel status option: --bad/,

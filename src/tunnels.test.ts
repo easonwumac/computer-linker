@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getTunnelProvider, getTunnelProviders, listTunnelProcesses, tailscalePublicUrlFromFunnelStatus, tailscalePublicUrlFromStatusJson, tunnelCommand, tunnelDiagnostics, tunnelProviderContracts, tunnelRuntimeEvents } from "./tunnels.js";
+import { ensureOpenAiTunnelClientInstalled, getTunnelProvider, getTunnelProviders, listTunnelProcesses, openAiTunnelClientManagedPath, tailscalePublicUrlFromFunnelStatus, tailscalePublicUrlFromStatusJson, tunnelCommand, tunnelDiagnostics, tunnelProviderContracts, tunnelRuntimeEvents } from "./tunnels.js";
 
 const originalConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalLocalPortConfigDir = process.env.LOCALPORT_CONFIG_DIR;
 const originalOpenAiTunnelId = process.env.COMPUTER_LINKER_OPENAI_TUNNEL_ID;
 const originalOpenAiTunnelClient = process.env.COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT;
+const originalFetch = globalThis.fetch;
 const root = await mkdtemp(join(tmpdir(), "computer-linker-tunnels-test-"));
 
 try {
@@ -15,6 +16,48 @@ try {
   delete process.env.LOCALPORT_CONFIG_DIR;
   process.env.COMPUTER_LINKER_OPENAI_TUNNEL_ID = "";
   process.env.COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT = "";
+
+const managedClientPath = openAiTunnelClientManagedPath();
+await mkdir(join(root, "tools", "openai-tunnel-client"), { recursive: true });
+await writeFile(managedClientPath, "not a real tunnel-client binary\n", "utf8");
+await writeFile(join(root, "tools", "openai-tunnel-client", "release.json"), `${JSON.stringify({
+  schemaVersion: 1,
+  provider: "openai",
+  repository: "openai/tunnel-client",
+  releaseTag: "v9.8.7",
+  releaseUrl: "https://github.com/openai/tunnel-client/releases/tag/v9.8.7",
+  assetName: "tunnel-client-windows-amd64.zip",
+  sha256: "a".repeat(64),
+  installedAt: "2026-06-28T00:00:00.000Z",
+}, null, 2)}\n`, "utf8");
+let fetchCalls = 0;
+globalThis.fetch = async () => {
+  fetchCalls += 1;
+  throw new Error("simulated offline");
+};
+const cachedOpenAiClient = await ensureOpenAiTunnelClientInstalled();
+assert.equal(cachedOpenAiClient.source, "managed");
+assert.equal(cachedOpenAiClient.path, managedClientPath);
+assert.equal(cachedOpenAiClient.releaseTag, "v9.8.7");
+assert.equal(cachedOpenAiClient.sha256, "a".repeat(64));
+assert.equal(cachedOpenAiClient.installedAt, "2026-06-28T00:00:00.000Z");
+assert.equal(fetchCalls, 0);
+const refreshedOfflineClient = await ensureOpenAiTunnelClientInstalled({ refresh: true });
+assert.equal(refreshedOfflineClient.source, "managed");
+assert.match(refreshedOfflineClient.warning ?? "", /refresh failed; using cached managed binary/);
+assert.equal(fetchCalls, 1);
+const managedDiagnostics = tunnelDiagnostics({ localPort: 3939 });
+const managedTool = managedDiagnostics.tools.find((tool) => tool.name === "tunnel-client");
+assert.equal(managedTool?.source, "managed");
+assert.equal(managedTool?.path, managedClientPath);
+assert.equal(managedTool?.releaseTag, "v9.8.7");
+assert.equal(managedTool?.sha256, "a".repeat(64));
+assert.equal(managedTool?.installedAt, "2026-06-28T00:00:00.000Z");
+await rm(managedClientPath, { force: true });
+await assert.rejects(
+  () => ensureOpenAiTunnelClientInstalled(),
+  /OpenAI tunnel-client first-use download failed\..*--tunnel-client.*COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT/s,
+);
 
 assert.deepEqual(tunnelCommand({ provider: "cloudflare", localPort: 3939 }), {
   provider: "cloudflare",
@@ -279,6 +322,7 @@ assert.equal(tailscalePublicUrlFromFunnelStatus(JSON.stringify({
   else process.env.COMPUTER_LINKER_OPENAI_TUNNEL_ID = originalOpenAiTunnelId;
   if (originalOpenAiTunnelClient === undefined) delete process.env.COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT;
   else process.env.COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT = originalOpenAiTunnelClient;
+  globalThis.fetch = originalFetch;
 
   await rm(root, { recursive: true, force: true });
 }

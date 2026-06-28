@@ -768,6 +768,11 @@ export function printTunnelHelpTopic(args: string[]): void {
     printTunnelHelp();
     return;
   }
+  if (topic === "openai-client") {
+    if (rest.length > 0) throw new Error(`Unknown tunnel help topic: ${args.join(" ")}`);
+    printTunnelOpenAiClientHelp();
+    return;
+  }
   throw new Error(`Unknown tunnel help topic: ${args.join(" ")}`);
 }
 
@@ -778,13 +783,42 @@ export function printTunnelHelp(): void {
       "",
       "Usage:",
       "  computer-linker tunnel status [--json]",
+      "  computer-linker tunnel openai-client status [--json]",
+      "  computer-linker tunnel openai-client install [--refresh] [--json]",
+      "  computer-linker tunnel openai-client refresh [--json]",
       "",
       "What it does:",
       "  Shows detected tunnel tools, running tunnel processes, effective public URL, and suggested commands.",
       "  OpenAI Secure MCP Tunnel mode reports a tunnel id, not a public URL.",
+      "  OpenAI tunnel-client install reuses the cached managed binary unless refresh is requested.",
       "",
       "Example:",
       "  computer-linker tunnel status",
+      "  computer-linker tunnel openai-client status",
+      "  computer-linker tunnel openai-client install --refresh",
+    ].join("\n"),
+  );
+}
+
+function printTunnelOpenAiClientHelp(): void {
+  console.log(
+    [
+      "Computer Linker OpenAI tunnel-client",
+      "",
+      "Usage:",
+      "  computer-linker tunnel openai-client status [--json]",
+      "  computer-linker tunnel openai-client install [--refresh] [--json]",
+      "  computer-linker tunnel openai-client refresh [--json]",
+      "",
+      "What it does:",
+      "  Shows or installs the managed OpenAI Secure MCP Tunnel client.",
+      "  The managed binary is reused from ~/.computer-linker/tools/openai-tunnel-client/ until you refresh it.",
+      "  First-use download failures explain how to provide --tunnel-client or COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT.",
+      "",
+      "Examples:",
+      "  computer-linker tunnel openai-client status",
+      "  computer-linker tunnel openai-client install",
+      "  computer-linker tunnel openai-client install --refresh",
     ].join("\n"),
   );
 }

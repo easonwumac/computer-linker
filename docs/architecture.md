@@ -622,9 +622,15 @@ origin from the managed tunnel output and save it as `publicBaseUrl` for future
 OAuth metadata. OpenAI Secure MCP Tunnel has no public URL source; on first CLI
 startup Computer Linker downloads the official `openai/tunnel-client` release
 into its config directory, verifies the selected asset against
-`SHA256SUMS.txt`, and runs that managed binary. It never scans user directories
-such as Desktop for executables unless a path is explicitly provided with
-`--tunnel-client` or `COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT`.
+`SHA256SUMS.txt`, writes `release.json` with release tag, asset, checksum, and
+install time, and runs that managed binary. The cached managed binary is reused
+until `computer-linker tunnel openai-client install --refresh` is run; startup
+does not silently replace it. `computer-linker tunnel status --json`, `doctor`,
+and `computer-linker tunnel openai-client status` surface the managed binary
+path and release metadata. First-use download failures explain how to provide
+`--tunnel-client` or `COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT`. It never scans user
+directories such as Desktop for executables unless a path is explicitly
+provided.
 
 `computer-linker start` and `computer-linker expose` require an owner token
 before starting a tunnel. Loopback

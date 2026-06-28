@@ -123,9 +123,16 @@ loopback MCP server.
 
 On first use, Computer Linker downloads the official OpenAI `tunnel-client`
 from `openai/tunnel-client`, verifies it against `SHA256SUMS.txt`, and stores
-it under `~/.computer-linker/tools/openai-tunnel-client/`. To use your own
-pinned binary, set `COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT` or pass
-`--tunnel-client`.
+it under `~/.computer-linker/tools/openai-tunnel-client/`. The cached managed
+binary is reused until you explicitly refresh it:
+
+```powershell
+computer-linker tunnel openai-client status
+computer-linker tunnel openai-client install --refresh
+```
+
+If first-use download is unavailable, use your own pinned binary by setting
+`COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT` or passing `--tunnel-client`.
 
 If you see:
 

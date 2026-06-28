@@ -98,10 +98,19 @@ In ChatGPT connector settings, choose **Tunnel** and select or paste the
 Tunnel mode; the local `tunnel-client` forwards the owner token to the private
 local MCP server. Computer Linker downloads the official OpenAI
 `tunnel-client` release into its config directory on first use, verifies the
-asset with `SHA256SUMS.txt`, and then reuses that managed binary. It does not
-search the Desktop for `tunnel-client.exe`; pass `--tunnel-client` or set
-`COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT` only when you intentionally want a
-pinned executable.
+asset with `SHA256SUMS.txt`, writes managed release metadata, and then reuses
+that managed binary. It does not silently update on each start. Inspect or
+refresh it explicitly:
+
+```powershell
+computer-linker tunnel openai-client status
+computer-linker tunnel openai-client install --refresh
+```
+
+If first-use download fails and no cache exists, the error explains how to pass
+`--tunnel-client` or set `COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT`. Computer
+Linker does not search the Desktop for `tunnel-client.exe`; use those override
+paths only when you intentionally want a pinned executable.
 
 If ChatGPT or the tunnel control plane returns `401 Access denied: this tunnel
 requires an active organization context`, the local Computer Linker server is
