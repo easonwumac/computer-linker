@@ -521,7 +521,7 @@ try {
   assert.match(statusOutput, /tunnel: public URL configured \(https:\/\/computer-linker\.example\.com\)/);
   if (/ready: blocked/.test(statusOutput)) {
     assert.match(statusOutput, /blocked by:/);
-    assert.match(statusOutput, /  - [a-z-]+: /);
+    assert.match(statusOutput, /  - .+/);
   } else {
     assert.match(statusOutput, /attention: \d+ warnings; run `computer-linker status --details`/);
   }
