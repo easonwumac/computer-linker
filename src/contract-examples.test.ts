@@ -12,12 +12,12 @@ import {
 import { workspaceOperationEntry } from "./workspace-operations.js";
 
 const registryByOp = new Map(computerOperationRegistry.map((entry) => [entry.op, entry]));
-const readme = await readFile(join(process.cwd(), "README.md"), "utf8");
+const agentPlaybook = await readFile(join(process.cwd(), "docs", "agent-playbook.md"), "utf8");
 const computerOperationSchema = JSON.parse(await readFile(join(process.cwd(), "docs", "computer-operation-v1.schema.json"), "utf8")) as JsonSchemaObject;
-const readmeExamples = readmeCommonOperationExamples(readme);
+const workflowExamples = agentPlaybookCommonWorkflowExamples(agentPlaybook);
 
-assert.ok(readmeExamples.length >= 6);
-for (const example of readmeExamples) {
+assert.ok(workflowExamples.length >= 6);
+for (const example of workflowExamples) {
   validateComputerOperationExample(example.envelope, example.source);
 }
 
@@ -185,21 +185,21 @@ function resolveSchemaRef(root: JsonSchemaObject, ref: string): JsonSchema {
   return value as JsonSchema;
 }
 
-function readmeCommonOperationExamples(markdown: string): Array<{ source: string; envelope: ComputerOperationEnvelope }> {
-  const section = markdownSection(markdown, "### Common Operations", "### Operation Shape");
+function agentPlaybookCommonWorkflowExamples(markdown: string): Array<{ source: string; envelope: ComputerOperationEnvelope }> {
+  const section = markdownSection(markdown, "## Common Workflows", "## Safety Rules");
   const examples: Array<{ source: string; envelope: ComputerOperationEnvelope }> = [];
 
   for (const match of section.matchAll(/`(\{[^`\r\n]*"op"[^`\r\n]*\})`/g)) {
     examples.push({
-      source: "README Common Operations inline example",
-      envelope: parseJsonObject(match[1], "README Common Operations inline example"),
+      source: "Agent Playbook Common Workflows inline example",
+      envelope: parseJsonObject(match[1], "Agent Playbook Common Workflows inline example"),
     });
   }
 
   for (const match of section.matchAll(/```json\s*([\s\S]*?)```/g)) {
     examples.push({
-      source: "README Common Operations JSON block",
-      envelope: parseJsonObject(match[1], "README Common Operations JSON block"),
+      source: "Agent Playbook Common Workflows JSON block",
+      envelope: parseJsonObject(match[1], "Agent Playbook Common Workflows JSON block"),
     });
   }
 
