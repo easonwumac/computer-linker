@@ -7,6 +7,8 @@ called out even when the package version is still `0.x`.
 
 ## Unreleased
 
+## 0.1.12 - 2026-06-28
+
 ### Added
 
 - Added workspace package script allow/deny policy so `package.run` and

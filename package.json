@@ -1,6 +1,6 @@
 {
   "name": "@easonwumac/computer-linker",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Local MCP server for controlled computer operations.",
   "type": "module",
   "main": "dist/client.js",
