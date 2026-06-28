@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { opendir, readFile, stat } from "node:fs/promises";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
-import { errorMessage, previewCommand, readAuditEvents, writeAuditEvent, type AuditEvent, type AuditEventInput, type AuditReplayTemplate } from "./audit.js";
+import { errorMessage, previewCommand, readAuditEvents, writeAuditEvent, type AuditEvent, type AuditEventInput, type WorkspaceAuditReplayTemplate } from "./audit.js";
 import { readCodexRunRecords, writeCodexRunRecord } from "./codex-runs.js";
 import { operationCapabilityPolicy, workspaceCapabilityPolicy, type CapabilityName, type CapabilityPolicy, type NetworkAccessPolicy } from "./capability-policy.js";
 import { assertPackageScriptAllowedByPolicy, commandPolicyLimits, managedCommandPolicyLimits } from "./command-policy.js";
@@ -1923,9 +1923,9 @@ export function workspaceOperationAuditFields(input: WorkspaceOperationInput): P
   };
 }
 
-function workspaceOperationReplayTemplate(input: WorkspaceOperationInput): AuditReplayTemplate {
+function workspaceOperationReplayTemplate(input: WorkspaceOperationInput): WorkspaceAuditReplayTemplate {
   const target = auditTarget(input);
-  const baseInput: AuditReplayTemplate["input"] = {
+  const baseInput: WorkspaceAuditReplayTemplate["input"] = {
     op: input.operation,
     target,
     input: {},
@@ -2196,10 +2196,10 @@ function workspaceOperationReplayTemplate(input: WorkspaceOperationInput): Audit
 }
 
 function replayableTemplate(
-  baseInput: AuditReplayTemplate["input"],
+  baseInput: WorkspaceAuditReplayTemplate["input"],
   values: { input?: Record<string, unknown>; options?: Record<string, unknown> },
-  metadata: Pick<AuditReplayTemplate, "replayable" | "reason" | "requiresInput"> = { replayable: true },
-): AuditReplayTemplate {
+  metadata: Pick<WorkspaceAuditReplayTemplate, "replayable" | "reason" | "requiresInput"> = { replayable: true },
+): WorkspaceAuditReplayTemplate {
   return {
     action: "workspace_operation",
     replayable: metadata.replayable,

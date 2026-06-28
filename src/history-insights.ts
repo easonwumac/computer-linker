@@ -1,5 +1,5 @@
 import { auditLogPath } from "./config.js";
-import { readAuditEvents, type AuditEvent, type AuditReplayTemplate } from "./audit.js";
+import { readAuditEvents, type AuditEvent, type AuditReplayRequest, type AuditReplayTemplate, type ComputerAuditReplayRequest } from "./audit.js";
 import { redactAuditValue } from "./audit-redaction.js";
 import { listTunnelProcesses, tunnelRuntimeEvents, type TunnelRuntimeEvent } from "./tunnels.js";
 
@@ -55,16 +55,7 @@ export interface FailedReplayItem {
   replayable: boolean;
   reason?: string;
   requiresInput?: string[];
-  request?: {
-    action: "workspace_operation";
-    workspace: string;
-    input: {
-      op: string;
-      target?: string;
-      input: Record<string, unknown>;
-      options: Record<string, unknown>;
-    };
-  };
+  request?: AuditReplayRequest;
 }
 
 export interface HistorySessionSummary {
@@ -565,6 +556,10 @@ function buildFailedReplay(events: CompactAuditEvent[]): FailedReplayItem[] {
     .map((event) => {
       const workspace = event.workspaceId ?? event.workspaceRef;
       const op = event.operation ?? inferOperation(event);
+      if (event.replay) {
+        return replayItemFromTemplate(event, workspace, event.replay);
+      }
+
       if (!workspace || !op || (event.tool !== "workspace_operation" && event.tool !== "workspace_operation.batch_item")) {
         return {
           timestamp: event.timestamp,
@@ -572,10 +567,6 @@ function buildFailedReplay(events: CompactAuditEvent[]): FailedReplayItem[] {
           replayable: false,
           reason: "Audit event does not contain enough workspace operation metadata to build a replay request.",
         };
-      }
-
-      if (event.replay) {
-        return replayItemFromTemplate(event, workspace, event.replay);
       }
 
       const target = event.target ?? event.path ?? event.workingDirectory;
@@ -602,19 +593,159 @@ function buildFailedReplay(events: CompactAuditEvent[]): FailedReplayItem[] {
     });
 }
 
-function replayItemFromTemplate(event: CompactAuditEvent, workspace: string, replay: AuditReplayTemplate): FailedReplayItem {
+function replayItemFromTemplate(event: CompactAuditEvent, workspace: string | undefined, replay: AuditReplayTemplate): FailedReplayItem {
+  const request = replayRequestFromTemplate(event, workspace, replay);
   return {
     timestamp: event.timestamp,
     error: event.error,
     replayable: replay.replayable,
     reason: replay.reason,
     requiresInput: replay.requiresInput,
-    request: {
-      action: replay.action,
-      workspace,
+    request,
+  };
+}
+
+function replayRequestFromTemplate(
+  event: CompactAuditEvent,
+  workspace: string | undefined,
+  replay: AuditReplayTemplate,
+): AuditReplayRequest | undefined {
+  if (replay.action === "computer_operation") {
+    return {
+      action: "computer_operation",
       input: replay.input,
+    };
+  }
+  if (event.tool === "computer_operation") {
+    return computerReplayRequestFromLegacyTemplate(event, workspace, replay);
+  }
+  if (!workspace) return undefined;
+  return {
+    action: "workspace_operation",
+    workspace,
+    input: replay.input,
+  };
+}
+
+function computerReplayRequestFromLegacyTemplate(
+  event: CompactAuditEvent,
+  workspace: string | undefined,
+  replay: Extract<AuditReplayTemplate, { action: "workspace_operation" }>,
+): ComputerAuditReplayRequest | undefined {
+  const scope = event.workspaceRef ?? event.workspaceId ?? workspace;
+  const op = event.operation ?? replay.input.op;
+  if (!scope || !op) return undefined;
+  const payload = { ...replay.input.input };
+  const { target, input } = computerReplayTargetAndInput(op, event.target ?? replay.input.target, payload);
+  const split = splitComputerReplayPayload(input);
+  return {
+    action: "computer_operation",
+    input: {
+      scope,
+      op,
+      target,
+      input: split.input,
+      options: split.options,
     },
   };
+}
+
+const computerReplayOptionFields = new Set([
+  "afterContext",
+  "beforeContext",
+  "createParents",
+  "encoding",
+  "format",
+  "lineCount",
+  "maxBytes",
+  "maxDepth",
+  "maxEntries",
+  "maxHeight",
+  "maxOutputBytes",
+  "maxResults",
+  "maxWidth",
+  "returnMode",
+  "startLine",
+  "timeoutSeconds",
+]);
+
+function splitComputerReplayPayload(payload: Record<string, unknown>): { input: Record<string, unknown>; options: Record<string, unknown> } {
+  const input: Record<string, unknown> = {};
+  const options: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined) continue;
+    if (computerReplayOptionFields.has(key)) {
+      options[key] = value;
+    } else {
+      input[key] = value;
+    }
+  }
+  return { input, options };
+}
+
+function computerReplayTargetAndInput(
+  op: string,
+  fallbackTarget: string | undefined,
+  payload: Record<string, unknown>,
+): { target?: string; input: Record<string, unknown> } {
+  const input = { ...payload };
+  const targetKey = computerReplayTargetKey(op);
+  const target = fallbackTarget ?? (targetKey ? optionalReplayString(input[targetKey]) : undefined);
+  if (targetKey && target === input[targetKey]) {
+    delete input[targetKey];
+  }
+  if (!fallbackTarget && target && targetKey === "path") {
+    delete input.path;
+  }
+  return { target, input };
+}
+
+function computerReplayTargetKey(op: string): string | undefined {
+  switch (op) {
+    case "command.read":
+    case "command.stop":
+    case "process.read":
+    case "process.stop":
+    case "codex.stop":
+    case "process_read":
+    case "process_stop":
+      return "processId";
+    case "codex.read":
+    case "codex_runs":
+      return "workflowId";
+    case "command.run":
+    case "command.start":
+    case "process.start":
+    case "codex.run":
+    case "codex.start":
+    case "codex_plan":
+    case "codex_review":
+    case "codex_fix":
+    case "codex_test":
+    case "codex_continue":
+    case "command":
+    case "process_start":
+    case "codex":
+    case "codex_start":
+      return "workingDirectory";
+    case "file.move":
+    case "move":
+      return "fromPath";
+    case "git_worktree_create":
+      return "toPath";
+    case "explain_operation":
+      return "operationName";
+    default:
+      if (op === "file.read_many" || op === "read_many" || op === "command.list" || op === "process.list" || op === "process_list" || op === "screen.list" || op === "screen_list") {
+        return undefined;
+      }
+      return "path";
+  }
+}
+
+function optionalReplayString(value: unknown): string | undefined {
+  const text = String(value ?? "").trim();
+  return text || undefined;
 }
 
 function replayInput(event: CompactAuditEvent): Record<string, unknown> {

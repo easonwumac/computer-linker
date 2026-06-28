@@ -697,11 +697,12 @@ Use `operation=history_insight` when an agent needs a compact last-operation
 summary, a chronological workspace timeline, grouped session summaries, a
 grouped tunnel/MCP connection summary, a failed-operation replay template, or a
 redacted debug bundle to attach to a follow-up coding request. Replay
-templates are stored as stable `workspace_operation` envelopes. Safe operations
-such as package scripts can be retried directly; screenshot captures are marked
-non-replayable because they can expose current screen pixels; raw shell commands
-and Codex prompts are represented as templates with `requiresInput` because
-full sensitive text is not written to the audit log.
+templates from the primary surface use stable `computer_operation` envelopes;
+compatibility `workspace_operation` events keep legacy replay envelopes. Safe
+operations such as package scripts can be retried directly; screenshot captures
+are marked non-replayable because they can expose current screen pixels; raw
+shell commands and Codex prompts are represented as templates with
+`requiresInput` because full sensitive text is not written to the audit log.
 For local support/debug workflows, the same redacted views are available through
 `computer-linker history --view last` and
 `computer-linker history --view debug_bundle --json --output <file>`.

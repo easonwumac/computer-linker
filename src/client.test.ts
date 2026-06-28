@@ -170,6 +170,7 @@ try {
     );
     const replayItems = await client.failedReplay({ workspaceId: "writer", limit: 20 });
     const writeReplay = replayItems.find((item) => (
+      item.request?.action === "workspace_operation" &&
       item.request?.workspace === "writer" &&
       item.request.input.op === "write"
     ));

@@ -42,18 +42,51 @@ export interface AuditEvent {
   statusCode?: number;
 }
 
-export interface AuditReplayTemplate {
+export interface WorkspaceAuditReplayRequest {
   action: "workspace_operation";
+  workspace: string;
+  input: WorkspaceAuditReplayInput;
+}
+
+export interface ComputerAuditReplayRequest {
+  action: "computer_operation";
+  input: ComputerAuditReplayInput;
+}
+
+export type AuditReplayRequest = WorkspaceAuditReplayRequest | ComputerAuditReplayRequest;
+
+export interface WorkspaceAuditReplayInput {
+  op: string;
+  target?: string;
+  input: Record<string, unknown>;
+  options: Record<string, unknown>;
+}
+
+export interface ComputerAuditReplayInput {
+  scope: string;
+  op: string;
+  target?: string;
+  input: Record<string, unknown>;
+  options: Record<string, unknown>;
+}
+
+interface BaseAuditReplayTemplate {
   replayable: boolean;
   reason?: string;
   requiresInput?: string[];
-  input: {
-    op: string;
-    target?: string;
-    input: Record<string, unknown>;
-    options: Record<string, unknown>;
-  };
 }
+
+export interface WorkspaceAuditReplayTemplate extends BaseAuditReplayTemplate {
+  action: "workspace_operation";
+  input: WorkspaceAuditReplayInput;
+}
+
+export interface ComputerAuditReplayTemplate extends BaseAuditReplayTemplate {
+  action: "computer_operation";
+  input: ComputerAuditReplayInput;
+}
+
+export type AuditReplayTemplate = WorkspaceAuditReplayTemplate | ComputerAuditReplayTemplate;
 
 export type AuditEventInput = Omit<AuditEvent, "timestamp">;
 

@@ -372,9 +372,10 @@ it to call
 `view: "connections"` for tunnel/session/request correlation,
 `view: "failed_replay"`, `view: "sessions"` for compact session grouping, or
 `view: "debug_bundle"` before retrying. In `failed_replay`, ChatGPT can submit
-`replayable: true` request templates directly; when `requiresInput` is present,
-it must ask for or reconstruct the missing command or Codex prompt before
-retrying. After using `codex.run` or `codex.start`, ChatGPT can call
+`replayable: true` `request.action: "computer_operation"` templates directly;
+when `requiresInput` is present, it must ask for or reconstruct the missing
+file content, command, or Codex prompt before retrying. After using
+`codex.run` or `codex.start`, ChatGPT can call
 `codex.read` with the returned workflow id to inspect the stored run summary
 later.
 

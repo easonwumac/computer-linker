@@ -445,10 +445,6 @@ export class WorkspaceLinkerClient {
     });
   }
 
-  /**
-   * @deprecated Replays a legacy workspace-operation history template. Prefer
-   * computerOperation() for new calls.
-   */
   async replayFailed<T = unknown>(
     item: FailedReplayItem,
     replayOptions: WorkspaceLinkerReplayOptions = {},
@@ -467,6 +463,19 @@ export class WorkspaceLinkerClient {
     }
     if (!item.replayable && (item.requiresInput ?? []).length === 0) {
       throw new Error(item.reason ?? "Failed replay item is not replayable");
+    }
+
+    if (item.request.action === "computer_operation") {
+      return this.computerOperation<T>({
+        scope: replayOptions.workspace ?? item.request.input.scope,
+        op: item.request.input.op,
+        target: replayOptions.target ?? item.request.input.target,
+        input,
+        options: {
+          ...item.request.input.options,
+          ...replayOptions.options,
+        },
+      });
     }
 
     return this.operation<T>({

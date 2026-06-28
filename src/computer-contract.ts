@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { platform, release, arch, type } from "node:os";
 import { basename } from "node:path";
 import { readAuditEvents } from "./audit.js";
-import type { AuditEventInput } from "./audit.js";
+import type { AuditEventInput, ComputerAuditReplayTemplate, WorkspaceAuditReplayTemplate } from "./audit.js";
 import { getLocalPortCapabilities } from "./capabilities.js";
 import { workspaceCapabilityPolicy } from "./capability-policy.js";
 import {
@@ -555,6 +555,7 @@ export async function computerOperationAuditFields(envelope: ComputerOperationEn
   };
   fields.operation = op ?? fields.operation;
   fields.target = optionalString(envelope.target) ?? fields.target;
+  fields.replay = computerOperationReplayTemplate(envelope, fields.replay);
 
   if (!scope) return fields;
   try {
@@ -568,6 +569,146 @@ export async function computerOperationAuditFields(envelope: ComputerOperationEn
     };
   } catch {
     return fields;
+  }
+}
+
+function computerOperationReplayTemplate(
+  envelope: ComputerOperationEnvelope,
+  workspaceReplay: AuditEventInput["replay"] | undefined,
+): ComputerAuditReplayTemplate {
+  const replayMetadata = workspaceReplay ?? {
+    action: "workspace_operation",
+    replayable: false,
+    reason: "Operation metadata could not be normalized; provide the full computer_operation envelope before replaying.",
+    requiresInput: ["op"],
+    input: {
+      op: optionalString(envelope.op) ?? "",
+      target: optionalString(envelope.target),
+      input: {},
+      options: {},
+    },
+  } satisfies WorkspaceAuditReplayTemplate;
+  const workspaceInput = replayMetadata.input;
+  const payload = workspaceReplay?.action === "workspace_operation"
+    ? workspaceInput.input
+    : {};
+  const { target, input } = computerReplayTargetAndInput(
+    optionalString(envelope.op) ?? workspaceInput.op,
+    optionalString(envelope.target) ?? workspaceInput.target,
+    payload,
+  );
+  const split = splitComputerReplayPayload(input);
+  return {
+    action: "computer_operation",
+    replayable: replayMetadata.replayable,
+    reason: replayMetadata.reason,
+    requiresInput: replayMetadata.requiresInput,
+    input: {
+      scope: optionalString(envelope.scope) ?? "",
+      op: optionalString(envelope.op) ?? workspaceInput.op,
+      target,
+      input: split.input,
+      options: split.options,
+    },
+  };
+}
+
+const computerReplayOptionFields = new Set([
+  "afterContext",
+  "beforeContext",
+  "createParents",
+  "encoding",
+  "format",
+  "lineCount",
+  "maxBytes",
+  "maxDepth",
+  "maxEntries",
+  "maxHeight",
+  "maxOutputBytes",
+  "maxResults",
+  "maxWidth",
+  "returnMode",
+  "startLine",
+  "timeoutSeconds",
+]);
+
+function splitComputerReplayPayload(payload: Record<string, unknown>): { input: Record<string, unknown>; options: Record<string, unknown> } {
+  const input: Record<string, unknown> = {};
+  const options: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined) continue;
+    if (computerReplayOptionFields.has(key)) {
+      options[key] = value;
+    } else {
+      input[key] = value;
+    }
+  }
+  return {
+    input,
+    options,
+  };
+}
+
+function computerReplayTargetAndInput(
+  op: string,
+  fallbackTarget: string | undefined,
+  payload: Record<string, unknown>,
+): { target?: string; input: Record<string, unknown> } {
+  const input = { ...payload };
+  const targetKey = computerReplayTargetKey(op);
+  const target = fallbackTarget ?? (targetKey ? optionalString(input[targetKey]) : undefined);
+  if (targetKey && target === input[targetKey]) {
+    delete input[targetKey];
+  }
+  if (!fallbackTarget && target && targetKey === "path") {
+    delete input.path;
+  }
+  return {
+    target,
+    input,
+  };
+}
+
+function computerReplayTargetKey(op: string): string | undefined {
+  switch (op) {
+    case "command.read":
+    case "command.stop":
+    case "process.read":
+    case "process.stop":
+    case "codex.stop":
+    case "process_read":
+    case "process_stop":
+      return "processId";
+    case "codex.read":
+    case "codex_runs":
+      return "workflowId";
+    case "command.run":
+    case "command.start":
+    case "process.start":
+    case "codex.run":
+    case "codex.start":
+    case "codex_plan":
+    case "codex_review":
+    case "codex_fix":
+    case "codex_test":
+    case "codex_continue":
+    case "command":
+    case "process_start":
+    case "codex":
+    case "codex_start":
+      return "workingDirectory";
+    case "file.move":
+    case "move":
+      return "fromPath";
+    case "git_worktree_create":
+      return "toPath";
+    case "explain_operation":
+      return "operationName";
+    default:
+      if (op === "file.read_many" || op === "read_many" || op === "command.list" || op === "process.list" || op === "process_list" || op === "screen.list" || op === "screen_list") {
+        return undefined;
+      }
+      return "path";
   }
 }
 

@@ -68,6 +68,9 @@ called out even when the package version is still `0.x`.
   session/client metadata, so exact success/failure events can be queried by
   `operationId` and concurrent MCP clients are separated in connection
   summaries without storing full session headers or bearer tokens.
+- Failed replay history for primary `computer_operation` calls now returns
+  `request.action:"computer_operation"` templates, while legacy
+  `workspace_operation` events keep compatibility replay envelopes.
 - `get_computer_info` now honors section-based `include` filters for smaller
   discovery payloads and derives its readiness status from configured scopes,
   public-exposure auth, recommended tools, and runtime-unavailable operations.

@@ -592,6 +592,31 @@ try {
     assert.equal(computerOutsidePath.body.data.ok, false);
     assert.equal(computerOutsidePath.body.data.error.code, "path_out_of_scope");
 
+    const computerFailedReplay = await postJson("/api/v1/control", {
+      action: "get_operation_history",
+      input: { scope: "app", view: "failed_replay", query: "../outside.txt", limit: 20 },
+    });
+    assert.equal(computerFailedReplay.status, 200);
+    assert.ok(computerFailedReplay.body.data.failedReplay.some((item: {
+      replayable: boolean;
+      request?: { action: string; input: { scope?: string; op?: string; target?: string; input?: Record<string, unknown>; options?: Record<string, unknown> } };
+    }) => (
+      item.replayable &&
+      item.request?.action === "computer_operation" &&
+      item.request.input.scope === "app" &&
+      item.request.input.op === "file.read" &&
+      item.request.input.target === "../outside.txt" &&
+      Object.keys(item.request.input.input ?? {}).length === 0 &&
+      Object.keys(item.request.input.options ?? {}).length === 0
+    )));
+    assert.equal(computerFailedReplay.body.data.failedReplay.some((item: {
+      request?: { action: string; input: { op?: string; target?: string } };
+    }) => (
+      item.request?.action === "workspace_operation" &&
+      item.request.input.op === "file.read" &&
+      item.request.input.target === "../outside.txt"
+    )), false);
+
     const computerInvalidRequest = await postJson("/api/v1/control", {
       action: "computer_operation",
       scope: "app",
