@@ -52,6 +52,17 @@ try {
       displayPath: string;
       roots?: string[];
       pathPrivacy: { rootsRedacted: boolean };
+      sensitivePaths: {
+        contentReads: string;
+        textSearch: string;
+        metadata: string;
+        writes: string;
+        allowedExampleFiles: string[];
+        policyFlags: {
+          allowSensitivePathMetadata: boolean;
+          allowSensitivePathWrites: boolean;
+        };
+      };
       capabilityPolicy: {
         networkAccess: {
           mode: string;
@@ -94,6 +105,13 @@ try {
   assert.equal(defaultComputerInfo.scopes[0].id, "app");
   assert.equal(defaultComputerInfo.scopes[0].displayPath, "workspace");
   assert.equal(defaultComputerInfo.scopes[0].pathPrivacy.rootsRedacted, true);
+  assert.equal(defaultComputerInfo.scopes[0].sensitivePaths.contentReads, "blocked");
+  assert.equal(defaultComputerInfo.scopes[0].sensitivePaths.textSearch, "excluded");
+  assert.equal(defaultComputerInfo.scopes[0].sensitivePaths.metadata, "hidden");
+  assert.equal(defaultComputerInfo.scopes[0].sensitivePaths.writes, "blocked");
+  assert.ok(defaultComputerInfo.scopes[0].sensitivePaths.allowedExampleFiles.includes(".env.example"));
+  assert.equal(defaultComputerInfo.scopes[0].sensitivePaths.policyFlags.allowSensitivePathMetadata, false);
+  assert.equal(defaultComputerInfo.scopes[0].sensitivePaths.policyFlags.allowSensitivePathWrites, false);
   assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.mode, "not-required");
   assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.hostNetworkMayBeUsed, false);
   assert.equal(defaultComputerInfo.scopes[0].capabilityPolicy.networkAccess.networkBlockedByComputerLinker, false);

@@ -3068,7 +3068,7 @@ function validateConfig(args: string[]): void {
 function configPolicy(args: string[]): void {
   const [workspaceId] = args;
   if (!workspaceId || workspaceId.startsWith("--")) {
-    throw new Error("Usage: computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--allow-shell-metacharacters|--block-shell-metacharacters] [--clear|--clear-allowed|--clear-denied]");
+    throw new Error("Usage: computer-linker config policy <workspace-id> [--json] [--allow pattern] [--deny pattern] [--max-runtime-seconds n] [--max-output-bytes n] [--allow-shell-metacharacters|--block-shell-metacharacters] [--allow-sensitive-path-metadata|--block-sensitive-path-metadata] [--allow-sensitive-path-writes|--block-sensitive-path-writes] [--clear|--clear-allowed|--clear-denied]");
   }
   assertKnownConfigPolicyOptions(args.slice(1));
   const config = loadConfig();
@@ -3108,7 +3108,18 @@ function configPolicy(args: string[]): void {
 
 function assertKnownConfigPolicyOptions(args: string[]): void {
   const valueOptions = new Set(["--allow", "--deny", "--max-runtime-seconds", "--max-output-bytes"]);
-  const flagOptions = new Set(["--json", "--clear", "--clear-allowed", "--clear-denied", "--allow-shell-metacharacters", "--block-shell-metacharacters"]);
+  const flagOptions = new Set([
+    "--json",
+    "--clear",
+    "--clear-allowed",
+    "--clear-denied",
+    "--allow-shell-metacharacters",
+    "--block-shell-metacharacters",
+    "--allow-sensitive-path-metadata",
+    "--block-sensitive-path-metadata",
+    "--allow-sensitive-path-writes",
+    "--block-sensitive-path-writes",
+  ]);
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (!arg.startsWith("--")) throw new Error(`Unknown config policy argument: ${arg}`);
@@ -3131,9 +3142,17 @@ function configPolicyUpdates(args: string[]): {
   maxRuntimeSeconds?: number;
   maxOutputBytes?: number;
   allowShellMetacharacters?: boolean;
+  allowSensitivePathMetadata?: boolean;
+  allowSensitivePathWrites?: boolean;
 } {
   if (args.includes("--allow-shell-metacharacters") && args.includes("--block-shell-metacharacters")) {
     throw new Error("config policy cannot combine --allow-shell-metacharacters and --block-shell-metacharacters");
+  }
+  if (args.includes("--allow-sensitive-path-metadata") && args.includes("--block-sensitive-path-metadata")) {
+    throw new Error("config policy cannot combine --allow-sensitive-path-metadata and --block-sensitive-path-metadata");
+  }
+  if (args.includes("--allow-sensitive-path-writes") && args.includes("--block-sensitive-path-writes")) {
+    throw new Error("config policy cannot combine --allow-sensitive-path-writes and --block-sensitive-path-writes");
   }
   return {
     clear: args.includes("--clear"),
@@ -3148,6 +3167,16 @@ function configPolicyUpdates(args: string[]): {
       : args.includes("--block-shell-metacharacters")
         ? false
         : undefined,
+    allowSensitivePathMetadata: args.includes("--allow-sensitive-path-metadata")
+      ? true
+      : args.includes("--block-sensitive-path-metadata")
+        ? false
+        : undefined,
+    allowSensitivePathWrites: args.includes("--allow-sensitive-path-writes")
+      ? true
+      : args.includes("--block-sensitive-path-writes")
+        ? false
+        : undefined,
   };
 }
 
@@ -3160,7 +3189,9 @@ function policyHasUpdates(updates: ReturnType<typeof configPolicyUpdates>): bool
     updates.deniedCommands.length > 0 ||
     updates.maxRuntimeSeconds !== undefined ||
     updates.maxOutputBytes !== undefined ||
-    updates.allowShellMetacharacters !== undefined
+    updates.allowShellMetacharacters !== undefined ||
+    updates.allowSensitivePathMetadata !== undefined ||
+    updates.allowSensitivePathWrites !== undefined
   );
 }
 
@@ -3174,6 +3205,8 @@ function applyPolicyUpdates(
   if (updates.maxRuntimeSeconds !== undefined) next.maxRuntimeSeconds = updates.maxRuntimeSeconds;
   if (updates.maxOutputBytes !== undefined) next.maxOutputBytes = updates.maxOutputBytes;
   if (updates.allowShellMetacharacters !== undefined) next.allowShellMetacharacters = updates.allowShellMetacharacters;
+  if (updates.allowSensitivePathMetadata !== undefined) next.allowSensitivePathMetadata = updates.allowSensitivePathMetadata;
+  if (updates.allowSensitivePathWrites !== undefined) next.allowSensitivePathWrites = updates.allowSensitivePathWrites;
   if (updates.allowedCommands.length > 0) {
     next.allowedCommands = mergePolicyList(next.allowedCommands, updates.allowedCommands);
   }
@@ -3203,6 +3236,8 @@ function printPolicyLines(policy: WorkspacePolicy | undefined): void {
   console.log(`allowedCommands: ${policy?.allowedCommands?.join(", ") || "not set"}`);
   console.log(`deniedCommands: ${policy?.deniedCommands?.join(", ") || "not set"}`);
   console.log(`allowShellMetacharacters: ${policy?.allowShellMetacharacters === true ? "true" : "false"}`);
+  console.log(`allowSensitivePathMetadata: ${policy?.allowSensitivePathMetadata === true ? "true" : "false"}`);
+  console.log(`allowSensitivePathWrites: ${policy?.allowSensitivePathWrites === true ? "true" : "false"}`);
 }
 
 function addWorkspace(args: string[]): void {

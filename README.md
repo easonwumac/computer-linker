@@ -76,9 +76,14 @@ execution policy with command allowlists and runtime/output limits.
 Those host processes are not network sandboxes; `networkAccess` reports that
 Computer Linker does not block host network access. Use OS, container,
 firewall, proxy, or network-layer controls when network isolation matters.
-File content reads and text searches block common sensitive files by default,
-including `.env*`, private keys, credential JSON files, and cloud CLI credential
-directories. Keep real secrets outside exposed folders.
+Sensitive paths are conservative by default. File content reads and text
+searches block common sensitive files, including `.env*`, private keys,
+credential JSON files, and cloud CLI credential directories. Metadata
+operations such as `file.list`, `file.tree`, `file.stat`, `code.context`, and
+project overview hide those sensitive path names by default, while example
+files such as `.env.example`, `.env.sample`, and `.env.template` remain
+visible. Write-class operations block sensitive path mutation by default.
+Keep real secrets outside exposed folders.
 
 `check` is safe to run before exposing real folders. It creates a temporary
 config and workspace, starts a loopback HTTP MCP server, verifies `/healthz`,
@@ -422,7 +427,9 @@ policy:
     "maxOutputBytes": 200000,
     "allowedCommands": ["npm *", "pnpm *", "yarn *", "bun *", "node *", "npx *", "git *"],
     "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
-    "allowShellMetacharacters": false
+    "allowShellMetacharacters": false,
+    "allowSensitivePathMetadata": false,
+    "allowSensitivePathWrites": false
   }
 }
 ```
@@ -443,6 +450,7 @@ The same policy can be maintained without editing JSON by hand:
 ```bash
 computer-linker config policy app --allow "npm *" --allow "git *" --deny "rm -rf *" --max-runtime-seconds 600 --max-output-bytes 200000
 computer-linker config policy app --block-shell-metacharacters
+computer-linker config policy app --allow-sensitive-path-metadata --allow-sensitive-path-writes
 computer-linker config policy app --json
 ```
 
@@ -451,6 +459,8 @@ redirects, command substitution, and Windows `cmd` escapes are blocked before
 the wildcard allowlist is evaluated. This keeps patterns such as `npm *` and
 `git *` from allowing `npm test && ...` or `git status; ...`. See
 [docs/command-policy.md](docs/command-policy.md) for advanced policy guidance.
+Only set `allowSensitivePathMetadata` or `allowSensitivePathWrites` for a
+trusted local scope where revealing or mutating secret-like paths is intended.
 
 Owner-token maintenance is also CLI-managed. Status output redacts the token;
 use `--show-token` only on a trusted local setup screen when updating an MCP

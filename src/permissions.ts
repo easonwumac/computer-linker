@@ -17,6 +17,8 @@ export interface WorkspacePolicy {
   allowedCommands?: string[];
   deniedCommands?: string[];
   allowShellMetacharacters?: boolean;
+  allowSensitivePathMetadata?: boolean;
+  allowSensitivePathWrites?: boolean;
 }
 
 export interface ExposedPathConfig {
@@ -159,6 +161,12 @@ function normalizeWorkspacePolicy(policy: WorkspacePolicy | undefined): Workspac
   if (deniedCommands.length > 0) normalized.deniedCommands = deniedCommands;
   if (typeof policy.allowShellMetacharacters === "boolean") {
     normalized.allowShellMetacharacters = policy.allowShellMetacharacters;
+  }
+  if (typeof policy.allowSensitivePathMetadata === "boolean") {
+    normalized.allowSensitivePathMetadata = policy.allowSensitivePathMetadata;
+  }
+  if (typeof policy.allowSensitivePathWrites === "boolean") {
+    normalized.allowSensitivePathWrites = policy.allowSensitivePathWrites;
   }
 
   return Object.keys(normalized).length > 0 ? normalized : undefined;

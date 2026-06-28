@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -178,6 +179,10 @@ try {
   await writeFile(join(workspaceRoot, "src/lines.ts"), "line1\nline2\nline3\nline4\n", "utf8");
   await writeFile(join(workspaceRoot, ".env"), "HIDDEN_SETTING=blocked-value\n", "utf8");
   await writeFile(join(workspaceRoot, ".env.example"), "EXAMPLE_SETTING=example\n", "utf8");
+  await mkdir(join(workspaceRoot, ".ssh"), { recursive: true });
+  await writeFile(join(workspaceRoot, ".ssh", "id_rsa"), "private-key\n", "utf8");
+  await mkdir(join(workspaceRoot, "sensitive-parent"), { recursive: true });
+  await writeFile(join(workspaceRoot, "sensitive-parent", ".env"), "nested-secret\n", "utf8");
   await writeFile(join(workspaceRoot, "AGENTS.md"), "test guidance\n", "utf8");
   await writeFile(join(workspaceRoot, ".codex", "skills", "refactor", "SKILL.md"), [
     "---",
@@ -362,6 +367,16 @@ try {
         permissions: { read: true, write: true, shell: false, codex: false },
       },
       {
+        id: "sensitive-opt-in",
+        name: "Sensitive opt in",
+        path: workspaceRoot,
+        permissions: { read: true, write: true, shell: false, codex: false },
+        policy: {
+          allowSensitivePathMetadata: true,
+          allowSensitivePathWrites: true,
+        },
+      },
+      {
         id: "policy-limited",
         name: "Policy limited",
         path: workspaceRoot,
@@ -390,6 +405,7 @@ try {
   const codexEnabled = await registry.openWorkspace("codex-enabled");
   const codexOnly = await registry.openWorkspace("codex-only");
   const worktreeEnabled = await registry.openWorkspace("worktree-enabled");
+  const sensitiveOptIn = await registry.openWorkspace("sensitive-opt-in");
   const policyLimited = await registry.openWorkspace("policy-limited");
 
   const writeExplanation = await runWorkspaceOperation(registry, codexEnabled, {
@@ -1054,11 +1070,127 @@ try {
     }),
     /Sensitive file read is blocked by default/,
   );
+  const sensitiveList = await runWorkspaceOperation(registry, worktreeEnabled, {
+    operation: "list_details",
+    path: ".",
+  }) as { entries: Array<{ path: string; name: string }> };
+  assert.equal(sensitiveList.entries.some((entry) => entry.name === ".env"), false);
+  assert.equal(sensitiveList.entries.some((entry) => entry.name === ".ssh"), false);
+  assert.ok(sensitiveList.entries.some((entry) => entry.name === ".env.example"));
+  const sensitiveTree = await runWorkspaceOperation(registry, worktreeEnabled, {
+    operation: "tree",
+    path: ".",
+    maxDepth: 3,
+    maxEntries: 100,
+  }) as { entries: Array<{ path: string }> };
+  assert.equal(sensitiveTree.entries.some((entry) => entry.path === ".env"), false);
+  assert.equal(sensitiveTree.entries.some((entry) => entry.path.startsWith(".ssh")), false);
+  assert.ok(sensitiveTree.entries.some((entry) => entry.path === ".env.example"));
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "stat",
+      path: ".env",
+    }),
+    /Sensitive path stat metadata is hidden by default/,
+  );
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "list_details",
+      path: ".ssh",
+    }),
+    /Sensitive path list metadata is hidden by default/,
+  );
   const envExampleRead = await runWorkspaceOperation(registry, worktreeEnabled, {
     operation: "read",
     path: ".env.example",
   }) as { content: string };
   assert.equal(envExampleRead.content, "EXAMPLE_SETTING=example\n");
+  const envExampleWrite = await runWorkspaceOperation(registry, worktreeEnabled, {
+    operation: "write",
+    path: ".env.example",
+    content: "EXAMPLE_SETTING=updated\n",
+  }) as { path: string };
+  assert.equal(envExampleWrite.path, ".env.example");
+  assert.equal(await readFile(join(workspaceRoot, ".env.example"), "utf8"), "EXAMPLE_SETTING=updated\n");
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "write",
+      path: ".env",
+      content: "SECRET=leak\n",
+    }),
+    /Sensitive path write is blocked by default/,
+  );
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "create_file",
+      path: "credentials.json",
+      content: "{}\n",
+    }),
+    /Sensitive path create is blocked by default/,
+  );
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "write_if_unchanged",
+      path: ".env",
+      content: "SECRET=changed\n",
+      expectedSha256: "0".repeat(64),
+    }),
+    /Sensitive path write is blocked by default/,
+  );
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "patch",
+      patch: [
+        "diff --git a/.env b/.env",
+        "--- a/.env",
+        "+++ b/.env",
+        "@@ -1 +1 @@",
+        "-HIDDEN_SETTING=blocked-value",
+        "+HIDDEN_SETTING=changed",
+        "",
+      ].join("\n"),
+    }),
+    /Sensitive path patch is blocked by default/,
+  );
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "delete",
+      path: "sensitive-parent",
+      recursive: true,
+    }),
+    /contains sensitive-parent\/\.env/,
+  );
+  await assert.rejects(
+    () => runWorkspaceOperation(registry, worktreeEnabled, {
+      operation: "move",
+      fromPath: "sensitive-parent",
+      toPath: "moved-sensitive-parent",
+    }),
+    /contains sensitive-parent\/\.env/,
+  );
+  assert.equal(await readFile(join(workspaceRoot, "sensitive-parent", ".env"), "utf8"), "nested-secret\n");
+  const optInSensitiveList = await runWorkspaceOperation(registry, sensitiveOptIn, {
+    operation: "list_details",
+    path: ".",
+  }) as { entries: Array<{ name: string }> };
+  assert.ok(optInSensitiveList.entries.some((entry) => entry.name === ".env"));
+  assert.ok(optInSensitiveList.entries.some((entry) => entry.name === ".ssh"));
+  const optInWrite = await runWorkspaceOperation(registry, sensitiveOptIn, {
+    operation: "write",
+    path: ".env",
+    content: "HIDDEN_SETTING=updated\n",
+  }) as { path: string };
+  assert.equal(optInWrite.path, ".env");
+  assert.equal(await readFile(join(workspaceRoot, ".env"), "utf8"), "HIDDEN_SETTING=updated\n");
+  const optInReadForHash = await runWorkspaceOperation(registry, sensitiveOptIn, {
+    operation: "write_if_unchanged",
+    path: ".env",
+    content: "HIDDEN_SETTING=changed-again\n",
+    expectedSha256: sha256("HIDDEN_SETTING=updated\n"),
+  }) as { written: boolean; conflict: boolean };
+  assert.equal(optInReadForHash.written, true);
+  assert.equal(optInReadForHash.conflict, false);
+  assert.equal(await readFile(join(workspaceRoot, ".env"), "utf8"), "HIDDEN_SETTING=changed-again\n");
 
   const createdFile = await runWorkspaceOperation(registry, worktreeEnabled, {
     operation: "create_file",
@@ -1570,4 +1702,8 @@ async function waitForProcessGone(pid: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error(`process did not exit: ${pid}`);
+}
+
+function sha256(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
 }

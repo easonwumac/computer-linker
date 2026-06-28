@@ -20,6 +20,7 @@ import { workspaceLinkerVersion } from "./package-metadata.js";
 import { PermissionDeniedError } from "./permissions.js";
 import { connectionProfile } from "./profile.js";
 import { screenshotCapability } from "./screenshot.js";
+import { sensitivePathPolicySummary, type SensitivePathPolicySummary } from "./sensitive-files.js";
 import { httpMcpSessionIdleTimeoutMs } from "./sessions.js";
 import { listTunnelProcesses, type TunnelProcessSnapshot } from "./tunnels.js";
 import { WorkspaceRegistry } from "./workspaces.js";
@@ -77,6 +78,7 @@ interface ComputerInfoScope {
     screen?: boolean;
   };
   policy: unknown;
+  sensitivePaths: SensitivePathPolicySummary;
   capabilityPolicy: unknown;
   allowedOperations: string[];
   unavailableOperations: Array<{ operation: string; reason?: string }>;
@@ -156,6 +158,7 @@ export function getComputerInfo(options: ComputerInfoOptions = {}): unknown {
       },
       permissions: workspace.permissions,
       policy: workspace.policy ?? {},
+      sensitivePaths: sensitivePathPolicySummary(workspace.policy),
       capabilityPolicy: workspaceCapabilityPolicy(workspace.permissions),
       allowedOperations: allowedWorkspaceOperations(workspace.permissions),
       unavailableOperations: unavailableWorkspaceOperations(workspace.permissions),

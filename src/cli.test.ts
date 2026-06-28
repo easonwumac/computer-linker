@@ -1785,6 +1785,32 @@ try {
   assert.deepEqual(updatedPolicy.policy.deniedCommands, ["rm -rf *"]);
   assert.equal(updatedPolicy.policy.maxRuntimeSeconds, 600);
   assert.equal(updatedPolicy.policy.allowShellMetacharacters, false);
+  const sensitivePathPolicy = JSON.parse((await runCliOutput(
+    "config",
+    "policy",
+    "app",
+    "--allow-sensitive-path-metadata",
+    "--allow-sensitive-path-writes",
+    "--json",
+  )).stdout) as {
+    policy: { allowSensitivePathMetadata?: boolean; allowSensitivePathWrites?: boolean };
+  };
+  assert.equal(sensitivePathPolicy.policy.allowSensitivePathMetadata, true);
+  assert.equal(sensitivePathPolicy.policy.allowSensitivePathWrites, true);
+  const sensitivePathPolicyText = (await runCliOutput("config", "policy", "app")).stdout;
+  assert.match(sensitivePathPolicyText, /allowSensitivePathMetadata: true/);
+  assert.match(sensitivePathPolicyText, /allowSensitivePathWrites: true/);
+  const blockedSensitiveMetadataPolicy = JSON.parse((await runCliOutput(
+    "config",
+    "policy",
+    "app",
+    "--block-sensitive-path-metadata",
+    "--json",
+  )).stdout) as {
+    policy: { allowSensitivePathMetadata?: boolean; allowSensitivePathWrites?: boolean };
+  };
+  assert.equal(blockedSensitiveMetadataPolicy.policy.allowSensitivePathMetadata, false);
+  assert.equal(blockedSensitiveMetadataPolicy.policy.allowSensitivePathWrites, true);
   await assert.rejects(
     () => runCliOutput("config", "policy", "missing"),
     /Unknown workspace: missing/,
@@ -1796,6 +1822,10 @@ try {
   await assert.rejects(
     () => runCliOutput("config", "policy", "app", "--allow-shell-metacharacters", "--block-shell-metacharacters"),
     /cannot combine --allow-shell-metacharacters and --block-shell-metacharacters/,
+  );
+  await assert.rejects(
+    () => runCliOutput("config", "policy", "app", "--allow-sensitive-path-writes", "--block-sensitive-path-writes"),
+    /cannot combine --allow-sensitive-path-writes and --block-sensitive-path-writes/,
   );
   await runCli("config", "clear-public-url");
   assert.equal(loadConfig().publicBaseUrl, undefined);

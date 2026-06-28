@@ -14,6 +14,7 @@ import { listManagedProcesses, readManagedProcess, startManagedProcess, stopMana
 import { captureScreenshot, listScreenshotTargets, screenshotCapability, type ScreenshotCaptureOptions } from "./screenshot.js";
 import { findFiles, searchSymbols, searchText } from "./search.js";
 import { sanitizeGitPatchOutput } from "./git-output.js";
+import { assertSensitivePathMutationAllowed } from "./sensitive-files.js";
 import { formatWorkspacePath, WorkspaceRegistry, type Workspace } from "./workspaces.js";
 
 export const workspaceOperationNames = [
@@ -1398,7 +1399,7 @@ async function runFileSearchOperation(
       const path = required(input.path, "path");
       const content = requiredRaw(input.content, "content");
       const expectedSha256 = required(input.expectedSha256, "expectedSha256").toLowerCase();
-      const current = await registry.readFile(workspace.id, path);
+      const current = await registry.readFileForMutationCheck(workspace.id, path);
       const currentSha256 = sha256(current);
       if (currentSha256 !== expectedSha256) {
         return {
@@ -3032,6 +3033,7 @@ async function validatePatchPaths(registry: WorkspaceRegistry, workspace: Worksp
       throw new Error(`Patch path is not allowed: ${path}`);
     }
     await registry.resolveWritablePath(workspace, path);
+    assertSensitivePathMutationAllowed(path, workspace.exposedPath.policy, "patch");
   }
 }
 

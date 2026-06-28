@@ -1,4 +1,6 @@
 import { basename, dirname } from "node:path";
+import { operationError } from "./operation-errors.js";
+import type { WorkspacePolicy } from "./permissions.js";
 
 const SENSITIVE_DIRECTORY_NAMES = new Set([
   ".aws",
@@ -29,6 +31,8 @@ const ALLOWED_EXAMPLE_FILE_NAMES = new Set([
   ".env.sample",
   ".env.template",
 ]);
+
+export const ALLOWED_SENSITIVE_EXAMPLE_FILE_NAMES = [...ALLOWED_EXAMPLE_FILE_NAMES].sort();
 
 const SENSITIVE_EXTENSIONS = [
   ".key",
@@ -93,8 +97,68 @@ export function isSensitiveWorkspacePath(path: string): boolean {
 
 export function assertNonSensitiveWorkspacePath(path: string, operation = "read"): void {
   if (!isSensitiveWorkspacePath(path)) return;
-  throw new Error(
+  throw operationError("permission_denied",
     `Sensitive file ${operation} is blocked by default: ${path}. ` +
       "Move secrets outside the workspace before exposing it to an MCP client.",
+  );
+}
+
+export interface SensitivePathPolicySummary {
+  contentReads: "blocked";
+  textSearch: "excluded";
+  metadata: "hidden" | "visible";
+  writes: "blocked" | "allowed";
+  allowedExampleFiles: string[];
+  policyFlags: {
+    allowSensitivePathMetadata: boolean;
+    allowSensitivePathWrites: boolean;
+  };
+}
+
+export function sensitivePathPolicySummary(policy: WorkspacePolicy | undefined): SensitivePathPolicySummary {
+  return {
+    contentReads: "blocked",
+    textSearch: "excluded",
+    metadata: policy?.allowSensitivePathMetadata ? "visible" : "hidden",
+    writes: policy?.allowSensitivePathWrites ? "allowed" : "blocked",
+    allowedExampleFiles: ALLOWED_SENSITIVE_EXAMPLE_FILE_NAMES,
+    policyFlags: {
+      allowSensitivePathMetadata: policy?.allowSensitivePathMetadata === true,
+      allowSensitivePathWrites: policy?.allowSensitivePathWrites === true,
+    },
+  };
+}
+
+export function canExposeSensitivePathMetadata(path: string, policy: WorkspacePolicy | undefined): boolean {
+  return !isSensitiveWorkspacePath(path) || policy?.allowSensitivePathMetadata === true;
+}
+
+export function canMutateSensitivePath(path: string, policy: WorkspacePolicy | undefined): boolean {
+  return !isSensitiveWorkspacePath(path) || policy?.allowSensitivePathWrites === true;
+}
+
+export function assertSensitivePathMetadataAllowed(
+  path: string,
+  policy: WorkspacePolicy | undefined,
+  operation = "metadata",
+): void {
+  if (canExposeSensitivePathMetadata(path, policy)) return;
+  throw operationError(
+    "permission_denied",
+    `Sensitive path ${operation} metadata is hidden by default: ${path}. ` +
+      "Set workspace policy allowSensitivePathMetadata=true to expose sensitive path names, sizes, and timestamps.",
+  );
+}
+
+export function assertSensitivePathMutationAllowed(
+  path: string,
+  policy: WorkspacePolicy | undefined,
+  operation = "write",
+): void {
+  if (canMutateSensitivePath(path, policy)) return;
+  throw operationError(
+    "permission_denied",
+    `Sensitive path ${operation} is blocked by default: ${path}. ` +
+      "Set workspace policy allowSensitivePathWrites=true to mutate sensitive paths.",
   );
 }

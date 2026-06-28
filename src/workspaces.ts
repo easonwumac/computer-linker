@@ -9,7 +9,13 @@ import {
   type ResolvedExposedPath,
 } from "./permissions.js";
 import { operationError } from "./operation-errors.js";
-import { assertNonSensitiveWorkspacePath } from "./sensitive-files.js";
+import {
+  assertNonSensitiveWorkspacePath,
+  assertSensitivePathMetadataAllowed,
+  assertSensitivePathMutationAllowed,
+  canExposeSensitivePathMetadata,
+  isSensitiveWorkspacePath,
+} from "./sensitive-files.js";
 import { assertConfiguredWorkspaceRootDirectory } from "./workspace-roots.js";
 
 export interface Workspace {
@@ -155,6 +161,7 @@ export class WorkspaceRegistry {
     const workspace = this.getWorkspace(workspaceId);
     assertPermission(workspace.exposedPath, "write");
     const absolutePath = await this.resolveWritablePath(workspace, path);
+    assertSensitivePathMutationAllowed(formatWorkspacePath(absolutePath, workspace), workspace.exposedPath.policy, "write");
     await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, content, "utf8");
   }
@@ -163,6 +170,7 @@ export class WorkspaceRegistry {
     const workspace = this.getWorkspace(workspaceId);
     assertPermission(workspace.exposedPath, "write");
     const absolutePath = await this.resolveWritablePath(workspace, path);
+    assertSensitivePathMutationAllowed(formatWorkspacePath(absolutePath, workspace), workspace.exposedPath.policy, "create");
     await mkdir(dirname(absolutePath), { recursive: true });
     try {
       await writeFile(absolutePath, content, { encoding: "utf8", flag: "wx" });
@@ -174,10 +182,18 @@ export class WorkspaceRegistry {
     }
   }
 
-  async editFile(workspaceId: string, path: string, oldText: string, newText: string): Promise<number> {
-    const current = await this.readFile(workspaceId, path);
+  async readFileForMutationCheck(workspaceId: string, path: string): Promise<string> {
     const workspace = this.getWorkspace(workspaceId);
     assertPermission(workspace.exposedPath, "write");
+    const absolutePath = await this.resolveExistingPath(workspace, path);
+    assertSensitivePathMutationAllowed(formatWorkspacePath(absolutePath, workspace), workspace.exposedPath.policy, "write");
+    return readFile(absolutePath, "utf8");
+  }
+
+  async editFile(workspaceId: string, path: string, oldText: string, newText: string): Promise<number> {
+    const workspace = this.getWorkspace(workspaceId);
+    assertPermission(workspace.exposedPath, "write");
+    const current = await this.readFileForMutationCheck(workspaceId, path);
     const matches = current.split(oldText).length - 1;
     if (matches !== 1) {
       throw new Error(`edit_file expected exactly one match, found ${matches}`);
@@ -196,10 +212,14 @@ export class WorkspaceRegistry {
     const workspace = this.getWorkspace(workspaceId);
     assertPermission(workspace.exposedPath, "read");
     const directory = await this.resolveExistingPath(workspace, path);
+    assertSensitivePathMetadataAllowed(formatWorkspacePath(directory, workspace), workspace.exposedPath.policy, "list");
     const entries = await opendir(directory);
     const results: WorkspacePathInfo[] = [];
     for await (const entry of entries) {
-      results.push(await pathInfo(join(directory, entry.name), workspace));
+      const entryPath = join(directory, entry.name);
+      const workspacePath = formatWorkspacePath(entryPath, workspace);
+      if (!canExposeSensitivePathMetadata(workspacePath, workspace.exposedPath.policy)) continue;
+      results.push(await pathInfo(entryPath, workspace));
     }
     return results.sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -208,6 +228,7 @@ export class WorkspaceRegistry {
     const workspace = this.getWorkspace(workspaceId);
     assertPermission(workspace.exposedPath, "read");
     const root = await this.resolveExistingPath(workspace, path);
+    assertSensitivePathMetadataAllowed(formatWorkspacePath(root, workspace), workspace.exposedPath.policy, "tree");
     const maxDepth = normalizePositiveInteger(options.maxDepth, 2, 1000);
     const maxEntries = normalizePositiveInteger(options.maxEntries, 200, 1000);
     const includeFiles = options.includeFiles ?? true;
@@ -231,6 +252,8 @@ export class WorkspaceRegistry {
 
       for (const entryPath of paths) {
         if (results.length >= maxEntries) return;
+        const workspacePath = formatWorkspacePath(entryPath, workspace);
+        if (!canExposeSensitivePathMetadata(workspacePath, workspace.exposedPath.policy)) continue;
         const info = await pathInfo(entryPath, workspace);
         if (includeFiles || info.type === "directory") results.push(info);
         if (info.type === "directory" && depth < maxDepth) {
@@ -283,6 +306,7 @@ export class WorkspaceRegistry {
     assertPermission(workspace.exposedPath, "read");
     const absolutePath = this.resolvePath(workspace, path);
     await assertRealPathInside(workspace, absolutePath, path);
+    assertSensitivePathMetadataAllowed(formatWorkspacePath(absolutePath, workspace), workspace.exposedPath.policy, "stat");
     return pathInfo(absolutePath, workspace);
   }
 
@@ -303,6 +327,7 @@ export class WorkspaceRegistry {
     assertPermission(workspace.exposedPath, "write");
     const absolutePath = this.resolvePath(workspace, path);
     await assertRealPathInside(workspace, await nearestExistingParent(absolutePath), path);
+    assertSensitivePathMutationAllowed(formatWorkspacePath(absolutePath, workspace), workspace.exposedPath.policy, "mkdir");
     await mkdir(absolutePath, { recursive: true });
   }
 
@@ -312,6 +337,7 @@ export class WorkspaceRegistry {
     const absolutePath = this.resolvePath(workspace, path);
     await assertRealPathInside(workspace, absolutePath, path);
     assertNotWorkspaceRoot(workspace, absolutePath, "delete");
+    await assertSensitivePathTreeMutationAllowed(workspace, absolutePath, "delete");
     await rm(absolutePath, { recursive, force: false });
   }
 
@@ -322,6 +348,8 @@ export class WorkspaceRegistry {
     const absoluteToPath = await this.resolveWritablePath(workspace, toPath);
     await assertRealPathInside(workspace, absoluteFromPath, fromPath);
     assertNotWorkspaceRoot(workspace, absoluteFromPath, "move");
+    await assertSensitivePathTreeMutationAllowed(workspace, absoluteFromPath, "move");
+    assertSensitivePathMutationAllowed(formatWorkspacePath(absoluteToPath, workspace), workspace.exposedPath.policy, "move");
     await mkdir(dirname(absoluteToPath), { recursive: true });
     await rename(absoluteFromPath, absoluteToPath);
   }
@@ -353,6 +381,51 @@ async function assertRealPathInside(workspace: Workspace, path: string, inputPat
   if (!isPathInsideRoot(realPath, workspace.root) || !isPathInsideRoot(realPath, workspace.exposedPath.path)) {
     throw operationError("path_out_of_scope", `Path resolves outside workspace: ${inputPath}`);
   }
+}
+
+async function assertSensitivePathTreeMutationAllowed(workspace: Workspace, path: string, operation: string): Promise<void> {
+  const workspacePath = formatWorkspacePath(path, workspace);
+  assertSensitivePathMutationAllowed(workspacePath, workspace.exposedPath.policy, operation);
+  if (workspace.exposedPath.policy?.allowSensitivePathWrites === true) return;
+  let info;
+  try {
+    info = await lstat(path);
+  } catch {
+    return;
+  }
+  if (!info.isDirectory()) return;
+  const sensitiveDescendants = await sensitiveDescendantPaths(path, workspace);
+  if (sensitiveDescendants.length === 0) return;
+  throw operationError(
+    "permission_denied",
+    `Sensitive path ${operation} is blocked by default: ${workspacePath} contains ${sensitiveDescendants.join(", ")}. ` +
+      "Set workspace policy allowSensitivePathWrites=true to mutate sensitive paths.",
+  );
+}
+
+async function sensitiveDescendantPaths(root: string, workspace: Workspace): Promise<string[]> {
+  const found: string[] = [];
+  const walk = async (directory: string): Promise<void> => {
+    if (found.length >= 10) return;
+    let entries;
+    try {
+      entries = await opendir(directory);
+    } catch {
+      return;
+    }
+    for await (const entry of entries) {
+      if (found.length >= 10) return;
+      const entryPath = join(directory, entry.name);
+      const workspacePath = formatWorkspacePath(entryPath, workspace);
+      if (isSensitiveWorkspacePath(workspacePath)) {
+        found.push(workspacePath);
+        continue;
+      }
+      if (entry.isDirectory()) await walk(entryPath);
+    }
+  };
+  await walk(root);
+  return found;
 }
 
 async function nearestExistingParent(path: string): Promise<string> {

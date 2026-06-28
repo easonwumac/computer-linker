@@ -319,6 +319,13 @@ Broad allow patterns such as `npm *` and `git *` do not permit command
 chaining by default; `npm test && ...`, `git status; ...`, pipes, redirects,
 command substitution, and Windows `cmd` escapes are rejected before wildcard
 matching. Advanced raw shell syntax is an explicit per-scope trust decision.
+Sensitive path policy is also per scope. By default, sensitive file contents are
+blocked from direct reads and excluded from text search, sensitive path metadata
+is hidden from list/tree/stat and derived context operations, and sensitive path
+mutation is blocked for write/create/edit/write-if-unchanged/patch/move/delete
+operations. Example files such as `.env.example`, `.env.sample`, and
+`.env.template` stay visible and writable. Trusted local scopes can explicitly
+set `allowSensitivePathMetadata` and `allowSensitivePathWrites`.
 
 These operations are intentionally flagged by security diagnostics. Computer Linker
 sets the working directory to the workspace, but a normal OS shell or Codex
