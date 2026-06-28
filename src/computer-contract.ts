@@ -522,15 +522,16 @@ export function getOperationHistory(input: Record<string, unknown>): unknown {
 
 export function normalizeComputerOperationInput(
   envelope: ComputerOperationEnvelope,
-  workspaceOperation = stringValue(envelope.op, "op"),
+  workspaceOperation?: string,
 ): WorkspaceOperationInput {
   const sourceOp = stringValue(envelope.op, "op");
+  const operation = workspaceOperation ?? computerOperationName(sourceOp);
   const mappedInput = {
     ...(envelope.input ?? {}),
     ...historyViewInput(sourceOp),
   };
   return normalizeWorkspaceOperationInput({
-    operation: workspaceOperation,
+    operation,
     target: envelope.target,
     input: mappedInput,
     options: envelope.options ?? {},

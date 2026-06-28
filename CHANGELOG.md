@@ -61,6 +61,11 @@ called out even when the package version is still `0.x`.
 - `get_computer_info` now honors section-based `include` filters for smaller
   discovery payloads and derives its readiness status from configured scopes,
   public-exposure auth, recommended tools, and runtime-unavailable operations.
+- `computer_operation` contract tests now validate public registry examples,
+  default public-op normalization, and representative runtime success/failure
+  envelopes against `docs/computer-operation-v1.schema.json`.
+- `target` now maps to `fromPath` for move operations, so `file.move` can use
+  the same simple target/input shape as other file operations.
 
 ## 0.1.11 - 2026-06-27
 

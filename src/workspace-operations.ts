@@ -834,6 +834,7 @@ export const workspaceOperationContract: WorkspaceOperationContract = {
     screen_capture_process: "processIdOrName",
     explain_operation: "operationName",
     git_worktree_create: "toPath",
+    move: "fromPath",
   },
   guidance: [
     "Keep the outer envelope stable: workspace/workspaceId, op, target, input, options.",
@@ -1134,6 +1135,10 @@ function applyTarget(operation: WorkspaceOperationName, target: unknown, merged:
   }
   if (operation === "git_worktree_create") {
     merged.toPath ??= value;
+    return;
+  }
+  if (operation === "move") {
+    merged.fromPath ??= value;
     return;
   }
   merged.path ??= value;
