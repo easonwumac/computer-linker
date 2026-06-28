@@ -19,6 +19,8 @@ try {
   process.env.LOCALPORT_CONFIG_DIR = configRoot;
   await mkdirPath(workspaceRoot, { recursive: true });
   await mkdirPath(fakeBinRoot, { recursive: true });
+  await installFakeCodex(fakeBinRoot);
+  process.env.PATH = [fakeBinRoot, originalPath ?? ""].filter(Boolean).join(delimiter);
   await mkdirPath(join(workspaceRoot, "src"), { recursive: true });
   await mkdirPath(join(workspaceRoot, ".codex", "skills", "api-helper"), { recursive: true });
   await writeFile(join(workspaceRoot, "hello.txt"), "hello from LocalPort\n", "utf8");
@@ -85,6 +87,17 @@ try {
           allowedCommands: ["node *", "npm *"],
           allowedPackageScripts: ["test"],
           deniedPackageScripts: ["deploy"],
+        },
+      },
+      {
+        id: "codexer",
+        name: "Codex runner",
+        path: workspaceRoot,
+        permissions: { read: true, write: false, shell: false, codex: true },
+        policy: {
+          allowedCommands: ["codex *"],
+          maxRuntimeSeconds: 60,
+          maxOutputBytes: 200000,
         },
       },
     ],
@@ -176,7 +189,7 @@ try {
     assert.equal(workspaces.status, 200);
     assert.equal(workspaces.body.ok, true);
     assert.match(workspaces.body.data.machineId, /^machine_/);
-    assert.equal(workspaces.body.data.workspaces.length, 3);
+    assert.equal(workspaces.body.data.workspaces.length, 4);
     assert.equal(workspaces.body.data.workspaces[0].id, "app");
     assert.ok(workspaces.body.data.workspaces[0].allowedOperations.includes("read"));
     assert.ok(workspaces.body.data.workspaces[0].allowedOperations.includes("coding_context"));
@@ -746,6 +759,53 @@ try {
     assert.equal(typeof screenList.body.data.data.provider, "string");
     assert.ok(Array.isArray(screenList.body.data.data.displays));
 
+    const codexStart = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "codexer",
+      op: "codex.start",
+      target: ".",
+      input: { prompt: "api codex session" },
+      options: { timeoutSeconds: 5 },
+    });
+    assert.equal(codexStart.status, 200);
+    assert.equal(codexStart.body.data.ok, true);
+    assert.match(codexStart.body.data.data.sessionId, /^proc_/);
+    assert.equal(codexStart.body.data.data.sessionId, codexStart.body.data.data.process.processId);
+    assert.equal(codexStart.body.data.data.process.kind, "codex");
+
+    const codexRead = await waitForComputerCodexSession(codexStart.body.data.data.sessionId, "stdin=api codex session");
+    assert.equal(codexRead.body.data.data.sessionId, codexStart.body.data.data.sessionId);
+    assert.equal(codexRead.body.data.data.session.processId, codexStart.body.data.data.sessionId);
+    assert.equal(codexRead.body.data.data.process.processId, codexStart.body.data.data.sessionId);
+    assert.match(codexRead.body.data.data.session.stdout, /args=exec -/);
+    assert.match(codexRead.body.data.data.session.stdout, /stdin=api codex session/);
+    assert.equal(codexRead.body.data.data.session.stderr, "api-codex-err");
+
+    const codexList = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "codexer",
+      op: "codex.list",
+      options: { maxResults: 10 },
+    });
+    assert.equal(codexList.status, 200);
+    assert.equal(codexList.body.data.ok, true);
+    assert.ok(codexList.body.data.data.sessions.some((session: { processId: string; kind: string }) => (
+      session.processId === codexStart.body.data.data.sessionId &&
+      session.kind === "codex"
+    )));
+    assert.ok(Array.isArray(codexList.body.data.data.runs));
+
+    const codexStop = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "codexer",
+      op: "codex.stop",
+      target: codexStart.body.data.data.sessionId,
+    });
+    assert.equal(codexStop.status, 200);
+    assert.equal(codexStop.body.data.ok, true);
+    assert.equal(codexStop.body.data.data.process.processId, codexStart.body.data.data.sessionId);
+    assert.equal(codexStop.body.data.data.process.kind, "codex");
+
     const genericOperationHistory = await postJson("/api/v1/control", {
       action: "get_operation_history",
       input: { scope: "app", view: "last", query: "file.search", limit: 20 },
@@ -1175,7 +1235,7 @@ try {
     assert.equal(typeof capabilities.body.data.codingCapabilities.fastSearch, "boolean");
     assert.equal(capabilities.body.data.codingCapabilities.agentSkills, true);
     assert.equal(capabilities.body.data.codingCapabilities.shellExecution, true);
-    assert.equal(capabilities.body.data.codingCapabilities.codexExecution, false);
+    assert.equal(capabilities.body.data.codingCapabilities.codexExecution, true);
     assert.equal(typeof capabilities.body.data.codingCapabilities.gitWorktrees, "boolean");
     assert.equal(capabilities.body.data.codingCapabilities.durableHistory, true);
     assert.match(capabilities.body.data.security.boundaryModel.workspaceCwdOnly, /not OS filesystem sandboxes/);
@@ -1230,9 +1290,9 @@ try {
     assert.match(controlDoctor.body.data.startup.service.profileBundleCommand, /service profile --platform/);
     assert.equal(typeof controlDoctor.body.data.readyForTunnel, "boolean");
     assert.equal(controlDoctor.body.data.auth.ownerTokenConfigured, true);
-    assert.equal(controlDoctor.body.data.workspaces.total, 3);
+    assert.equal(controlDoctor.body.data.workspaces.total, 4);
     assert.equal(controlDoctor.body.data.workspaces.shellEnabled, 1);
-    assert.equal(controlDoctor.body.data.workspaces.codexEnabled, 0);
+    assert.equal(controlDoctor.body.data.workspaces.codexEnabled, 1);
     assert.equal(controlDoctor.body.data.releaseReadiness.kind, "computer-linker-release-readiness");
     assert.equal(controlDoctor.body.data.releaseReadiness.recommendedGate, "npm run product:check");
     assert.ok(controlDoctor.body.data.releaseReadiness.checks.some((check: { id: string }) => check.id === "command-policy"));
@@ -1251,7 +1311,7 @@ try {
 
     const controlWorkspaces = await control({ action: "list_workspaces" });
     assert.equal(controlWorkspaces.status, 200);
-    assert.equal(controlWorkspaces.body.data.workspaces.length, 3);
+    assert.equal(controlWorkspaces.body.data.workspaces.length, 4);
 
     const controlRead = await control({
       action: "workspace_operation",
@@ -1858,6 +1918,36 @@ try {
   await rm(root, { recursive: true, force: true });
 }
 
+async function installFakeCodex(directory: string): Promise<void> {
+  const script = [
+    "#!/usr/bin/env node",
+    "const args = process.argv.slice(2).join(' ');",
+    "if (args === '--version') {",
+    "  process.stdout.write('codex-test 0.0.0\\n');",
+    "  process.exit(0);",
+    "}",
+    "process.stdout.write(`args=${args}\\n`);",
+    "process.stdout.write(`cwd=${process.cwd()}\\n`);",
+    "process.stdout.write('stdin=');",
+    "let stdin = '';",
+    "process.stdin.setEncoding('utf8');",
+    "process.stdin.on('data', (chunk) => { stdin += chunk; });",
+    "process.stdin.on('end', () => {",
+    "  process.stdout.write(`${stdin}\\n`);",
+    "  process.stderr.write('api-codex-err');",
+    "  process.exitCode = 9;",
+    "});",
+    "",
+  ].join("\n");
+  await writeFile(join(directory, "codex"), script, "utf8");
+  await chmod(join(directory, "codex"), 0o755);
+  await writeFile(join(directory, "codex.cmd"), [
+    "@echo off",
+    "node %~dp0codex %*",
+    "",
+  ].join("\r\n"), "utf8");
+}
+
 async function installFakeCloudflared(directory: string, publicUrl: string): Promise<void> {
   const posixPath = join(directory, "cloudflared");
   await writeFile(posixPath, [
@@ -1884,6 +1974,24 @@ async function waitForDetectedTunnelUrl(publicUrl: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   throw new Error("fake tunnel public URL did not become available");
+}
+
+async function waitForComputerCodexSession(sessionId: string, stdoutNeedle: string): Promise<{ status: number; body: any }> {
+  let last: { status: number; body: any } | undefined;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    last = await postJson("/api/v1/control", {
+      action: "computer_operation",
+      scope: "codexer",
+      op: "codex.read",
+      target: sessionId,
+    });
+    const stdout = String(last.body?.data?.data?.session?.stdout ?? "");
+    if (last.status === 200 && last.body?.data?.ok === true && stdout.includes(stdoutNeedle)) {
+      return last;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Codex session ${sessionId} did not include ${stdoutNeedle}: ${JSON.stringify(last?.body)}`);
 }
 
 async function waitForApi(): Promise<void> {

@@ -535,7 +535,7 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
     operation: "codex_start",
     permission: "codex",
-    description: "Start a managed background codex exec task in the workspace. Use process_read and process_stop to inspect or stop it.",
+    description: "Start a managed background codex exec session in the workspace. Use codex_runs/process_read and process_stop to inspect or stop it.",
     requiredFields: ["prompt"],
     optionalFields: ["workingDirectory", "timeoutSeconds", "maxOutputBytes"],
     example: { operation: "codex_start", prompt: "Run the tests and summarize failures.", workingDirectory: ".", timeoutSeconds: 1800, maxOutputBytes: 200000 },
@@ -591,10 +591,10 @@ export const workspaceOperationCatalog: WorkspaceOperationCatalogEntry[] = [
   {
     operation: "codex_runs",
     permission: "codex",
-    description: "List recent persisted Codex workflow run records for this workspace, or inspect one workflow id with bounded stdout/stderr previews and change summaries.",
+    description: "Read a managed Codex session by process/session id, or list recent managed Codex sessions plus persisted workflow run records.",
     requiredFields: [],
     optionalFields: ["workflowId", "maxResults"],
-    example: { operation: "codex_runs", workflowId: "codex_fix_...", maxResults: 10 },
+    example: { operation: "codex_runs", workflowId: "proc_...", maxResults: 10 },
   },
   {
     operation: "screen_list",
@@ -1225,7 +1225,7 @@ function operationBoundaryNote(operation: WorkspaceOperationName): string {
   if (operation === "batch") return "Each child operation keeps its own permission and boundary behavior.";
   if (operation === "command" || operation === "package_run" || operation === "package_start" || operation === "process_start") return "The process starts in the workspace, but local package scripts and shell commands are not filesystem sandboxes.";
   if (isCodexExecutionOperation(operation)) return "Codex starts in the workspace, but Codex and tools it invokes may access broader OS resources.";
-  if (operation === "codex_runs") return "Returns bounded Codex workflow run records for this configured workspace without full prompts.";
+  if (operation === "codex_runs") return "Reads managed Codex sessions by session id or returns bounded Codex workflow run records without full prompts.";
   if (operation === "screen_list") return "Returns screenshot provider capability and permission metadata without capturing pixels.";
   if (operation === "screen_capture" || operation === "screen_capture_window" || operation === "screen_capture_process") return "Captures local screen pixels through the platform provider and is gated by explicit screen permission.";
   if (operation === "process_list" || operation === "process_read" || operation === "process_stop") return "Managed-process access is limited to allowed process kinds Computer Linker started for this configured workspace.";
@@ -1510,19 +1510,21 @@ async function runCodexOperation(
       const cwd = await registry.resolveExistingPath(workspace, input.workingDirectory ?? ".");
       const prompt = required(input.prompt, "prompt");
       const limits = managedCommandPolicyLimits(workspace.exposedPath.policy, "codex exec -", input);
+      const process = startManagedProcess({
+        kind: "codex",
+        workspaceId: workspace.exposedPath.id,
+        workspaceRoot: workspace.root,
+        cwd,
+        command: "codex",
+        args: ["exec", "-"],
+        commandPreview: `codex exec -: ${previewCommand(prompt)}`,
+        timeoutMs: limits.timeoutMs,
+        maxOutputBytes: limits.maxOutputBytes,
+        stdin: prompt,
+      });
       return {
-        process: startManagedProcess({
-          kind: "codex",
-          workspaceId: workspace.exposedPath.id,
-          workspaceRoot: workspace.root,
-          cwd,
-          command: "codex",
-          args: ["exec", "-"],
-          commandPreview: `codex exec -: ${previewCommand(prompt)}`,
-          timeoutMs: limits.timeoutMs,
-          maxOutputBytes: limits.maxOutputBytes,
-          stdin: prompt,
-        }),
+        sessionId: process.processId,
+        process,
       };
     }
     case "codex": {
@@ -1542,7 +1544,25 @@ async function runCodexOperation(
     }
     case "codex_runs": {
       assertPermission(workspace.exposedPath, "codex");
+      if (input.workflowId?.startsWith("proc_")) {
+        const session = readManagedProcess({
+          processId: input.workflowId,
+          workspaceId: workspace.exposedPath.id,
+          workspaceRoot: workspace.root,
+          kinds: ["codex"],
+        });
+        return {
+          sessionId: session.processId,
+          session,
+          process: session,
+        };
+      }
       return {
+        sessions: input.workflowId ? [] : listManagedProcesses({
+          workspaceId: workspace.exposedPath.id,
+          workspaceRoot: workspace.root,
+          kinds: ["codex"],
+        }),
         runs: readCodexRunRecords({
           workspaceId: workspace.exposedPath.id,
           workflowId: input.workflowId,

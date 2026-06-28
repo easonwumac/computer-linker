@@ -109,8 +109,8 @@ export interface ComputerLinkerComputerHelpers {
   codex: {
     run<T = unknown>(scope: string, prompt: string, options?: Record<string, unknown>, target?: string): Promise<T>;
     start<T = unknown>(scope: string, prompt: string, options?: Record<string, unknown>, target?: string): Promise<T>;
-    read<T = unknown>(scope: string, workflowId: string, options?: Record<string, unknown>): Promise<T>;
-    stop<T = unknown>(scope: string, processId: string, options?: Record<string, unknown>): Promise<T>;
+    read<T = unknown>(scope: string, sessionId: string, options?: Record<string, unknown>): Promise<T>;
+    stop<T = unknown>(scope: string, sessionId: string, options?: Record<string, unknown>): Promise<T>;
     list<T = unknown>(scope: string, options?: Record<string, unknown>): Promise<T>;
   };
   history: {
@@ -245,11 +245,11 @@ export function createComputerLinkerComputerHelpers(
       start: <T = unknown>(scope: string, prompt: string, options: Record<string, unknown> = {}, target = ".") => (
         computerOperation<T>({ scope, op: "codex.start", target, input: { prompt }, options })
       ),
-      read: <T = unknown>(scope: string, workflowId: string, options: Record<string, unknown> = {}) => (
-        computerOperation<T>({ scope, op: "codex.read", target: workflowId, options })
+      read: <T = unknown>(scope: string, sessionId: string, options: Record<string, unknown> = {}) => (
+        computerOperation<T>({ scope, op: "codex.read", target: sessionId, options })
       ),
-      stop: <T = unknown>(scope: string, processId: string, options: Record<string, unknown> = {}) => (
-        computerOperation<T>({ scope, op: "codex.stop", target: processId, options })
+      stop: <T = unknown>(scope: string, sessionId: string, options: Record<string, unknown> = {}) => (
+        computerOperation<T>({ scope, op: "codex.stop", target: sessionId, options })
       ),
       list: <T = unknown>(scope: string, options: Record<string, unknown> = {}) => (
         computerOperation<T>({ scope, op: "codex.list", options })

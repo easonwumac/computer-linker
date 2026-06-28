@@ -79,6 +79,12 @@ called out even when the package version is still `0.x`.
   envelopes against `docs/computer-operation-v1.schema.json`.
 - `target` now maps to `fromPath` for move operations, so `file.move` can use
   the same simple target/input shape as other file operations.
+- Codex session operations now use one public id family: `codex.start` returns
+  `sessionId`, `codex.read` and `codex.stop` accept that id, and `codex.list`
+  includes recent managed sessions plus persisted workflow records.
+- README now stays focused on first-run install, folder startup, MCP client
+  setup, tunnel basics, and pasteable agent instructions, with deeper material
+  linked through the docs map.
 - HTTP MCP sessions now expire after a bounded idle timeout, close their
   underlying transport when possible, and write redacted `expired:<id>` session
   events that are visible from operation history.

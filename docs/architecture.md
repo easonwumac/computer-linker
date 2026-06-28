@@ -513,15 +513,16 @@ Search is a first-class coding API:
   for dev servers and watch tasks after the same policy checks
 - `process_start` / `process_list` / `process_read` / `process_stop`: manage
   long-running workspace shell processes such as dev servers and watch tasks
-- `codex_start`: start a long-running managed Codex job that can be inspected
-  or stopped with the same process operations
+- `codex_start`: start a long-running managed Codex session and return a
+  `sessionId`; public `codex.read` and `codex.stop` accept that same id
 - `codex_plan` / `codex_review` / `codex_fix` / `codex_test` /
   `codex_continue`: higher-level Codex workflows that wrap `codex exec -` with
   stable prompts, workflow metadata, history/change context, and structured
   stdout/stderr results
-- `codex_runs`: list persisted Codex workflow records for the workspace, or
-  inspect one workflow id with bounded stdout/stderr previews, exit metadata,
-  pre/post change summaries, and continuation history references
+- `codex_runs`: read a managed Codex session by `sessionId`, or list recent
+  managed sessions plus persisted Codex workflow records for compatibility.
+  Persisted workflow records keep bounded stdout/stderr previews, exit
+  metadata, pre/post change summaries, and continuation history references
 
 File, text, and symbol search prefer `rg` for fast candidate discovery and fall
 back to built-in scanners if `rg` is missing. Future versions can back

@@ -541,8 +541,11 @@ expanding the public surface.
 
 Contract details:
 
-- `target` is the working directory or existing Codex session id, depending on
-  the operation.
+- `codex.run` and `codex.start` use `target` as the working directory.
+- `codex.read` and `codex.stop` use `target` as the `sessionId` returned by
+  `codex.start`.
+- `codex.list` returns recent managed sessions and may also include persisted
+  workflow records kept for compatibility.
 - `input.prompt` is required for `codex.run` and `codex.start`.
 - Codex runs inherit command policy plus `codex:run`.
 - Codex must run with the configured current working directory.
@@ -554,7 +557,6 @@ Contract details:
 
 ```json
 {
-  "sessionId": "codex_...",
   "exitCode": 0,
   "stdout": "...",
   "stderr": "...",
@@ -562,6 +564,19 @@ Contract details:
     "changedFiles": 2,
     "insertions": 20,
     "deletions": 4
+  }
+}
+```
+
+`codex.start` result:
+
+```json
+{
+  "sessionId": "proc_...",
+  "process": {
+    "processId": "proc_...",
+    "kind": "codex",
+    "status": "running"
   }
 }
 ```

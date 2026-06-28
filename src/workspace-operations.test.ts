@@ -719,12 +719,14 @@ try {
     prompt: "background review",
     timeoutSeconds: 5,
   }) as {
+    sessionId: string;
     process: {
       processId: string;
       kind: string;
       commandPreview: string;
     };
   };
+  assert.equal(startedCodex.sessionId, startedCodex.process.processId);
   assert.match(startedCodex.process.processId, /^proc_/);
   assert.equal(startedCodex.process.kind, "codex");
   assert.match(startedCodex.process.commandPreview, /background review/);
@@ -740,6 +742,25 @@ try {
   assert.match(codexProcessRead.process.stdout, /args=exec -/);
   assert.match(codexProcessRead.process.stdout, /stdin=background review/);
   assert.equal(codexProcessRead.process.stderr, "codex-err");
+
+  const codexSessionRead = await runWorkspaceOperation(registry, codexOnly, {
+    operation: "codex_runs",
+    workflowId: startedCodex.sessionId,
+  }) as { sessionId: string; session: { processId: string; kind: string; stdout: string }; process: { processId: string } };
+  assert.equal(codexSessionRead.sessionId, startedCodex.sessionId);
+  assert.equal(codexSessionRead.session.processId, startedCodex.sessionId);
+  assert.equal(codexSessionRead.session.kind, "codex");
+  assert.equal(codexSessionRead.process.processId, startedCodex.sessionId);
+  assert.match(codexSessionRead.session.stdout, /stdin=background review/);
+
+  const codexSessionList = await runWorkspaceOperation(registry, codexOnly, {
+    operation: "codex_runs",
+  }) as { sessions: Array<{ processId: string; kind: string }>; runs: unknown[] };
+  assert.ok(codexSessionList.sessions.some((session) => (
+    session.processId === startedCodex.sessionId &&
+    session.kind === "codex"
+  )));
+  assert.ok(Array.isArray(codexSessionList.runs));
 
   const codexProcessList = await runWorkspaceOperation(registry, codexOnly, {
     operation: "process_list",

@@ -374,10 +374,11 @@ it to call
 `view: "debug_bundle"` before retrying. In `failed_replay`, ChatGPT can submit
 `replayable: true` `request.action: "computer_operation"` templates directly;
 when `requiresInput` is present, it must ask for or reconstruct the missing
-file content, command, or Codex prompt before retrying. After using
-`codex.run` or `codex.start`, ChatGPT can call
-`codex.read` with the returned workflow id to inspect the stored run summary
-later.
+file content, command, or Codex prompt before retrying. After `codex.start`,
+ChatGPT can call `codex.read` with the returned `sessionId`, call
+`codex.stop` with the same id when needed, and use `codex.list` to inspect
+recent managed sessions plus persisted workflow records. `codex.run` remains
+the simple run-and-wait path.
 
 If the connector is not reachable yet, use the same history insight locally:
 

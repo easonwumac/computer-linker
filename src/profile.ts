@@ -506,7 +506,7 @@ function chatGptWorkflowRecipes(mode: ChatGptProfileMode): ChatGptWorkflowRecipe
       steps: [
         { tool: "get_computer_info", why: "Confirm Codex operations are permitted before invoking local Codex." },
         { tool: "computer_operation", input: { scope: "app", op: "codex.run", target: ".", input: { prompt: "Inspect this workspace and propose the smallest safe implementation plan." }, options: { timeoutSeconds: 1800 } }, why: "Ask Codex for a bounded task." },
-        { tool: "computer_operation", input: { scope: "app", op: "codex.list", target: ".", input: {}, options: { maxResults: 5 } }, why: "Inspect recent Codex run records when needed." },
+        { tool: "computer_operation", input: { scope: "app", op: "codex.list", input: {}, options: { maxResults: 5 } }, why: "Inspect recent Codex sessions and workflow records when needed." },
       ],
     });
   }
@@ -579,7 +579,7 @@ function chatGptModeSpec(mode: ChatGptProfileMode): {
         "Full mode may use write, command, process, and Codex operations only when allowedOperations includes the mapped operation.",
         "Ask before destructive file deletes, broad moves, git commits, long-running processes, or commands that install, publish, deploy, or modify external services.",
         "Use codex.run or codex.start only for trusted local coding tasks.",
-        "After a Codex workflow, use codex.read or codex.list when you need stdout/stderr previews, exit metadata, or the stored change summary later.",
+        "After codex.start, use codex.read or codex.stop with the returned sessionId; use codex.list for recent sessions and persisted workflow records.",
         "Use file.patch for edits when possible.",
       ],
     };
@@ -610,7 +610,7 @@ function chatGptModeSpec(mode: ChatGptProfileMode): {
     instructions: [
       "Coding mode may edit files, but should treat command, process, and Codex operations as higher-risk actions.",
       "Use codex.run or codex.start only for trusted local coding tasks.",
-      "After a Codex workflow, use codex.read or codex.list when you need stdout/stderr previews, exit metadata, or the stored change summary later.",
+      "After codex.start, use codex.read or codex.stop with the returned sessionId; use codex.list for recent sessions and persisted workflow records.",
       "Use file.patch for edits when possible.",
     ],
   };
