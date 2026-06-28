@@ -633,14 +633,14 @@ try {
   assert.equal(policyCommand.stdoutTruncated, true);
   assert.equal(policyCommand.stderrTruncated, true);
 
-  const policyNpmCommand = await runWorkspaceOperation(registry, policyLimited, {
+  const policyPackageManagerCommand = await runWorkspaceOperation(registry, policyLimited, {
     operation: "command",
-    command: "npm test",
+    command: "pnpm test",
     maxOutputBytes: 50,
   }) as ProcessResult;
-  assert.equal(policyNpmCommand.exitCode, 0);
-  assert.equal(policyNpmCommand.stdout, "npm-a");
-  assert.equal(policyNpmCommand.stdoutTruncated, true);
+  assert.equal(policyPackageManagerCommand.exitCode, 3);
+  assert.equal(policyPackageManagerCommand.stdout, "pnpm-");
+  assert.equal(policyPackageManagerCommand.stdoutTruncated, true);
 
   const policyPackageRun = await runWorkspaceOperation(registry, policyLimited, {
     operation: "package_run",

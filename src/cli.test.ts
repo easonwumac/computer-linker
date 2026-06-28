@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -2423,7 +2423,7 @@ try {
   const oneCommandWorkspace = config.workspaces.find((workspace) => workspace.id === "one-command");
   assert.equal(config.port, oneCommandPort);
   assert.equal(oneCommandWorkspace?.name, "one-command");
-  assert.equal(oneCommandWorkspace?.path, oneCommandRoot);
+  await assertSameRealPath(oneCommandWorkspace?.path, oneCommandRoot);
   assert.deepEqual(oneCommandWorkspace?.permissions, {
     read: true,
     write: true,
@@ -2446,7 +2446,7 @@ try {
   const hereWorkspace = config.workspaces.find((workspace) => workspace.id === "here-project");
   assert.equal(config.port, herePort);
   assert.equal(hereWorkspace?.name, "here-project");
-  assert.equal(hereWorkspace?.path, hereRoot);
+  await assertSameRealPath(hereWorkspace?.path, hereRoot);
   assert.deepEqual(hereWorkspace?.permissions, {
     read: true,
     write: true,
@@ -2767,6 +2767,11 @@ async function getFreePort(): Promise<number> {
       });
     });
   });
+}
+
+async function assertSameRealPath(actual: string | undefined, expected: string): Promise<void> {
+  if (!actual) assert.fail("Expected a configured workspace path");
+  assert.equal(await realpath(actual), await realpath(expected));
 }
 
 async function installFakeCloudflared(directory: string): Promise<void> {
