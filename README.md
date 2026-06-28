@@ -1,166 +1,114 @@
 # Computer Linker
 
-Computer Linker is a small local MCP server for controlling a computer through
-an AI client.
+Computer Linker is a local MCP server that lets an AI client work with one
+approved folder on your computer.
 
-It does two things:
-
-1. Tell the client what this computer can do.
-2. Run approved computer operations such as file access, search, commands,
-   Codex, screenshots, and history lookup.
-
-It is designed for macOS, Windows, and Linux. The service runs on your own
-computer; Cloudflare, Tailscale, or OpenAI tunnel exposure is optional.
+It is CLI-first. You install it, start it in a folder, then connect an MCP
+client. The server runs on your own machine; tunnels are optional and only
+needed for cloud clients.
 
 ## Quick Start
 
-Most users only need three steps: install, start one folder, connect an MCP
-client.
-
 ### 1. Install
+
+Computer Linker requires Node.js 20.12 or newer.
 
 ```powershell
 npm install -g @easonwumac/computer-linker
 computer-linker check
 ```
 
-macOS/Linux:
-
-```bash
-npm install -g @easonwumac/computer-linker
-computer-linker check
-```
-
-`check` is safe: it creates a temporary workspace, starts a local test server,
-verifies the MCP flow, then removes the temporary files.
+`check` starts a temporary local server and removes the temporary files after
+the test. It does not expose your real projects.
 
 ### 2. Start One Folder
 
-Run this inside the folder you want to expose:
+Run this inside the folder you want the MCP client to access:
 
 ```powershell
 cd C:\Projects\my-app
 computer-linker here
 ```
 
-Or run it from anywhere and pass the folder path:
+Or pass the folder path from anywhere:
 
 ```powershell
 computer-linker start C:\Projects\my-app
 ```
 
 Leave that terminal running. In another terminal, run client setup or
-diagnosis commands. The server listens locally at:
+diagnosis commands.
+
+`here` and `start <folder>` automatically create the local config, owner token,
+workspace entry, and default coding policy when needed. The workspace name
+defaults to the folder name, so you usually do not need `--name`.
+
+The local MCP URL is:
 
 ```text
 http://127.0.0.1:3939/mcp
 ```
 
-`here` and `start <folder>` automatically create config, owner token, and a
-workspace entry when needed. The workspace name defaults to the folder name, so
-you usually do not need `--name`.
+### 3. Connect Your MCP Client
 
-Default access is meant for normal coding: file read/write plus approved
-project commands such as package manager, Node, and Git commands. Use
-`--read-only` for inspection-only access. Use `--full-trust` only for a folder
-where Codex and screen capture are intended.
-
-### 3. Connect A Client
-
-In another terminal, print the settings for your MCP client:
+Open another terminal:
 
 ```powershell
 computer-linker client setup
 computer-linker diagnose client
 ```
 
-Use `client setup --show-token` only on a trusted local screen when the client
-needs the bearer token.
-
-### ChatGPT Or Cloud Clients
-
-Cloud clients cannot connect to `127.0.0.1`, so add a tunnel only when you need
-cloud access:
+If the client needs a bearer token, print it only on a trusted local screen:
 
 ```powershell
-cd C:\Projects\my-app
-computer-linker here --tunnel openai --tunnel-id tunnel_...
+computer-linker client setup --show-token
 ```
 
-Computer Linker can also start Tailscale Funnel or Cloudflare Tunnel:
+Use these local client settings:
 
-```powershell
-computer-linker here --tunnel tailscale
-computer-linker here --tunnel cloudflare
-```
+| Setting | Value |
+| --- | --- |
+| MCP URL | `http://127.0.0.1:3939/mcp` |
+| Auth header | `Authorization: Bearer <ownerToken>` |
+| Agent prompt | [docs/agent-instructions.md](docs/agent-instructions.md) |
 
-Tunnel commands expose only `/mcp` on the public side.
+## Common Commands
 
-### Daily Commands
+| Task | Command |
+| --- | --- |
+| Start the current folder | `computer-linker here` |
+| Start another folder | `computer-linker start C:\Projects\my-app` |
+| Start read-only | `computer-linker here --read-only` |
+| Start with Codex and screenshots | `computer-linker here --full-trust` |
+| Show connection settings | `computer-linker client setup` |
+| Run client diagnostics | `computer-linker diagnose client` |
+| Show server status | `computer-linker status` |
+| Show detailed status | `computer-linker status --details` |
+| Show tunnel state | `computer-linker tunnel status` |
+| Show recent connections | `computer-linker history --view connections` |
+| Rotate the owner token | `computer-linker config token rotate --show-token` |
 
-```powershell
-computer-linker status
-computer-linker status --details
-computer-linker client setup
-computer-linker diagnose client
-computer-linker tunnel status
-computer-linker history --view connections
-```
+## Permission Modes
 
-The documentation map is [docs/README.md](docs/README.md). If you are unsure
-where to begin, use [docs/learning-paths.md](docs/learning-paths.md). For the
-short step-by-step path, see [docs/getting-started.md](docs/getting-started.md)
-or [docs/tutorials.md](docs/tutorials.md). For daily operation, use
-[docs/usage-guide.md](docs/usage-guide.md). For copyable CLI commands, see
-[docs/cli-reference.md](docs/cli-reference.md). For command execution safety,
-see [docs/command-policy.md](docs/command-policy.md). For agent operation
-recipes, see [docs/agent-playbook.md](docs/agent-playbook.md). For SDK usage,
-see [docs/sdk-quickstart.md](docs/sdk-quickstart.md). For development and
-release work, see [docs/developer-guide.md](docs/developer-guide.md).
+Normal coding is the default for `here` and `start <folder>`.
 
-### Safety Defaults
+| Mode | Command | Allows |
+| --- | --- | --- |
+| Normal coding | `computer-linker here` | File read/write and approved project commands. |
+| Read-only | `computer-linker here --read-only` | Inspect files, search, and review Git state. |
+| Full trust | `computer-linker here --full-trust` | Normal coding plus Codex operations and screen capture. |
 
-Computer Linker is CLI-first; there is no web dashboard in the product path.
-MCP and the JSON API are protocol surfaces for clients, automation, and smoke
-checks.
+Use read-only for review. Use full trust only for folders where Codex and
+screen capture are intended.
 
-Shell and Codex operations are normal local host processes, not network
-sandboxes. Computer Linker reports this in `networkAccess`. Use OS, container,
-firewall, proxy, or network-layer controls when network isolation matters.
+## Cloud Clients
 
-Sensitive paths are conservative by default. Content reads and text searches
-block common secret files, including `.env*`, private keys, credential JSON
-files, and cloud CLI credential directories. Metadata operations such as
-`file.list`, `file.tree`, `file.stat`, `code.context`, and project overview
-hide those sensitive path names by default. Example files such as
-`.env.example`, `.env.sample`, and `.env.template` remain visible. Write-class
-operations block sensitive path mutation by default. Keep real secrets outside
-exposed folders.
+Cloud MCP clients cannot reach `127.0.0.1`. Add a tunnel only when you need a
+cloud client to reach your local server.
 
-### Development Checkout
+### OpenAI Secure MCP Tunnel
 
-From this source checkout, run the same flow through the development runner:
-
-```powershell
-npm install
-npm run dev -- quickstart C:\Projects\my-app
-npm run dev -- start C:\Projects\my-app
-```
-
-`quickstart --json` exposes `commands.check` for the optional isolated install
-check. `commands.selfTest` remains as a compatibility alias for older agents
-that already consumed the previous JSON field.
-
-## Expose To Cloud Clients
-
-ChatGPT and other cloud MCP clients cannot connect to `127.0.0.1`. Expose the
-local server only when you need cloud access.
-
-OpenAI Secure MCP Tunnel does not create a public URL. Create a tunnel in the
-OpenAI Platform tunnel settings, set an API key with Tunnels Read+Use
-permission, then run:
-
-PowerShell:
+This mode uses a `tunnel_...` id instead of a public URL.
 
 ```powershell
 $env:CONTROL_PLANE_API_KEY = "sk-..."
@@ -168,156 +116,66 @@ cd C:\Projects\my-app
 computer-linker here --tunnel openai --tunnel-id tunnel_...
 ```
 
-macOS/Linux shell:
-
-```bash
-export CONTROL_PLANE_API_KEY="sk-..."
-cd ~/projects/my-app
-computer-linker here --tunnel openai --tunnel-id tunnel_...
-```
-
-In ChatGPT connector settings, choose the tunnel option and select or paste the
-`tunnel_...` id. The target MCP path remains the local server path `/mcp`.
-Do not paste the Computer Linker bearer token into ChatGPT Tunnel mode; the
-local `tunnel-client` forwards the owner token to the private local MCP server.
-`status` reports this as an active OpenAI Secure MCP Tunnel with no public URL;
-`publicBaseUrl` is not required for this tunnel mode.
-If the tunnel reports an active organization context 401, verify the API key's
-Platform organization, Tunnels Read + Use permission, and ChatGPT workspace
-association before changing Computer Linker config.
+In ChatGPT or another OpenAI tunnel-aware client, choose Tunnel mode and select
+or paste the `tunnel_...` id. Do not paste the Computer Linker bearer token
+into OpenAI Tunnel mode; the local tunnel client forwards it to the private
+loopback MCP server.
 
 On first use, Computer Linker downloads the official OpenAI `tunnel-client`
-release from `openai/tunnel-client`, verifies it against `SHA256SUMS.txt`, and
-stores it under `~/.computer-linker/tools/openai-tunnel-client/`. It never scans
-your Desktop for executables. To use a pinned binary instead, set
-`COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT` or pass `--tunnel-client`.
+from `openai/tunnel-client`, verifies it against `SHA256SUMS.txt`, and stores
+it under `~/.computer-linker/tools/openai-tunnel-client/`. To use your own
+pinned binary, set `COMPUTER_LINKER_OPENAI_TUNNEL_CLIENT` or pass
+`--tunnel-client`.
 
-Tailscale Funnel:
+If you see:
+
+```text
+401 Access denied: this tunnel requires an active organization context.
+```
+
+check the API key's Platform organization, Tunnels Read + Use permission, and
+the ChatGPT workspace or organization that owns the tunnel.
+
+### Tailscale Funnel
 
 ```powershell
 cd C:\Projects\my-app
 computer-linker here --tunnel tailscale
 ```
 
-You do not need to type `https://<machine>.<tailnet>.ts.net` up front.
-Computer Linker detects the Funnel URL from `tailscale funnel` output or
-Tailscale status, prints the MCP URL, and saves the detected origin as
-`publicBaseUrl`. The `*.ts.net` hostname is public only when Tailscale reports
-Funnel as enabled; plain Tailscale DNS or Serve remains tailnet-only.
+Computer Linker detects the Funnel URL and prints the public MCP URL. Plain
+Tailscale DNS or Serve is tailnet-only; Funnel is the public mode.
 
-Cloudflare quick tunnel:
+### Cloudflare Tunnel
+
+Quick tunnel:
 
 ```powershell
 cd C:\Projects\my-app
 computer-linker here --tunnel cloudflare
 ```
 
-Cloudflare hostname you already own:
+Your own Cloudflare hostname:
 
 ```powershell
 cd C:\Projects\my-app
 computer-linker here --url https://mcp.your-domain.com --tunnel cloudflare
 ```
 
-Tunnel commands enable `publicMcpOnly` automatically. Public-host requests to
-`/api` and `/healthz` return 404 from Computer Linker, leaving `/mcp` as the
-exposed product surface. If a Cloudflare hostname is configured, `setup` keeps
-the terminal summary short; optional WAF details are available in
-`setup --json`.
+Public tunnel mode exposes only `/mcp` to public-host requests. Local `/api`
+and `/healthz` remain loopback diagnostics.
 
-After exposure, get the current tunnel state:
+## What Agents Should Do
 
-```powershell
-computer-linker tunnel status
-computer-linker history --view connections
-```
+The recommended MCP surface has three tools:
 
-For public URL based tunnels, the MCP URL is the public HTTPS URL plus `/mcp`,
-for example:
-
-```text
-https://your-public-url.example.com/mcp
-```
-
-## MCP Interface
-
-The default MCP surface is intentionally small. New clients only need three
-tools:
-
-| Tool | Use it for |
+| Tool | Purpose |
 | --- | --- |
-| `get_computer_info` | Inspect machine identity, scopes, permissions, readiness, and available ops. |
+| `get_computer_info` | Inspect scopes, permissions, URLs, status, and available operations. |
 | `computer_operation` | Run one scoped operation through `{ scope, op, target, input, options }`. |
-| `get_operation_history` | Review redacted connection, session, and operation history. |
+| `get_operation_history` | Inspect redacted recent activity and connection history. |
 
-Use this flow for every MCP client:
-
-1. Call `get_computer_info`.
-2. Pick a reported `scope`.
-3. Call `computer_operation`.
-4. Call `get_operation_history` when you need to inspect what happened.
-
-Every `computer_operation` response includes an `operationId`. Use that id as
-the `query` value for `get_operation_history` when you need to find the exact
-success or failure event later.
-
-`get_computer_info` returns the full discovery payload by default. Small
-clients can request sections with `include`, for example
-`include: ["identity", "scopes"]` or `include: ["operations", "status"]`.
-Supported sections are `identity`, `platform`, `service`, `tools`, `scopes`,
-`operations`, `discovery`, `compatibility`, and `status`. `include: ["roots"]`
-is a local-owner diagnostic modifier that reveals full configured folder roots;
-unknown include values fail clearly instead of being ignored.
-
-For any MCP client, configure:
-
-- Server URL: `http://127.0.0.1:3939/mcp` for local clients, or the public
-  tunnel URL plus `/mcp` for cloud clients.
-- Auth: bearer token for public URL tunnels. OpenAI Secure MCP Tunnel is the
-  exception: choose Tunnel mode and the `tunnel_...` id; do not paste the
-  Computer Linker bearer token into ChatGPT Tunnel mode.
-
-HTTP mode accepts request bodies up to 10 MB. Malformed JSON and oversized
-bodies return JSON errors on `/api/v1` and JSON-RPC errors on `/mcp`; the audit
-log records the failure surface, path, status, and fixed error reason without
-storing request body contents.
-
-Use the generic CLI setup summary when configuring a client:
-
-```powershell
-computer-linker client setup
-computer-linker client setup --details
-computer-linker client setup --show-token
-computer-linker diagnose client
-computer-linker client smoke --allow-http --url http://127.0.0.1:3939/mcp
-```
-
-`client setup` prints the short connection summary. Use `--details` for the
-tool list, first prompt, and copy-pasteable agent instructions. Use
-`--show-token` only on a trusted local setup screen. `client smoke` initializes
-`/mcp`, lists tools, calls `get_computer_info`, and runs one read-only
-`computer_operation`. `diagnose client` combines setup readiness, MCP smoke,
-and recent connection history into one troubleshooting summary.
-
-The repository also includes a minimal MCP client example:
-
-```powershell
-$env:COMPUTER_LINKER_MCP_URL = "http://127.0.0.1:3939/mcp"
-$env:COMPUTER_LINKER_TOKEN = "<ownerToken>"
-node examples/minimal-mcp-client.mjs
-```
-
-The minimal example reads the bearer token from environment variables. It does
-not accept the owner token as a positional command argument.
-
-More client-specific recipes are in [docs/client-recipes.md](docs/client-recipes.md).
-For a fuller command-by-command usage guide, see
-[docs/user-manual.md](docs/user-manual.md).
-
-### Agent Instructions
-
-Paste this into the connected agent when you want it to operate through
-Computer Linker:
+Paste this into the connected agent when needed:
 
 ```text
 You are connected to Computer Linker, a local MCP server for this computer.
@@ -329,409 +187,105 @@ Do not call workspace_operation, read, ls, grep, glob, or create_file unless the
 If tunnel or connection behavior is unclear, inspect get_operation_history before changing anything.
 ```
 
-### Common Operations
-
-Start with these before reaching for the full registry:
-
-| Intent | `computer_operation` input |
-| --- | --- |
-| Project overview | `{ "scope": "app", "op": "code.context", "target": ".", "options": { "maxDepth": 2, "maxEntries": 100 } }` |
-| List tree | `{ "scope": "app", "op": "file.tree", "target": ".", "options": { "maxDepth": 1, "maxEntries": 50 } }` |
-| Search text | `{ "scope": "app", "op": "file.search", "target": ".", "input": { "query": "TODO" }, "options": { "maxResults": 20 } }` |
-| Read file | `{ "scope": "app", "op": "file.read", "target": "README.md", "options": { "maxBytes": 65536 } }` |
-| Review changes | `{ "scope": "app", "op": "git.diff", "target": ".", "options": { "maxBytes": 65536 } }` |
-
-For verification in development scopes, use `package.run` only when the selected
-scope allows shell/package execution:
-
-```json
-{ "scope": "app", "op": "package.run", "target": ".", "input": { "script": "test" }, "options": { "timeoutSeconds": 600 } }
-```
-
-### Operation Shape
-
-Every operation uses the same request envelope:
+Example read-only operation:
 
 ```json
 {
-  "scope": "app",
+  "scope": "my-app",
   "op": "file.search",
   "target": ".",
-  "input": { "query": "TODO", "glob": "*.ts" },
-  "options": { "maxResults": 20 }
+  "input": {
+    "query": "TODO"
+  },
+  "options": {
+    "maxResults": 20
+  }
 }
 ```
 
-`computer_operation` returns the same result envelope for success and failure:
+Example package script operation:
 
 ```json
 {
-  "ok": true,
-  "operationId": "op_...",
-  "scope": "app",
-  "op": "file.search",
-  "startedAt": "2026-06-23T00:00:00.000Z",
-  "durationMs": 12,
-  "data": {},
-  "warnings": []
+  "scope": "my-app",
+  "op": "package.run",
+  "target": ".",
+  "input": {
+    "script": "test"
+  },
+  "options": {
+    "timeoutSeconds": 600
+  }
 }
 ```
 
-The available operation registry is returned by `get_computer_info`. Each scope
-also reports `unavailableOperations` when policy allows an operation but the
-current runtime provider cannot support it, such as window screenshots on a
-display-only screenshot provider. The stable
-request/result schema is documented in
-[docs/computer-operation-v1.schema.json](docs/computer-operation-v1.schema.json).
+## Config And Safety
 
-For screenshot operations, cloud MCP clients should request
-`options.returnMode: "base64"` with `maxWidth` and `maxHeight` bounds. Use
-`returnMode: "fileRef"` only for local automation that can read the temp file
-path on the same computer. `fileRef` artifacts are temporary: Computer Linker
-keeps them only under its screenshot temp directory, removes stale files on
-later captures, and reports the policy in `get_computer_info` and `doctor`.
-
-The compatibility policy for the public MCP surface is documented in
-[docs/api-compatibility.md](docs/api-compatibility.md), and reusable agent
-setup guidance is in [docs/agent-instructions.md](docs/agent-instructions.md).
-Capability discovery exposes `discovery.primary` for the recommended three-tool
-flow and `discovery.compatibility` for migration-only workspace APIs.
-Default `get_computer_info` discovery is privacy-conscious for cloud clients:
-scope ids, names, permissions, and non-absolute display paths are returned, but
-full local folder roots are redacted unless explicitly requested for owner
-diagnostics.
-Its `status` block is derived from the current config: missing readable scopes
-or unauthenticated public exposure are blockers, while missing recommended tools
-or runtime-unsupported optional operations appear as warnings.
-
-Compatibility tools such as `get_capabilities`, `list_workspaces`,
-`open_workspace`, `workspace_operation`, `read`, `ls`, `grep`, `glob`, and
-`create_file` are hidden from the default MCP surface. Set
-`COMPUTER_LINKER_MCP_TOOL_SURFACE=compatibility` only for older clients that
-still need those tool names.
-
-File operations are scoped to configured folders. Command and Codex operations
-start in the configured scope, but they are normal local execution, so only
-enable them for folders you trust.
-Sensitive file content is blocked by default for direct reads and searches;
-metadata operations such as listings, trees, stat, and project overview hide
-sensitive path names unless the workspace policy explicitly opts in.
-
-## Configure Scopes
-
-Scopes define what the MCP client can touch.
-
-```bash
-computer-linker workspace list
-computer-linker workspace add ~/work/app --write --shell --codex --screen
-computer-linker workspace add ~/work/app --id app --name "Main app"
-computer-linker workspace update app --no-shell --no-screen
-computer-linker workspace remove app
-```
-
-When `--id` or `--name` is omitted, Computer Linker derives it from the folder
-name. Direct `workspace add` scopes default to read-only with screen capture
-disabled. Add `--write`, `--shell`, `--codex`, or `--screen` separately only
-where needed. For daily setup, prefer `computer-linker here` inside the folder,
-or `computer-linker start <folder>` from somewhere else; both create a normal
-coding workspace and default execution policy automatically. Advanced
-`workspace add/update` flows leave policy management explicit through `config
-policy`.
-
-The config lives at:
+Config lives at:
 
 ```text
 ~/.computer-linker/config.json
 ```
 
-Manual config editing is documented in
-[docs/configuration.md](docs/configuration.md). The published JSON Schema is
-[docs/config.schema.json](docs/config.schema.json), and
-`computer-linker config validate` checks the file shape against that schema
-before running readiness/security diagnostics.
+You usually do not need to edit it by hand. Use the CLI:
 
-`config show` is file-focused and redacts the owner token by default; use
-`--show-token` only on a trusted local setup screen. Runtime environment
-overrides such as `COMPUTER_LINKER_OWNER_TOKEN` and
-`COMPUTER_LINKER_PUBLIC_BASE_URL` are intentionally not printed by
-`config show`. Use `computer-linker doctor --json`, `computer-linker profile`,
-or `computer-linker client setup --json` and inspect `configSources` when you
-need to know whether the active value came from the file, an environment
-variable, or a detected tunnel.
-
-For shell-enabled scopes, `config.json` can set or refine conservative command
-policy:
-
-```json
-{
-  "id": "app",
-  "policy": {
-    "maxRuntimeSeconds": 600,
-    "maxOutputBytes": 200000,
-    "allowedCommands": ["npm *", "pnpm *", "yarn *", "bun *", "node *", "npx *", "git *"],
-    "deniedCommands": ["rm -rf *", "del /s *", "rmdir /s *", "format *", "shutdown *"],
-    "allowShellMetacharacters": false,
-    "allowSensitivePathMetadata": false,
-    "allowSensitivePathWrites": false
-  }
-}
-```
-
-The audit/history stream stores the returned `operationId`, so this works for
-both successful and failed calls:
-
-```json
-{
-  "scope": "app",
-  "view": "raw",
-  "query": "op_..."
-}
-```
-
-The same policy can be maintained without editing JSON by hand:
-
-```bash
-computer-linker config policy app --allow "npm *" --allow "git *" --deny "rm -rf *" --max-runtime-seconds 600 --max-output-bytes 200000
-computer-linker config policy app --block-shell-metacharacters
-computer-linker config policy app --allow-sensitive-path-metadata --allow-sensitive-path-writes
-computer-linker config policy app --json
-```
-
-By default, shell metacharacters and command chaining such as `&&`, `;`, pipes,
-redirects, command substitution, and Windows `cmd` escapes are blocked before
-the wildcard allowlist is evaluated. This keeps patterns such as `npm *` and
-`git *` from allowing `npm test && ...` or `git status; ...`. See
-[docs/command-policy.md](docs/command-policy.md) for advanced policy guidance.
-Only set `allowSensitivePathMetadata` or `allowSensitivePathWrites` for a
-trusted local scope where revealing or mutating secret-like paths is intended.
-
-Owner-token maintenance is also CLI-managed. Status output redacts the token;
-use `--show-token` only on a trusted local setup screen when updating an MCP
-client:
-
-```bash
-computer-linker init
-computer-linker config token
-computer-linker client setup --show-token
-computer-linker profile --show-token
-computer-linker config token rotate --show-token
-computer-linker config token rotate --json
-```
-
-## Run As A Service
-
-For daily use on Windows, macOS, or Linux, install the background service after
-your config works in the foreground:
-
-```bash
-computer-linker service install --dry-run
-computer-linker service install --yes
-computer-linker service start
-computer-linker service status
-computer-linker service logs
-```
-
-Remove it later with:
-
-```bash
-computer-linker service stop
-computer-linker service uninstall --yes
-```
-
-Windows install/uninstall must run from an elevated PowerShell prompt. See
-[docs/service-mode.md](docs/service-mode.md) for generated files and platform
-notes. `service logs` is bounded to the tail of generated macOS/Windows log
-files and warns when `service.out.log` or `service.err.log` grows large.
-
-## Check Readiness
-
-```bash
-computer-linker status
-computer-linker status --details
-computer-linker doctor
-computer-linker doctor --json
-computer-linker doctor --fix --dry-run
-computer-linker doctor --fix
+```powershell
+computer-linker workspace list
 computer-linker config validate
-computer-linker config validate --json
-computer-linker diagnose client
-computer-linker process list <workspace-id>
-computer-linker process read <workspace-id> proc_...
-computer-linker process stop <workspace-id> proc_...
-computer-linker screen status
-computer-linker screen status --json
-computer-linker client chatgpt smoke --url http://127.0.0.1:3939/mcp --allow-http
+computer-linker config policy <workspace-id> --json
+computer-linker config token rotate --show-token
 ```
 
-`status` is the short daily check: readiness, connection mode, local MCP URL,
-workspace/tunnel summary, and the next few actions. Use `status --details`
-when you want the full workspace list, warnings, running tunnel rows, and all
-next actions.
-`doctor` checks platform info, Node, local tools such as `rg`, `git`, `codex`,
-workspace permissions, config diagnostics, auth, tunnel readiness, security
-findings, retention/maintenance status, and `releaseReadiness`.
-`doctor --fix --dry-run` previews the same repairs without writing the config.
-`doctor --fix` applies low-risk config repairs: remove the bootstrap `current`
-scope after explicit scopes exist, remove exact duplicate folder scopes that
-have the same permissions and policy, and add missing default execution policy
-fields for shell/Codex scopes.
-Direct low-level startup with no existing config creates only a read-only
-bootstrap `current` scope. Use `computer-linker here` or
-`computer-linker start <folder>` when you want normal coding access with write
-and approved command permissions.
-`config validate` prints the config/security/release-readiness subset and exits
-non-zero when the release status is blocked.
-`diagnose client` runs client setup checks, a minimal MCP SDK flow, and redacted
-connection-history inspection in one command.
-`process list/read/stop` talks to the running local HTTP server, so it manages
-active background command and Codex processes that were started through MCP.
+Safety defaults:
 
-Local runtime state is bounded by default. Audit history is compacted by file
-size, recent history reads scan from the tail, Codex workflow records are
-redacted and capped, screenshot `fileRef` artifacts are temporary, and exited
-managed process snapshots are removed after the recent debugging window. Local
-state files such as `config.json`, `audit.jsonl`, `codex-runs.jsonl`,
-`oauth-state.json`, and `tunnels.json` are created with restrictive file modes;
-`doctor --json` also reports `localStatePermissions` and repairs broad POSIX
-permissions when practical. Run `computer-linker doctor --json` to inspect the
-exact maintenance policy.
-HTTP MCP tool-call history includes the short MCP session reference, client
-name/id when available, auth type, user agent, and remote address, but not the
-full session header or bearer token.
+- The owner token is redacted unless you pass `--show-token`.
+- Public tunnel mode exposes only `/mcp` on public-host requests.
+- Sensitive file content is blocked by default. Direct reads and searches
+  block common secret files such as `.env*`, private keys, credential JSON
+  files, and cloud CLI credential directories.
+- Metadata operations hide sensitive path names by default.
+- Write operations block sensitive path mutation by default.
+- Shell and Codex operations run as normal local host processes inside the
+  configured scope. Use OS, container, firewall, proxy, or network controls
+  when network isolation matters.
 
-The release readiness block is intended for productization gates:
+## Develop From Source
 
-```bash
-computer-linker doctor --json
+```powershell
+git clone https://github.com/easonwumac/computer-linker.git
+cd computer-linker
+npm install
+npm run dev -- check
+npm run dev -- start C:\Projects\my-app
 ```
 
-Look for:
+Before pushing code changes:
 
-```json
-{
-  "releaseReadiness": {
-    "ready": true,
-    "status": "ready",
-    "recommendedGate": "npm run product:check"
-  }
-}
-```
-
-## Build And Test
-
-```bash
-npm run typecheck
-npm test
-npm run release:validate
-npm run build
-npm run pack:smoke
+```powershell
 npm run product:check
-npm run alpha:check
+npm run public:audit -- --strict-history
 ```
 
-`npm test` prints per-file progress and durations. Use
-`node scripts/run-tests.mjs --list` to see the test labels, or pass a label/path
-fragment such as `node scripts/run-tests.mjs cli` for a focused local run.
+GitHub Actions intentionally runs the main CI gate on Windows with Node 22 to
+keep public CI usage small. It runs on pushes to `main`
+and pull requests targeting `main`; broader coverage is manual.
 
-The default GitHub Actions CI gate is cost-capped but automatic: it runs
-`npm run product:check` on `windows-latest` with Node 22 for pushes to `main`
-and pull requests targeting `main`, and it also supports `workflow_dispatch`
-reruns. Run broader OS or Node coverage manually only when preparing a wider
-release. The release packaging workflow remains manual. `npm run
-release:validate` rejects matrix jobs, non-Windows runners, extra Node
-versions, background triggers, and accidental automatic release packaging.
+## More Documentation
 
-## Productization Gate
-
-For normal local development, the main gate is:
-
-```bash
-npm ci
-npm run product:check
-```
-
-For npm publishing, use the local release wrapper instead of hand-running every
-step:
-
-```bash
-npm run release -- --otp <code>
-```
-
-`release` requires a clean main/master worktree, a dated changelog heading, and
-npm login. It creates `v<package.version>` on `HEAD` when missing, runs npm's
-publish guard, publishes, waits for registry metadata, verifies the npm
-dist-tag, runs the published CLI from a clean temporary directory, then pushes
-`HEAD` and the release tag. Use `npm run release:check` before the final commit
-when you want a non-publishing gate, `npm run release:dry-run` for an npm
-dry-run only, or `npm run release:publish -- --create-tag --push --otp <code>`
-when debugging the lower-level publish wrapper directly. Use `npm run release:verify`
-to repeat the post-publish check for the current `package.json`
-version.
-On Windows, if `NODE_AUTH_TOKEN` is saved in the User environment but the
-current shell has not picked it up yet, the release wrapper loads it only into
-the current release process before running `npm whoami` or `npm publish`.
-
-For a public alpha from this private dogfooding checkout, use the fresh public
-snapshot path:
-
-```bash
-npm run public:release-ready
-npm run public:mirror -- --remote <github-owner>/<public-repo>
-git -C ../computer-linker-public push -u origin main --follow-tags
-```
-
-`public:release-ready` is the final local preflight before publishing the public
-mirror. It runs the alpha readiness gate with external evidence required and
-also requires the current `CHANGELOG.md` package heading to be dated instead of
-`Unreleased`.
-
-`public:mirror` runs public readiness once, accepts the known private-history
-warning only for the detached one-commit snapshot path, then creates or updates
-the one-commit mirror with a `v<package.version>` release tag for publish and
-Release workflow guards. A real publishable mirror requires the matching
-changelog heading to be dated instead of `Unreleased`; dry runs print whether
-the real run would be blocked. Do not make this existing repo public with
-preserved history unless the stricter direct-repo gate passes:
-
-```bash
-npm run public:repo-ready
-```
-
-Before announcing a public alpha, capture one real external MCP client/tunnel
-pass:
-
-```bash
-npm run alpha:evidence -- preflight
-npm run alpha:evidence -- smoke --redaction-confirmed
-npm run alpha:check -- --require-evidence --accept-public-snapshot
-```
-
-Paste the preflight prompt into the external MCP client first. The generated
-`.computer-linker-alpha-evidence.json` file is gitignored and must not contain
-owner tokens, API keys, bearer headers, screenshots, or private file contents.
-The stricter release and publish rules live in
-[docs/release-checklist.md](docs/release-checklist.md).
-
-## Product Boundary
-
-Computer Linker is not a remote desktop, a cloud service, or a ChatGPT-specific
-app. It is a local MCP program that exposes approved computer abilities.
-
-See [docs/README.md](docs/README.md) for the full documentation map,
-[docs/learning-paths.md](docs/learning-paths.md) when choosing the right setup
-or development path,
-[docs/getting-started.md](docs/getting-started.md) for the short setup path,
-[docs/usage-guide.md](docs/usage-guide.md) for daily operation,
-[docs/cli-reference.md](docs/cli-reference.md) for copyable CLI commands,
-[docs/tutorials.md](docs/tutorials.md) for scenario walkthroughs,
-[docs/command-policy.md](docs/command-policy.md) for command execution safety,
-[docs/agent-playbook.md](docs/agent-playbook.md) for MCP agent operation
-recipes, [docs/sdk-quickstart.md](docs/sdk-quickstart.md) for the short SDK
-integration path,
-[docs/product-spec.md](docs/product-spec.md) for the product spec,
-[docs/architecture.md](docs/architecture.md) for implementation notes, and
-[docs/developer-guide.md](docs/developer-guide.md) for module boundaries. See
-[docs/release-checklist.md](docs/release-checklist.md) for the alpha release
-checklist, [docs/manual-test-plan.md](docs/manual-test-plan.md) for dogfooding,
-and [SECURITY.md](SECURITY.md) for the current security model. Public
-contribution and issue guidelines are in [CONTRIBUTING.md](CONTRIBUTING.md).
+- [Documentation Map](docs/README.md): all product and development docs.
+- [Learning Paths](docs/learning-paths.md): choose the right path for your use case.
+- [Getting Started](docs/getting-started.md): shortest first setup.
+- [Usage Guide](docs/usage-guide.md): daily operation and troubleshooting.
+- [CLI Reference](docs/cli-reference.md): compact command lookup.
+- [Agent Instructions](docs/agent-instructions.md): prompt for MCP agents.
+- [Agent Playbook](docs/agent-playbook.md): operation recipes for agents.
+- [Client Recipes](docs/client-recipes.md): local, tunnel, and minimal client examples.
+- [SDK Quickstart](docs/sdk-quickstart.md): short TypeScript/JavaScript integration.
+- [Command Policy](docs/command-policy.md): command execution safety.
+- [Configuration](docs/configuration.md): config file and schema details.
+- [Config Schema](docs/config.schema.json): published config JSON Schema.
+- [API Compatibility](docs/api-compatibility.md): public MCP compatibility policy.
+- [Architecture](docs/architecture.md): module boundaries.
+- [Developer Guide](docs/developer-guide.md): development workflow.
+- [Release Checklist](docs/release-checklist.md): release and npm publishing rules.
+- [Security](SECURITY.md): security model and reporting.
