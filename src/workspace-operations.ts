@@ -2295,24 +2295,34 @@ function requiredOperations(value: WorkspaceOperationInput[] | undefined): Works
   return value;
 }
 
-function readResult(
-  bytes: Buffer,
-  options: { startLine?: number; lineCount?: number; maxBytes?: number; encoding?: string },
-): {
+interface ReadResult {
   content: string;
   encoding: "utf8" | "base64";
   sizeBytes: number;
   sha256: string;
   truncated: boolean;
+  /** Backwards-compatible requested range start. Prefer actualStartLine for the returned content range. */
   startLine?: number;
+  /** Backwards-compatible actual range end before maxBytes truncation. */
   endLine?: number;
   totalLines?: number;
-} {
+  requestedStartLine?: number;
+  requestedLineCount?: number;
+  actualStartLine?: number;
+  actualEndLine?: number;
+}
+
+function readResult(
+  bytes: Buffer,
+  options: { startLine?: number; lineCount?: number; maxBytes?: number; encoding?: string },
+): ReadResult {
   const encoding = normalizeReadEncoding(options.encoding);
   const sizeBytes = bytes.length;
   const startLine = normalizeOptionalPositiveInteger(options.startLine);
   const lineCount = normalizeOptionalPositiveInteger(options.lineCount);
   const maxBytes = options.maxBytes === undefined ? undefined : normalizeBoundedPositiveInteger(options.maxBytes, sizeBytes, 256 * 1024);
+  const requestedStartLine = startLine ?? (lineCount ? 1 : undefined);
+  const requestedLineCount = lineCount ?? undefined;
 
   if (encoding === "base64") {
     if (startLine || lineCount) {
@@ -2325,6 +2335,8 @@ function readResult(
       sizeBytes,
       sha256: sha256(bytes),
       truncated: selectedBytes.length < bytes.length,
+      requestedStartLine,
+      requestedLineCount,
     };
   }
 
@@ -2332,14 +2344,20 @@ function readResult(
   let selected = content;
   let endLine: number | undefined;
   let totalLines: number | undefined;
+  let actualStartLine: number | undefined;
+  let actualEndLine: number | undefined;
 
   if (startLine || lineCount) {
     const lines = content.split(/\r?\n/);
     totalLines = lines.length;
-    const startIndex = Math.max(0, (startLine ?? 1) - 1);
+    const startIndex = Math.max(0, (requestedStartLine ?? 1) - 1);
     const endIndex = lineCount ? startIndex + lineCount : lines.length;
     selected = lines.slice(startIndex, endIndex).join("\n");
-    endLine = Math.min(lines.length, endIndex);
+    if (startIndex < lines.length && endIndex > startIndex) {
+      actualStartLine = startIndex + 1;
+      actualEndLine = Math.min(lines.length, endIndex);
+    }
+    endLine = actualEndLine;
   }
 
   const truncatedContent = maxBytes === undefined ? selected : truncateText(selected, maxBytes);
@@ -2352,6 +2370,10 @@ function readResult(
     startLine: startLine ?? undefined,
     endLine,
     totalLines,
+    requestedStartLine,
+    requestedLineCount,
+    actualStartLine,
+    actualEndLine,
   };
 }
 

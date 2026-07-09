@@ -35,6 +35,7 @@ try {
   await writeFile(join(root, "src", "context.ts"), "before\nneedle\nAfter\n");
   await writeFile(join(root, "src", "nested", "gamma.ts"), "export const Gamma = 'fallback-needle';\n");
   await writeFile(join(root, "src", "nested", "gamma.js"), "export const gammaJs = 'fallback-needle';\n");
+  await writeFile(join(root, "src", "operator.cpp"), "object->property_count();\n");
   await writeFile(join(root, ".env"), "SEARCH_SECRET=needle\n");
   await writeFile(join(root, ".env.example"), "EXAMPLE=needle\n");
   await writeFile(join(root, "src", "private.pem"), "needle\n");
@@ -89,6 +90,16 @@ try {
   assert.match(context, /context\.ts[-:]1[-:]before/);
   assert.match(context, /context\.ts:2:needle/);
   assert.match(context, /context\.ts[-:]3[-:]After/);
+
+  const leadingDashPattern = await searchText({
+    cwd: root,
+    query: "->property_count()",
+    glob: "*.cpp",
+    fixedStrings: true,
+    caseSensitive: true,
+    maxResults: 20,
+  });
+  assert.match(leadingDashPattern, /operator\.cpp/);
 
   const symbols = await searchSymbols({
     cwd: root,

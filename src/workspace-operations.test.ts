@@ -1537,12 +1537,20 @@ try {
     startLine: number;
     endLine: number;
     totalLines: number;
+    requestedStartLine: number;
+    requestedLineCount: number;
+    actualStartLine: number;
+    actualEndLine: number;
     truncated: boolean;
   };
   assert.equal(rangedRead.content, "line2\nline3");
   assert.equal(rangedRead.startLine, 2);
   assert.equal(rangedRead.endLine, 3);
   assert.equal(rangedRead.totalLines, 5);
+  assert.equal(rangedRead.requestedStartLine, 2);
+  assert.equal(rangedRead.requestedLineCount, 2);
+  assert.equal(rangedRead.actualStartLine, 2);
+  assert.equal(rangedRead.actualEndLine, 3);
   assert.equal(rangedRead.truncated, false);
 
   const batch = await runWorkspaceOperation(registry, codexEnabled, {

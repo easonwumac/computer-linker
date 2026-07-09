@@ -234,7 +234,10 @@ try {
     "--skip-gates",
     "--allow-dirty",
     "--require-evidence",
-  ], { useDefaultEvidence: true });
+  ], {
+    useDefaultEvidence: true,
+    env: { COMPUTER_LINKER_CONFIG_DIR: join(tempRoot, "required-default-evidence-config") },
+  });
   assert.notEqual(requiredDefaultEvidenceResult.status, 0);
   const requiredDefaultEvidenceReport = parseJsonOutput(requiredDefaultEvidenceResult.stdout);
   const requiredDefaultEvidenceCheck = requiredDefaultEvidenceReport.checks.find((check) => check.id === "external-alpha-evidence");

@@ -1423,6 +1423,10 @@ try {
     assert.equal(rangedRead.body.data.startLine, 2);
     assert.equal(rangedRead.body.data.endLine, 3);
     assert.equal(rangedRead.body.data.totalLines, 5);
+    assert.equal(rangedRead.body.data.requestedStartLine, 2);
+    assert.equal(rangedRead.body.data.requestedLineCount, 2);
+    assert.equal(rangedRead.body.data.actualStartLine, 2);
+    assert.equal(rangedRead.body.data.actualEndLine, 3);
     assert.match(rangedRead.body.data.sha256, /^[a-f0-9]{64}$/);
     assert.equal(rangedRead.body.data.truncated, true);
 

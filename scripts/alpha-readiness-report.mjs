@@ -703,6 +703,8 @@ for (const action of failedEvidencePreflight?.nextActions ?? []) {
 if (failedEvidencePreflight?.recordCommand && failedEvidencePreflight.status === "fail") {
   nextActions.push(`After preflight is ready, run: ${failedEvidencePreflight.recordCommand}`);
   nextActions.push(`Then rerun: ${rerunReadinessCommand}`);
+} else if (failedEvidencePreflight?.recordCommand) {
+  nextActions.push(`Then rerun: ${rerunReadinessCommand}`);
 }
 if (dirtyEntries.length > 0 && !allowDirty) {
   nextActions.push(`Commit or discard local changes, then rerun ${rerunReadinessCommand}.`);

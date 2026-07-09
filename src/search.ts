@@ -58,7 +58,7 @@ export async function searchText(options: SearchTextOptions): Promise<string> {
   if (options.afterContext && options.afterContext > 0) args.push("--after-context", String(options.afterContext));
   if (options.glob) args.push("--glob", options.glob);
   args.push(...sensitiveFileRgGlobArgs());
-  args.push(options.query, ".");
+  args.push("--", options.query, ".");
 
   try {
     const { stdout } = await execFileAsync("rg", args, {
