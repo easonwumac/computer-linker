@@ -105,6 +105,13 @@ Refresh it explicitly with:
 computer-linker tunnel openai-client install --refresh
 ```
 
+When an OpenAI tunnel is running, `tunnel status` also reads tunnel-client's
+loopback-only `/healthz`, `/readyz`, `/api/status`, and `/api/logs` endpoints.
+The text and JSON reports distinguish a dead or unready local tunnel from a 401
+that tunnel-client observed. A healthy report with no observed 401 indicates
+that a 401 shown only in ChatGPT was likely rejected by organization/workspace
+context before it reached the local tunnel.
+
 ## Token Maintenance
 
 ```powershell

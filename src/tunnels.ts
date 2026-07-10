@@ -3,6 +3,7 @@ import { once } from "node:events";
 import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
+import { redactAuditText } from "./audit-redaction.js";
 import { configDir } from "./config.js";
 import { securePrivateFile } from "./file-permissions.js";
 import { executableCommand, windowsVerbatimArgumentsOption } from "./platform-shell.js";
@@ -82,6 +83,37 @@ export interface TunnelProviderStatus {
   status?: string;
   error?: string;
   commands: TunnelCommand[];
+}
+
+export interface OpenAiTunnelProbeWarning {
+  time?: string;
+  level: "WARN" | "ERROR";
+  message: string;
+  statusCode?: number;
+  detail?: string;
+}
+
+export interface OpenAiTunnelProbe {
+  state: "not-running" | "unavailable" | "unreachable" | "not-ready" | "ready";
+  processId?: number;
+  healthUrl?: string;
+  live: boolean;
+  ready: boolean;
+  healthStatusCode?: number;
+  readinessStatusCode?: number;
+  adminStatusAvailable: boolean;
+  logsAvailable: boolean;
+  clientVersion?: string;
+  clientStartedAt?: string;
+  uptimeSeconds?: number;
+  controlPlaneTunnelId?: string;
+  mcpProbeStatus?: string;
+  lastActivityAt?: string;
+  observed401Count: number;
+  organizationContextFailureCount: number;
+  recentWarnings: OpenAiTunnelProbeWarning[];
+  probeErrors: string[];
+  guidance: string[];
 }
 
 interface TunnelProviderStatusInput {
@@ -535,8 +567,299 @@ export function openAiTunnelHealthUrlFile(tunnelId: string): string {
   return join(openAiTunnelRuntimeDir(), `${safeFilename(tunnelId)}.health.url`);
 }
 
+export async function probeOpenAiTunnelHealth(
+  snapshots: TunnelProcessSnapshot[] = listTunnelProcesses(),
+  options: {
+    fetchImpl?: typeof fetch;
+    healthUrl?: string;
+    timeoutMs?: number;
+  } = {},
+): Promise<OpenAiTunnelProbe> {
+  const running = snapshots.find((snapshot) => snapshot.provider === "openai" && snapshot.status === "running");
+  if (!running) {
+    return emptyOpenAiTunnelProbe("not-running", ["No managed OpenAI tunnel process is running."]);
+  }
+
+  const configuredTunnelId = tunnelCommandOption(running.args, "--control-plane.tunnel-id")
+    ?? configuredOpenAiTunnelId();
+  const healthUrl = options.healthUrl ?? readOpenAiTunnelHealthUrl(configuredTunnelId);
+  if (!healthUrl) {
+    return {
+      ...emptyOpenAiTunnelProbe("unavailable", [
+        "The tunnel-client health URL is unavailable. Restart the managed OpenAI tunnel and run tunnel status again.",
+      ]),
+      processId: running.pid,
+      controlPlaneTunnelId: configuredTunnelId,
+    };
+  }
+
+  const baseUrl = validatedLoopbackHealthUrl(healthUrl);
+  if (!baseUrl) {
+    return {
+      ...emptyOpenAiTunnelProbe("unavailable", [
+        "The tunnel-client health URL is not a trusted loopback HTTP endpoint.",
+      ]),
+      processId: running.pid,
+      controlPlaneTunnelId: configuredTunnelId,
+      probeErrors: ["Rejected non-loopback tunnel-client health URL."],
+    };
+  }
+
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = normalizeProbeTimeout(options.timeoutMs);
+  const [healthResult, readinessResult, statusResult, logsResult] = await Promise.all([
+    fetchTunnelClientEndpoint(fetchImpl, baseUrl, "/healthz", timeoutMs, "healthz"),
+    fetchTunnelClientEndpoint(fetchImpl, baseUrl, "/readyz", timeoutMs, "readyz"),
+    fetchTunnelClientEndpoint(fetchImpl, baseUrl, "/api/status", timeoutMs, "api/status"),
+    fetchTunnelClientEndpoint(fetchImpl, baseUrl, "/api/logs?limit=2000", timeoutMs, "api/logs"),
+  ]);
+
+  const live = healthResult.response?.ok === true && healthResult.body.trim().toLowerCase() === "live";
+  const ready = readinessResult.response?.ok === true && readinessResult.body.trim().toLowerCase() === "ready";
+  const adminStatus = statusResult.response?.ok ? parseTunnelClientAdminStatus(statusResult.body) : undefined;
+  const logEvents = logsResult.response?.ok ? parseTunnelClientLogEvents(logsResult.body) : undefined;
+  const observed401 = (logEvents ?? []).filter(isTunnelClient401Event);
+  const organizationContextFailures = observed401.filter(isOrganizationContextFailure);
+  const recentWarnings = (logEvents ?? [])
+    .filter((event) => event.level === "WARN" || event.level === "ERROR")
+    .sort((a, b) => (b.time ?? "").localeCompare(a.time ?? ""))
+    .slice(0, 10)
+    .map(tunnelClientWarning);
+  const lastActivityAt = (logEvents ?? [])
+    .filter((event) => event.message.startsWith("dispatcher forwarded command") || event.message.startsWith("dispatcher acknowledged notification"))
+    .map((event) => event.time)
+    .filter((value): value is string => typeof value === "string")
+    .sort((a, b) => b.localeCompare(a))[0];
+  const parseErrors = [
+    statusResult.response?.ok && !adminStatus ? "api/status: invalid JSON response" : undefined,
+    logsResult.response?.ok && !logEvents ? "api/logs: invalid JSON response" : undefined,
+  ];
+  const probeErrors = [healthResult.error, readinessResult.error, statusResult.error, logsResult.error, ...parseErrors]
+    .filter((value): value is string => Boolean(value));
+  const state: OpenAiTunnelProbe["state"] = !healthResult.response && !readinessResult.response
+    ? "unreachable"
+    : ready ? "ready" : "not-ready";
+  const guidance: string[] = [];
+  if (observed401.length > 0) {
+    guidance.push(
+      organizationContextFailures.length > 0
+        ? "tunnel-client observed an organization-context 401. Verify the API key organization, Tunnels Read + Use permissions, and the tunnel's ChatGPT workspace association."
+        : "tunnel-client observed a 401. Verify the API key organization and Tunnels Read + Use permissions.",
+    );
+  } else if (state === "ready" && logsResult.response?.ok) {
+    guidance.push(
+      "The local tunnel is ready and tunnel-client observed no 401. A 401 shown only in ChatGPT is likely an organization or workspace context rejection before the request reached this machine.",
+    );
+  } else if (state === "unreachable") {
+    guidance.push("The managed tunnel process exists, but its local health endpoint is unreachable. Restart Computer Linker.");
+  } else if (state === "not-ready") {
+    guidance.push("tunnel-client is running but not ready. Inspect recent warnings and restart it if readiness does not recover.");
+  }
+
+  return {
+    state,
+    processId: running.pid,
+    healthUrl: baseUrl.href.replace(/\/$/, ""),
+    live,
+    ready,
+    healthStatusCode: healthResult.response?.status,
+    readinessStatusCode: readinessResult.response?.status,
+    adminStatusAvailable: Boolean(adminStatus),
+    logsAvailable: Boolean(logEvents),
+    clientVersion: optionalString(adminStatus?.version),
+    clientStartedAt: optionalString(adminStatus?.started_at),
+    uptimeSeconds: optionalNumber(adminStatus?.uptime_seconds),
+    controlPlaneTunnelId: optionalString(adminStatus?.control_plane_tunnel_id) ?? configuredTunnelId,
+    mcpProbeStatus: mainMcpProbeStatus(adminStatus),
+    lastActivityAt,
+    observed401Count: observed401.length,
+    organizationContextFailureCount: organizationContextFailures.length,
+    recentWarnings,
+    probeErrors,
+    guidance,
+  };
+}
+
 function openAiTunnelPidFile(tunnelId: string): string {
   return join(openAiTunnelRuntimeDir(), `${safeFilename(tunnelId)}.pid`);
+}
+
+interface TunnelClientEndpointResult {
+  response?: Response;
+  body: string;
+  error?: string;
+}
+
+interface TunnelClientLogEvent {
+  time?: string;
+  level: string;
+  message: string;
+  attrs: Record<string, unknown>;
+}
+
+function emptyOpenAiTunnelProbe(state: OpenAiTunnelProbe["state"], guidance: string[]): OpenAiTunnelProbe {
+  return {
+    state,
+    live: false,
+    ready: false,
+    adminStatusAvailable: false,
+    logsAvailable: false,
+    observed401Count: 0,
+    organizationContextFailureCount: 0,
+    recentWarnings: [],
+    probeErrors: [],
+    guidance,
+  };
+}
+
+function tunnelCommandOption(args: string[], name: string): string | undefined {
+  const index = args.indexOf(name);
+  const value = index >= 0 ? args[index + 1]?.trim() : undefined;
+  return value || undefined;
+}
+
+function readOpenAiTunnelHealthUrl(tunnelId: string | undefined): string | undefined {
+  if (!tunnelId) return undefined;
+  try {
+    const path = openAiTunnelHealthUrlFile(tunnelId);
+    if (!existsSync(path)) return undefined;
+    return readFileSync(path, "utf8").trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function validatedLoopbackHealthUrl(value: string): URL | undefined {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    const loopback = hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1" || hostname === "[::1]";
+    if (url.protocol !== "http:" || !loopback || url.username || url.password) return undefined;
+    url.pathname = "/";
+    url.search = "";
+    url.hash = "";
+    return url;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeProbeTimeout(value: number | undefined): number {
+  if (!Number.isFinite(value)) return 2_000;
+  return Math.max(100, Math.min(10_000, Math.trunc(value ?? 2_000)));
+}
+
+async function fetchTunnelClientEndpoint(
+  fetchImpl: typeof fetch,
+  baseUrl: URL,
+  path: string,
+  timeoutMs: number,
+  label: string,
+): Promise<TunnelClientEndpointResult> {
+  try {
+    const response = await fetchImpl(new URL(path, baseUrl), {
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: { accept: path.startsWith("/api/") ? "application/json" : "text/plain" },
+    });
+    return { response, body: await response.text() };
+  } catch (error) {
+    return {
+      body: "",
+      error: `${label}: ${redactAuditText(error instanceof Error ? error.message : String(error))}`,
+    };
+  }
+}
+
+function parseTunnelClientAdminStatus(body: string): Record<string, unknown> | undefined {
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseTunnelClientLogEvents(body: string): TunnelClientLogEvent[] | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return undefined;
+  }
+  if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as { events?: unknown }).events)) return undefined;
+  return ((parsed as { events: unknown[] }).events).flatMap((value): TunnelClientLogEvent[] => {
+    if (!value || typeof value !== "object") return [];
+    const event = value as Record<string, unknown>;
+    const message = optionalString(event.message);
+    if (!message) return [];
+    const attrs = event.attrs && typeof event.attrs === "object" && !Array.isArray(event.attrs)
+      ? event.attrs as Record<string, unknown>
+      : {};
+    return [{
+      time: optionalString(event.time),
+      level: optionalString(event.level)?.toUpperCase() ?? "INFO",
+      message: redactAuditText(message),
+      attrs,
+    }];
+  });
+}
+
+function isTunnelClient401Event(event: TunnelClientLogEvent): boolean {
+  const statusCode = optionalNumber(event.attrs.status_code);
+  if (statusCode === 401) return true;
+  return /(?:^|[^A-Za-z0-9])401(?:$|[^A-Za-z0-9])|unauthori[sz]ed/i.test(tunnelClientEventDetail(event));
+}
+
+function isOrganizationContextFailure(event: TunnelClientLogEvent): boolean {
+  return /active organization context|organization[- ]context|organization context/i.test(tunnelClientEventDetail(event));
+}
+
+function tunnelClientEventDetail(event: TunnelClientLogEvent): string {
+  return [
+    event.message,
+    optionalString(event.attrs.status),
+    optionalString(event.attrs.error),
+    optionalString(event.attrs.body),
+  ].filter((value): value is string => Boolean(value)).join(" ");
+}
+
+function tunnelClientWarning(event: TunnelClientLogEvent): OpenAiTunnelProbeWarning {
+  const detail = [event.attrs.error, event.attrs.body, event.attrs.status]
+    .map(optionalString)
+    .find((value): value is string => Boolean(value));
+  const level = event.level === "ERROR" ? "ERROR" : "WARN";
+  return {
+    time: event.time,
+    level,
+    message: redactAuditText(event.message),
+    statusCode: optionalNumber(event.attrs.status_code),
+    detail: detail ? redactAuditText(detail) : undefined,
+  };
+}
+
+function mainMcpProbeStatus(status: Record<string, unknown> | undefined): string | undefined {
+  if (!status || !Array.isArray(status.channels)) return undefined;
+  for (const value of status.channels) {
+    if (!value || typeof value !== "object") continue;
+    const channel = value as Record<string, unknown>;
+    if (channel.name === "main") return optionalString(channel.probe_status);
+  }
+  return undefined;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
 }
 
 function openAiTunnelClientStatus(): TunnelToolStatus {

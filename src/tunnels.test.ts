@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ensureOpenAiTunnelClientInstalled, getTunnelProvider, getTunnelProviders, listTunnelProcesses, openAiTunnelClientManagedPath, tailscalePublicUrlFromFunnelStatus, tailscalePublicUrlFromStatusJson, tunnelCommand, tunnelDiagnostics, tunnelProviderContracts, tunnelRuntimeEvents } from "./tunnels.js";
+import { ensureOpenAiTunnelClientInstalled, getTunnelProvider, getTunnelProviders, listTunnelProcesses, openAiTunnelClientManagedPath, probeOpenAiTunnelHealth, tailscalePublicUrlFromFunnelStatus, tailscalePublicUrlFromStatusJson, tunnelCommand, tunnelDiagnostics, tunnelProviderContracts, tunnelRuntimeEvents, type TunnelProcessSnapshot } from "./tunnels.js";
 
 const originalConfigDir = process.env.COMPUTER_LINKER_CONFIG_DIR;
 const originalLocalPortConfigDir = process.env.LOCALPORT_CONFIG_DIR;
@@ -163,6 +163,85 @@ assert.equal(tunnelRuntimeEvents([{
   stdout: "",
   stderr: openAiTunnelLog,
 }], { limit: 20 }).some((event) => event.kind === "dispatcher_forwarded"), false);
+
+const probeSnapshot: TunnelProcessSnapshot = {
+  id: "openai-probe-test",
+  provider: "openai",
+  localPort: 3939,
+  command: "tunnel-client",
+  args: ["run", "--control-plane.tunnel-id", "tunnel_probe"],
+  display: "tunnel-client run --control-plane.tunnel-id tunnel_probe",
+  pid: 4242,
+  startedAt: "2026-07-09T14:23:32.000Z",
+  status: "running",
+  exitCode: null,
+  stdout: "",
+  stderr: "",
+};
+const probeFetch = (events: unknown[]): typeof fetch => async (input) => {
+  const url = new URL(input instanceof Request ? input.url : String(input));
+  if (url.pathname === "/healthz") return new Response("live", { status: 200 });
+  if (url.pathname === "/readyz") return new Response("ready", { status: 200 });
+  if (url.pathname === "/api/status") {
+    return Response.json({
+      version: "0.0.10+test",
+      started_at: "2026-07-09T22:23:32+08:00",
+      uptime_seconds: 3600,
+      control_plane_tunnel_id: "tunnel_probe",
+      channels: [{ name: "main", probe_status: "ok" }],
+    });
+  }
+  if (url.pathname === "/api/logs") return Response.json({ events });
+  return new Response("not found", { status: 404 });
+};
+const healthyProbe = await probeOpenAiTunnelHealth([probeSnapshot], {
+  healthUrl: "http://127.0.0.1:45123",
+  fetchImpl: probeFetch([{
+    time: "2026-07-09T23:21:24+08:00",
+    level: "INFO",
+    message: "dispatcher forwarded command to MCP server",
+    attrs: {},
+  }]),
+});
+assert.equal(healthyProbe.state, "ready");
+assert.equal(healthyProbe.live, true);
+assert.equal(healthyProbe.ready, true);
+assert.equal(healthyProbe.mcpProbeStatus, "ok");
+assert.equal(healthyProbe.processId, 4242);
+assert.equal(healthyProbe.lastActivityAt, "2026-07-09T23:21:24+08:00");
+assert.equal(healthyProbe.observed401Count, 0);
+assert.ok(healthyProbe.guidance.some((item) => item.includes("shown only in ChatGPT")));
+
+const organizationFailureProbe = await probeOpenAiTunnelHealth([probeSnapshot], {
+  healthUrl: "http://127.0.0.1:45123",
+  fetchImpl: probeFetch([{
+    time: "2026-07-09T23:22:00+08:00",
+    level: "WARN",
+    message: "poll failed; backing off",
+    attrs: {
+      status_code: 401,
+      status: "401 Access denied: this tunnel requires an active organization context",
+      error: "CONTROL_PLANE_API_KEY=sk-proj-test-secret",
+    },
+  }]),
+});
+assert.equal(organizationFailureProbe.observed401Count, 1);
+assert.equal(organizationFailureProbe.organizationContextFailureCount, 1);
+assert.ok(organizationFailureProbe.guidance.some((item) => item.includes("organization-context 401")));
+assert.doesNotMatch(JSON.stringify(organizationFailureProbe), /sk-proj-test-secret/);
+
+let untrustedFetchCalls = 0;
+const untrustedProbe = await probeOpenAiTunnelHealth([probeSnapshot], {
+  healthUrl: "http://user:secret@127.0.0.1:45123",
+  fetchImpl: async () => {
+    untrustedFetchCalls += 1;
+    return new Response("unexpected");
+  },
+});
+assert.equal(untrustedProbe.state, "unavailable");
+assert.equal(untrustedFetchCalls, 0);
+assert.equal(untrustedProbe.healthUrl, undefined);
+assert.doesNotMatch(JSON.stringify(untrustedProbe), /user|secret/);
 
 const diagnostics = tunnelDiagnostics({
   localPort: 3939,

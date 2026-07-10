@@ -165,11 +165,18 @@ computer-linker tunnel status
 computer-linker client setup
 ```
 
+For a running OpenAI tunnel, `tunnel status` probes tunnel-client's loopback
+admin API. It reports process state, `live`, `ready`, the local MCP probe,
+recent command activity, and whether tunnel-client itself observed a `401`.
+
 OpenAI tunnel returns an organization 401:
 
 Verify the API key's OpenAI Platform organization, Tunnels Read + Use
 permission, and client workspace association. This is usually an OpenAI tunnel
-authorization issue, not a Computer Linker workspace issue.
+authorization issue, not a Computer Linker workspace issue. If `tunnel status`
+reports `ready`, `mcpProbe=ok`, and no observed 401, a ChatGPT
+organization/workspace rejection before the request reached this machine is
+the likely cause.
 
 ## Develop From Source
 

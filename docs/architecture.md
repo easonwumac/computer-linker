@@ -648,6 +648,14 @@ path and release metadata. First-use download failures explain how to provide
 directories such as Desktop for executables unless a path is explicitly
 provided.
 
+For a running managed OpenAI tunnel, `computer-linker tunnel status` also reads
+the loopback health URL written by tunnel-client. It probes `/healthz`,
+`/readyz`, `/api/status`, and `/api/logs` with a bounded timeout, rejects
+non-loopback health URLs, and redacts diagnostic text before returning it. The
+report separates local process/readiness failures and tunnel-client-observed
+401 responses from a ChatGPT organization/workspace rejection that never
+reached the local machine.
+
 `computer-linker start` and `computer-linker expose` require an owner token
 before starting a tunnel. Loopback
 HTTP mode can run without a token for local-only development, and `init`,

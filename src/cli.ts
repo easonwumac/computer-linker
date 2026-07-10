@@ -66,7 +66,7 @@ import {
 } from "./service.js";
 import { serveHttp, serveStdio } from "./server.js";
 import { screenshotCapability } from "./screenshot.js";
-import { configuredOpenAiTunnelId, ensureOpenAiTunnelClientInstalled, exposeWithTunnel, listTunnelProcesses, refreshTunnelPublicUrl, startTunnelProcess, tunnelDiagnostics, type TailscaleMode, type TunnelProviderName, type TunnelProcessSnapshot } from "./tunnels.js";
+import { configuredOpenAiTunnelId, ensureOpenAiTunnelClientInstalled, exposeWithTunnel, listTunnelProcesses, probeOpenAiTunnelHealth, refreshTunnelPublicUrl, startTunnelProcess, tunnelDiagnostics, type TailscaleMode, type TunnelProviderName, type TunnelProcessSnapshot } from "./tunnels.js";
 import { ensureWorkspaceRootDirectory } from "./workspace-roots.js";
 
 type Command = "init" | "serve" | "start" | "here" | "quickstart" | "status" | "check" | "self-test" | "expose" | "tunnel" | "service" | "workspace" | "process" | "screen" | "doctor" | "diagnose" | "history" | "profile" | "client" | "config" | "setup" | "help" | "version";
@@ -776,11 +776,15 @@ async function tunnel(args: string[]): Promise<void> {
     const unknown = rest.filter((arg) => arg !== "--json");
     if (unknown.length > 0) throw new Error(`Unknown tunnel status option: ${unknown[0]}`);
     const config = loadConfig();
+    const tunnels = listTunnelProcesses();
     const diagnostics = tunnelDiagnostics({
       localPort: config.port ?? 3939,
       publicBaseUrl: config.publicBaseUrl,
-      tunnels: listTunnelProcesses(),
+      tunnels,
     });
+    const openAiProbe = diagnostics.providers.some((provider) => provider.provider === "openai" && provider.running)
+      ? await probeOpenAiTunnelHealth(tunnels)
+      : undefined;
 
     if (rest.includes("--json")) {
       console.log(JSON.stringify({
@@ -788,6 +792,7 @@ async function tunnel(args: string[]): Promise<void> {
         schemaVersion: 1,
         localPort: config.port ?? 3939,
         ...diagnostics,
+        openAiProbe,
       }, null, 2));
       return;
     }
@@ -801,6 +806,14 @@ async function tunnel(args: string[]): Promise<void> {
     console.log(`effectivePublicUrl: ${effectivePublicUrlText}`);
     if (openAiSecureTunnelActive) {
       console.log("openaiTunnel: active; use Tunnel mode in the MCP client, not a public URL");
+      if (openAiProbe) {
+        const mcpProbe = openAiProbe.mcpProbeStatus ?? "unknown";
+        console.log(`openaiHealth: ${openAiProbe.state} (live=${openAiProbe.live ? "yes" : "no"}, ready=${openAiProbe.ready ? "yes" : "no"}, mcpProbe=${mcpProbe})`);
+        if (openAiProbe.lastActivityAt) console.log(`openaiLastActivity: ${openAiProbe.lastActivityAt}`);
+        console.log(`openai401: ${openAiProbe.logsAvailable ? `${openAiProbe.observed401Count} observed in tunnel-client logs` : "not checked; tunnel-client logs unavailable"}`);
+        for (const guidance of openAiProbe.guidance) console.log(`  diagnosis: ${guidance}`);
+        for (const error of openAiProbe.probeErrors) console.log(`  probe warning: ${error}`);
+      }
     }
     for (const tool of diagnostics.tools) {
       console.log(`${tool.name}: ${tool.available ? "available" : "missing"}${tool.version ? ` (${tool.version})` : ""}`);

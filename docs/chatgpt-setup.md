@@ -121,6 +121,13 @@ target ChatGPT workspace when testing from ChatGPT. If you are using an API
 surface that supports explicit organization selection, send the matching
 OpenAI organization context for the tunnel owner.
 
+Run `computer-linker tunnel status` while diagnosing this error. For a managed
+OpenAI tunnel it probes tunnel-client's loopback admin API and reports `live`,
+`ready`, the local MCP probe, last activity, and observed 401 events. If those
+checks are healthy and the observed 401 count is zero, the ChatGPT request was
+likely rejected before it reached tunnel-client; reconnect the app from the
+intended ChatGPT workspace and verify that workspace's tunnel association.
+
 If you run the HTTP server and tunnel separately:
 
 ```powershell

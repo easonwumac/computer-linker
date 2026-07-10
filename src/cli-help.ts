@@ -794,6 +794,7 @@ export function printTunnelHelp(): void {
       "What it does:",
       "  Shows detected tunnel tools, running tunnel processes, effective public URL, and suggested commands.",
       "  OpenAI Secure MCP Tunnel mode reports a tunnel id, not a public URL.",
+      "  A running OpenAI tunnel is probed through its loopback admin API for live, ready, MCP, activity, and 401 evidence.",
       "  OpenAI tunnel-client install reuses the cached managed binary unless refresh is requested.",
       "",
       "Example:",
